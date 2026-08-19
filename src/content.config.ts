@@ -1,6 +1,6 @@
 import { defineCollection } from 'astro:content';
-import { docsLoader } from '@astrojs/starlight/loaders';
-import { docsSchema } from '@astrojs/starlight/schema';
+import { docsLoader, i18nLoader } from '@astrojs/starlight/loaders';
+import { docsSchema, i18nSchema } from '@astrojs/starlight/schema';
 import { z } from 'astro/zod';
 import {
 	audiences,
@@ -9,14 +9,8 @@ import {
 	translationStatuses,
 } from './data/taxonomy';
 
-export const technicalPageMetadataSchema = z
+const pageTranslationMetadataSchema = z
 	.object({
-		mleCommit: z.string().regex(/^[0-9a-f]{40}$/),
-		maturity: z.enum(maturities),
-		audiences: z.array(z.enum(audiences)).min(1),
-		subsystems: z.array(z.enum(subsystems)).min(1),
-		sourceFiles: z.array(z.string()).default([]),
-		testFiles: z.array(z.string()).default([]),
 		lastVerified: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 		translationStatus: z.enum(translationStatuses),
 		translationSourceLastVerified: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
@@ -43,19 +37,55 @@ export const technicalPageMetadataSchema = z
 		}
 	});
 
+export const homepagePageMetadataSchema = pageTranslationMetadataSchema;
+
+export const technicalPageMetadataSchema = pageTranslationMetadataSchema.extend({
+	mleCommit: z.string().regex(/^[0-9a-f]{40}$/),
+	maturity: z.enum(maturities),
+	audiences: z.array(z.enum(audiences)).min(1),
+	subsystems: z.array(z.enum(subsystems)).min(1),
+	sourceFiles: z.array(z.string()).default([]),
+	testFiles: z.array(z.string()).default([]),
+});
+
 const technicalPageSchema = technicalPageMetadataSchema.extend({
 	contentType: z.literal('technical'),
 });
 
-const landingPageSchema = z.object({
-	contentType: z.enum(['homepage', 'redirect']),
+const homepagePageSchema = homepagePageMetadataSchema.extend({
+	contentType: z.literal('homepage'),
+});
+
+const redirectPageSchema = z.object({
+	contentType: z.literal('redirect'),
+});
+
+export const customI18nSchema = z.object({
+	'mle.versionPicker.label': z.string(),
+	'mle.versionPicker.current': z.string(),
+	'mle.maturity.label': z.string(),
+	'mle.maturity.stableEnough': z.string(),
+	'mle.maturity.inDevelopment': z.string(),
+	'mle.maturity.experimental': z.string(),
+	'mle.translation.fallback': z.string(),
+	'mle.missingPage.title': z.string(),
+	'mle.missingPage.overviewLink': z.string(),
+	'mle.source.label': z.string(),
+	'mle.source.tests': z.string(),
+	'mle.search.scopeLabel': z.string(),
+	'mle.search.currentSnapshot': z.string(),
+	'mle.search.allSnapshots': z.string(),
 });
 
 export const collections = {
-  docs: defineCollection({
-    loader: docsLoader(),
-    schema: docsSchema({
-      extend: z.union([technicalPageSchema, landingPageSchema]),
-    }),
-  }),
+	docs: defineCollection({
+		loader: docsLoader(),
+		schema: docsSchema({
+			extend: z.union([technicalPageSchema, homepagePageSchema, redirectPageSchema]),
+		}),
+	}),
+	i18n: defineCollection({
+		loader: i18nLoader(),
+		schema: i18nSchema({ extend: customI18nSchema }),
+	}),
 };

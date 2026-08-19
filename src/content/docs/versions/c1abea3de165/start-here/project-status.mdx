@@ -1,0 +1,27 @@
+---
+title: Project status
+description: Current development and platform support boundaries for this MLE snapshot.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences:
+  - integrator
+  - contributor
+subsystems:
+  - project
+sourceFiles:
+  - README.md
+lastVerified: '2026-08-20'
+translationStatus: canonical
+pageId: project-status
+---
+
+MLE is under active development at this snapshot. It is not a finished engine, a stable SDK, or a drop-in framework. APIs, resource formats, and the project layout can change as systems are developed alongside a game.
+
+Linux is the currently tested development platform. Windows support is intended because the main dependencies are cross-platform, but Windows builds are unverified at this commit. The helper scripts and some compiler and linker settings remain Linux-oriented.
+
+Treat `in-development` as a compatibility warning, not a release tier. Pin integrations to the documented commit, review source changes before upgrading, and verify the build on the target environment.
+
+## Evidence
+
+These boundaries come from the pinned [MLE README project status](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/README.md#L9-L15). The selected commit is the authority for this page.

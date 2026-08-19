@@ -1,0 +1,53 @@
+---
+title: Renderer overview
+description: Source-backed architecture and frame lifecycle for MLE's Vulkan renderer.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences:
+  - integrator
+  - contributor
+subsystems:
+  - renderer
+sourceFiles:
+  - src/mle/renderer/Renderer.h
+  - src/mle/renderer/Renderer.cpp
+  - src/mle/renderer/VkCtx.h
+  - src/mle/renderer/VkCtx.cpp
+  - src/mle/renderer/FrameRenderer.h
+  - src/mle/renderer/FrameRenderer.cpp
+testFiles:
+  - tests/Core/src/renderer/T.FrameRenderer.cpp
+  - tests/Core/src/renderer/T.Buffer.cpp
+  - tests/Core/src/renderer/T.Camera.cpp
+  - tests/Core/src/renderer/T.Image.cpp
+  - tests/Core/src/renderer/T.Pipeline.cpp
+  - tests/Core/src/renderer/T.Shader.cpp
+  - tests/Core/src/renderer/T.TextureCache.cpp
+lastVerified: '2026-08-20'
+translationStatus: canonical
+pageId: renderer-overview
+---
+
+MLE's renderer is a group of Vulkan services owned by the `Renderer` singleton. `Renderer::init()` initializes the Vulkan context first, then command and synchronization managers, the frame renderer, and the resource caches. Shutdown waits for the device to become idle and releases those services before destroying the Vulkan context. See [`Renderer.h`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/renderer/Renderer.h) and [`Renderer.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/renderer/Renderer.cpp).
+
+## Vulkan context
+
+`VkCtx` creates the Vulkan 1.3 instance, optional debug messenger, client surface, physical and logical devices, and VMA allocator. It selects graphics, compute, and transfer queue families and records whether compute is separate or transfer is dedicated; those arrangements depend on the selected device. The client device enables synchronization2 and dynamic rendering. See [`VkCtx.h`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/renderer/VkCtx.h) and [`VkCtx.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/renderer/VkCtx.cpp).
+
+## Frame lifecycle
+
+`FrameRenderer` owns the swapchain and two frame-data slots. Its render thread waits on the next frame's fence, clears frame-local buffers and deferred deletions, recreates a dirty swapchain when needed, and acquires a swapchain image. At frame end it records the configured or default present pass, transitions the swapchain image for presentation, submits with semaphores and a fence, and presents the image. The default present pass uses Vulkan dynamic rendering for a full-screen draw. See [`FrameRenderer.h`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/renderer/FrameRenderer.h) and [`FrameRenderer.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/renderer/FrameRenderer.cpp).
+
+Frame-local host-visible buffer slices, callbacks scheduled for the next frame, deferred resource deletion, and a separate garbage-collection queue are present in the current implementation. These are implementation details of an in-development API, not compatibility guarantees.
+
+## Test evidence
+
+The Core renderer suite checks representative behavior rather than the entire runtime loop:
+
+- [`T.FrameRenderer.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Core/src/renderer/T.FrameRenderer.cpp) verifies the preferred sRGB swapchain surface format.
+- [`T.Buffer.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Core/src/renderer/T.Buffer.cpp) covers creation, mapping, staging, copies, and persistent writes.
+- [`T.Image.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Core/src/renderer/T.Image.cpp) covers image creation and views, uploads, copies, blits, file loading, and PNG saving.
+- [`T.Pipeline.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Core/src/renderer/T.Pipeline.cpp) and [`T.Shader.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Core/src/renderer/T.Shader.cpp) exercise graphics and compute pipeline creation plus SPIR-V reflection data.
+
+These tests support the listed behaviors. They do not establish API stability or prove every platform and presentation path.

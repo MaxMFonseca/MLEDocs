@@ -1,0 +1,16 @@
+{
+  "mle.versionPicker.label": "Versão da documentação",
+  "mle.versionPicker.current": "Atual",
+  "mle.maturity.label": "Maturidade",
+  "mle.maturity.stableEnough": "Estável o suficiente",
+  "mle.maturity.inDevelopment": "Em desenvolvimento",
+  "mle.maturity.experimental": "Experimental",
+  "mle.translation.fallback": "Esta página está disponível em inglês para a mesma versão do MLE.",
+  "mle.missingPage.title": "Página indisponível nesta versão",
+  "mle.missingPage.overviewLink": "Voltar para a visão geral desta versão",
+  "mle.source.label": "Evidências no código-fonte",
+  "mle.source.tests": "Testes relacionados",
+  "mle.search.scopeLabel": "Escopo da pesquisa",
+  "mle.search.currentSnapshot": "Versão e idioma atuais",
+  "mle.search.allSnapshots": "Todas as versões e idiomas"
+}
