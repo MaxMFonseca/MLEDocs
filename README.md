@@ -29,6 +29,13 @@ pnpm test
 The production site is published through GitHub Pages beneath the `/MLEDocs`
 base path, so links and asset paths must remain base-aware.
 
+## GitHub Pages deployment
+
+Before the deployment workflow can publish the site, configure the repository
+under **Settings → Pages** to use **GitHub Actions** as its source. Enabling
+GitHub Pages, pushing changes that trigger deployment, and approving or
+initiating a deployment require user action or separate authorization.
+
 ## Agent workflow
 
 Agents must read `.local/GUIDE.md` before changing the site. The `.local/`
