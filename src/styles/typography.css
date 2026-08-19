@@ -1,1 +1,46 @@
-/* Task 8 defines the MLE typography system. */
+@font-face {
+  font-family: 'Sora';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url('/MLEDocs/fonts/sora-latin-variable.woff2') format('woff2-variations');
+}
+
+@font-face {
+  font-family: 'Source Sans 3';
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+  src: url('/MLEDocs/fonts/source-sans-3-latin-variable.woff2') format('woff2-variations');
+}
+
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/MLEDocs/fonts/ibm-plex-mono-latin-regular.woff2') format('woff2');
+}
+
+body {
+  font-family: var(--mle-font-body);
+  font-size: 1.0625rem;
+  font-optical-sizing: auto;
+  font-kerning: normal;
+}
+
+:where(h1, h2, h3, h4, h5, h6, .site-title) {
+  font-family: var(--mle-font-heading);
+  font-weight: 650;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+:where(code, kbd, pre, samp) {
+  font-family: var(--mle-font-code);
+  font-variant-ligatures: none;
+}
+
+.sl-markdown-content :where(p, li) {
+  text-wrap: pretty;
+}

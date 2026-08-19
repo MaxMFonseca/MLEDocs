@@ -1,1 +1,139 @@
-/* Task 8 defines the MLE visual design tokens. */
+:root {
+  color-scheme: dark;
+
+  /* Core palette */
+  --mle-bg: #070608;
+  --mle-surface-1: #100e12;
+  --mle-surface-2: #171319;
+  --mle-text: #f2edf1;
+  --mle-text-muted: #b9aeb7;
+  --mle-accent: #c43f88;
+  --mle-accent-bright: #ed65ad;
+  --mle-accent-deep: #4b1733;
+  --mle-border: #393039;
+  --mle-focus-outer: #f2edf1;
+  --mle-focus-edge: #070608;
+
+  /* Subsystem accents */
+  --mle-renderer: #5aa7ff;
+  --mle-lua-ui: #a879ff;
+  --mle-audio: #f0aa4f;
+  --mle-core: #55d7df;
+  --mle-tools: #65c98b;
+  --mle-experimental: #f4776d;
+
+  /* Type and readable geometry */
+  --mle-font-heading: 'Sora', 'Segoe UI', sans-serif;
+  --mle-font-body: 'Source Sans 3', 'Segoe UI', sans-serif;
+  --mle-font-code: 'IBM Plex Mono', 'Cascadia Mono', Consolas, monospace;
+  --mle-prose-width: 70ch;
+  --mle-sidebar-width: 19rem;
+
+  /* Spacing */
+  --mle-space-1: 0.25rem;
+  --mle-space-2: 0.5rem;
+  --mle-space-3: 0.75rem;
+  --mle-space-4: 1rem;
+  --mle-space-5: 1.5rem;
+  --mle-space-6: 2rem;
+  --mle-space-7: 3rem;
+
+  /* Restrained shape and depth */
+  --mle-radius-sm: 0.125rem;
+  --mle-radius-md: 0.25rem;
+  --mle-radius-lg: 0.5rem;
+  --mle-shadow-sm: 0 1px 0 rgb(0 0 0 / 48%);
+  --mle-shadow-md: 0 12px 30px rgb(0 0 0 / 28%);
+
+  /* Functional motion */
+  --mle-motion-fast: 120ms;
+  --mle-motion-base: 180ms;
+  --mle-motion-ease: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Supported Starlight custom properties */
+  --sl-font: var(--mle-font-body);
+  --sl-font-mono: var(--mle-font-code);
+  --sl-content-width: var(--mle-prose-width);
+  --sl-sidebar-width: var(--mle-sidebar-width);
+  --sl-color-white: var(--mle-text);
+  --sl-color-gray-1: var(--mle-text);
+  --sl-color-gray-2: var(--mle-text-muted);
+  --sl-color-gray-3: #8e838c;
+  --sl-color-gray-4: #6d626c;
+  --sl-color-gray-5: var(--mle-border);
+  --sl-color-gray-6: var(--mle-surface-2);
+  --sl-color-gray-7: var(--mle-surface-1);
+  --sl-color-black: var(--mle-bg);
+  --sl-color-accent-low: var(--mle-accent-deep);
+  --sl-color-accent: var(--mle-accent-bright);
+  --sl-color-accent-high: #ffd9eb;
+  --sl-color-text: var(--mle-text-muted);
+  --sl-color-text-accent: var(--mle-accent-bright);
+  --sl-color-text-invert: var(--mle-bg);
+  --sl-color-bg: var(--mle-bg);
+  --sl-color-bg-nav: var(--mle-surface-1);
+  --sl-color-bg-sidebar: var(--mle-bg);
+  --sl-color-bg-inline-code: var(--mle-surface-2);
+  --sl-color-bg-accent: var(--mle-accent-bright);
+  --sl-color-hairline-light: var(--mle-border);
+  --sl-color-hairline: #282128;
+  --sl-color-hairline-shade: var(--mle-bg);
+  --sl-color-backdrop-overlay: rgb(7 6 8 / 72%);
+  --sl-shadow-sm: var(--mle-shadow-sm);
+  --sl-shadow-md: var(--mle-shadow-md);
+  --sl-shadow-lg: var(--mle-shadow-md);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --mle-bg: #f8f4f7;
+  --mle-surface-1: #fffafd;
+  --mle-surface-2: #eee6ec;
+  --mle-text: #211820;
+  --mle-text-muted: #62545f;
+  --mle-accent: #9d2f69;
+  --mle-accent-bright: #a82f70;
+  --mle-accent-deep: #f3d4e4;
+  --mle-border: #cbbdc6;
+  --mle-focus-outer: #fffafd;
+  --mle-focus-edge: #211820;
+
+  --mle-renderer: #1e64a3;
+  --mle-lua-ui: #6841b6;
+  --mle-audio: #8a5100;
+  --mle-core: #08757c;
+  --mle-tools: #287545;
+  --mle-experimental: #ae3e38;
+
+  --mle-shadow-sm: 0 1px 0 rgb(33 24 32 / 12%);
+  --mle-shadow-md: 0 12px 30px rgb(72 43 61 / 12%);
+
+  --sl-color-white: var(--mle-text);
+  --sl-color-gray-1: var(--mle-text);
+  --sl-color-gray-2: var(--mle-text-muted);
+  --sl-color-gray-3: #776a74;
+  --sl-color-gray-4: #9a8c96;
+  --sl-color-gray-5: var(--mle-border);
+  --sl-color-gray-6: var(--mle-surface-2);
+  --sl-color-gray-7: var(--mle-surface-1);
+  --sl-color-black: var(--mle-bg);
+  --sl-color-accent-low: var(--mle-accent-deep);
+  --sl-color-accent: var(--mle-accent);
+  --sl-color-accent-high: #5e153d;
+  --sl-color-text: var(--mle-text-muted);
+  --sl-color-text-accent: var(--mle-accent);
+  --sl-color-text-invert: var(--mle-surface-1);
+  --sl-color-bg: var(--mle-bg);
+  --sl-color-bg-nav: var(--mle-surface-1);
+  --sl-color-bg-sidebar: var(--mle-bg);
+  --sl-color-bg-inline-code: var(--mle-surface-2);
+  --sl-color-bg-accent: var(--mle-accent);
+  --sl-color-hairline-light: var(--mle-border);
+  --sl-color-hairline: #ded3da;
+  --sl-color-hairline-shade: var(--mle-border);
+  --sl-color-backdrop-overlay: rgb(33 24 32 / 32%);
+  --sl-shadow-sm: var(--mle-shadow-sm);
+  --sl-shadow-md: var(--mle-shadow-md);
+  --sl-shadow-lg: var(--mle-shadow-md);
+}

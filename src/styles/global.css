@@ -1,1 +1,82 @@
-/* Task 8 defines the MLE global styles. */
+html {
+  background: var(--mle-bg);
+  scroll-behavior: smooth;
+}
+
+body {
+  min-width: 20rem;
+  background-color: var(--mle-bg);
+  color: var(--mle-text-muted);
+}
+
+::selection {
+  background: var(--mle-accent);
+  color: var(--mle-text);
+}
+
+:where(a, button, input, textarea, select, summary, [tabindex]):focus-visible {
+  border-radius: var(--mle-radius-sm);
+  outline: 3px solid var(--mle-accent-bright);
+  outline-offset: 2px;
+  box-shadow:
+    0 0 0 6px var(--mle-focus-outer),
+    0 0 0 7px var(--mle-focus-edge);
+}
+
+:where(a, button, input, textarea, select, summary, [tabindex]) {
+  transition:
+    color var(--mle-motion-fast) var(--mle-motion-ease),
+    background-color var(--mle-motion-fast) var(--mle-motion-ease),
+    border-color var(--mle-motion-fast) var(--mle-motion-ease);
+}
+
+:where(main, .main-pane, .content-panel, .sl-markdown-content) {
+  min-width: 0;
+}
+
+.sl-markdown-content {
+  max-width: var(--mle-prose-width);
+}
+
+.sl-markdown-content :where(pre, .expressive-code, table) {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+}
+
+.sl-markdown-content table {
+  display: block;
+  width: max-content;
+}
+
+:where(button, nav a) {
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+starlight-lang-select label {
+  --sl-select-width: 10em !important;
+}
+
+header {
+  box-shadow: var(--mle-shadow-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-delay: 0s !important;
+    animation-duration: 0s !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-delay: 0s !important;
+    transition-duration: 0s !important;
+  }
+}
