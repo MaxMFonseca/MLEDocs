@@ -270,3 +270,98 @@ test('does not classify nested versions segments as canonical version routes', a
   await expect(state.getByRole('heading', { level: 1 })).toHaveText('Page not found');
   await expect(page.locator('[data-mle-not-found="missing-page"]')).toHaveCount(0);
 });
+
+for (const { name, alias, permanent } of [
+  {
+    name: 'English',
+    alias: '/',
+    permanent: `/versions/${versionId}/`,
+  },
+  {
+    name: 'Brazilian Portuguese',
+    alias: '/pt-br/',
+    permanent: `/pt-br/versions/${versionId}/`,
+  },
+]) {
+  test(`${name} root alias resolves to the immutable current snapshot`, async ({ page }) => {
+    await page.goto(pageUrl(alias));
+
+    await expect(page).toHaveURL(pageUrl(permanent));
+    await expect(page.locator('[data-mle-homepage]')).toHaveAttribute(
+      'data-mle-homepage-version',
+      versionId,
+    );
+  });
+}
+
+test('homepage primary path opens project status without changing the selected commit', async ({
+  page,
+}) => {
+  await page.goto(pageUrl(`/versions/${versionId}/`));
+
+  await page.getByRole('link', { name: 'Use MLE', exact: true }).click();
+
+  await expect(page).toHaveURL(pageUrl(`/versions/${versionId}/start-here/project-status/`));
+  await expect(page.getByRole('heading', { level: 1, name: 'Project status' })).toBeVisible();
+  await expect(page.locator('[data-mle-permanent-link]')).toHaveText(versionId);
+});
+
+test('latest renderer alias declares and resolves to the permanent canonical route', async ({
+  page,
+}) => {
+  const permanentPath = `/MLEDocs/versions/${versionId}/systems/renderer/`;
+  const aliasResponse = await page.request.get(pageUrl('/latest/systems/renderer/'));
+
+  expect(aliasResponse.ok()).toBe(true);
+  expect(await aliasResponse.text()).toContain(`<link rel="canonical" href="${permanentPath}">`);
+
+  await page.goto(pageUrl('/latest/systems/renderer/'));
+  await expect(page).toHaveURL(pageUrl(`/versions/${versionId}/systems/renderer/`));
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+    'href',
+    `https://maxmfonseca.github.io${permanentPath}`,
+  );
+});
+
+test('language control opens the exact Portuguese homepage for the same commit', async ({ page }) => {
+  await page.goto(pageUrl(`/versions/${versionId}/`));
+
+  await page
+    .locator('header starlight-lang-select select')
+    .selectOption(`/MLEDocs/pt-br/versions/${versionId}/`);
+
+  await expect(page).toHaveURL(pageUrl(`/pt-br/versions/${versionId}/`));
+  await expect(page.getByRole('heading', { level: 1, name: 'Documentação do MLE' })).toBeVisible();
+  await expect(page.locator('[data-mle-translation-status="current"]')).toBeVisible();
+});
+
+test('direct renderer deep link survives reload without changing commit or route', async ({ page }) => {
+  const deepLink = pageUrl(`/versions/${versionId}/systems/renderer/`);
+  await page.goto(deepLink);
+  await expect(page.getByRole('heading', { level: 1, name: 'Renderer overview' })).toBeVisible();
+
+  await page.reload();
+
+  await expect(page).toHaveURL(deepLink);
+  await expect(page.getByRole('heading', { level: 1, name: 'Renderer overview' })).toBeVisible();
+  await expect(page.locator('[data-mle-permanent-link]')).toHaveText(versionId);
+});
+
+test('mobile menu opens from the keyboard and Escape restores focus to its named control', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(pageUrl(`/versions/${versionId}/systems/renderer/`));
+
+  const menu = page.getByRole('button', { name: 'Menu' });
+  await menu.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('body')).toHaveAttribute('data-mobile-menu-expanded', '');
+  await expect(menu.locator('xpath=..')).toHaveAttribute('aria-expanded', 'true');
+
+  await page.keyboard.press('Escape');
+
+  await expect(page.locator('body')).not.toHaveAttribute('data-mobile-menu-expanded', '');
+  await expect(menu.locator('xpath=..')).toHaveAttribute('aria-expanded', 'false');
+  await expect(menu).toBeFocused();
+});

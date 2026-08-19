@@ -31,6 +31,33 @@ test('applies the MLE palette instead of the Starlight defaults', async ({ page 
   expect(theme.colorScheme).toBe('dark');
 });
 
+test('primary homepage action meets text contrast in dark and light themes', async ({ page }) => {
+  await page.goto(pageUrl('/versions/c1abea3de165/'));
+  const themePicker = page.locator('header starlight-theme-select select');
+  const primaryAction = page.locator('.primary-action');
+
+  for (const theme of ['dark', 'light']) {
+    await themePicker.selectOption(theme);
+    const contrast = await primaryAction.evaluate((element) => {
+      const parseRgb = (value: string): readonly number[] =>
+        value.match(/[\d.]+/g)?.slice(0, 3).map(Number) ?? [];
+      const luminance = (rgb: readonly number[]): number => {
+        const [red = 0, green = 0, blue = 0] = rgb.map((channel) => {
+          const value = channel / 255;
+          return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+        });
+        return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+      };
+      const style = getComputedStyle(element);
+      const foreground = luminance(parseRgb(style.color));
+      const background = luminance(parseRgb(style.backgroundColor));
+      return (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05);
+    });
+
+    expect(contrast).toBeGreaterThanOrEqual(4.5);
+  }
+});
+
 test('applies and persists an accessible MLE light theme', async ({ page }) => {
   await page.goto(pageUrl('/versions/c1abea3de165/'));
   await page.locator('header starlight-theme-select select').selectOption('light');
@@ -156,7 +183,10 @@ for (const { locale, path } of [
       proseFont: getComputedStyle(document.body).fontFamily,
       codeFont: getComputedStyle(document.querySelector('code')!).fontFamily,
       overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-      loadedFonts: [...document.fonts].map((font) => ({ family: font.family, status: font.status })),
+      loadedFonts: [...document.fonts].map((font) => ({
+        family: font.family.replace(/^(['"])(.*)\1$/, '$2'),
+        status: font.status,
+      })),
     }));
 
     expect(result.headingFont).toContain('Sora');
@@ -209,15 +239,18 @@ for (const { name, path, width } of [
 
     const focus = await picker.evaluate((element) => {
       const style = getComputedStyle(element);
+      const wrapperStyle = getComputedStyle(element.closest('.picker-label')!);
       return {
+        focusVisible: element.matches(':focus-visible'),
         outlineStyle: style.outlineStyle,
         outlineWidth: Number.parseFloat(style.outlineWidth),
-        boxShadow: style.boxShadow,
+        outerBoxShadow: wrapperStyle.boxShadow,
       };
     });
+    expect(focus.focusVisible).toBe(true);
     expect(focus.outlineStyle).not.toBe('none');
     expect(focus.outlineWidth).toBeGreaterThanOrEqual(2);
-    expect(focus.boxShadow).not.toBe('none');
+    expect(focus.outerBoxShadow).not.toBe('none');
 
     const result = await page.evaluate(() => ({
       overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -237,10 +270,20 @@ test('version context remains readable in Light, Dark, and Auto themes', async (
   await page.goto(pageUrl('/versions/c1abea3de165/systems/renderer/'));
 
   const themePicker = page.locator('header starlight-theme-select select');
+  const versionPicker = page.locator('[data-mle-version-picker]');
   for (const theme of ['light', 'dark', 'auto']) {
     await themePicker.selectOption(theme);
-    await expect(page.locator('[data-mle-version-picker]')).toBeVisible();
+    await expect(versionPicker).toBeVisible();
     await expect(page.locator('[data-mle-permanent-link]')).toHaveText('c1abea3de165');
+    await versionPicker.focus();
+    const focus = await versionPicker.evaluate((element) => ({
+      focusVisible: element.matches(':focus-visible'),
+      outlineWidth: Number.parseFloat(getComputedStyle(element).outlineWidth),
+      outerBoxShadow: getComputedStyle(element.closest('.picker-label')!).boxShadow,
+    }));
+    expect(focus.focusVisible).toBe(true);
+    expect(focus.outlineWidth).toBeGreaterThanOrEqual(2);
+    expect(focus.outerBoxShadow).not.toBe('none');
   }
 });
 
@@ -297,4 +340,100 @@ test('mobile version page reserves its expanded header for the readable picker',
   });
   expect(layout.headerHeight).toBeGreaterThanOrEqual(120);
   expect(layout.summaryBottom).toBeLessThanOrEqual(layout.headerBottom);
+});
+
+test('skip link is first in the visible focus order and targets the page heading', async (
+  { page },
+  testInfo,
+) => {
+  await page.goto(pageUrl('/versions/c1abea3de165/systems/renderer/'));
+
+  const skipLink = page.getByRole('link', { name: 'Skip to content' });
+  const focusOrder = [
+    skipLink,
+    page.locator('header .site-title'),
+    page.locator('header site-search button[data-open-modal]'),
+    page.locator('header .social-icons a'),
+    page.locator('header starlight-theme-select select'),
+    page.locator('header starlight-lang-select select'),
+    page.locator('[data-mle-version-picker]'),
+    page.locator('[data-mle-permanent-link]'),
+  ];
+
+  if (testInfo.project.name === 'webkit') {
+    // WebKit follows Safari's default Full Keyboard Access setting and skips links during Tab
+    // navigation. The skip link must still be explicitly focusable and keyboard-activatable.
+    await page.keyboard.press('Tab');
+    await expect(page.locator('header site-search button[data-open-modal]')).toBeFocused();
+  } else {
+    for (const control of focusOrder) {
+      await page.keyboard.press('Tab');
+      await expect(control).toBeFocused();
+      const outlineWidth = await control.evaluate((element) =>
+        Number.parseFloat(getComputedStyle(element).outlineWidth),
+      );
+      expect(outlineWidth).toBeGreaterThanOrEqual(2);
+    }
+  }
+
+  await skipLink.focus();
+  await expect(skipLink).toBeFocused();
+  await expect(skipLink).toBeInViewport();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/#_top$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Renderer overview' })).toBeInViewport();
+});
+
+test('desktop and mobile controls have accessible names and valid relationships', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(pageUrl('/pt-br/versions/c1abea3de165/systems/renderer/'));
+
+  await page.getByRole('button', { name: 'Menu' }).click();
+  await expect(page.getByRole('combobox', { name: 'Selecionar tema' })).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'Selecionar língua' })).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'Versão da documentação' })).toBeVisible();
+
+  const menu = page.getByRole('button', { name: 'Menu' });
+  const controlledId = await menu.getAttribute('aria-controls');
+  expect(controlledId).toBe('starlight__sidebar');
+  await expect(page.locator(`#${controlledId}`)).toHaveCount(1);
+});
+
+test('fallback and maturity statuses remain explicit without their color or decorative cues', async ({
+  page,
+}) => {
+  await page.goto(pageUrl('/pt-br/versions/c1abea3de165/systems/renderer/'));
+
+  const maturity = page.locator('[data-mle-maturity="in-development"]');
+  await expect(maturity).toContainText('Em desenvolvimento');
+  await expect(maturity).toHaveAttribute('data-mle-maturity-status', 'in-development');
+
+  const fallback = page.locator('[data-mle-translation-status="fallback"]');
+  await expect(fallback).toContainText('Esta página está disponível em inglês');
+  await expect(fallback).toContainText('Commit fixado: c1abea3de165');
+});
+
+test('360px renderer reflow keeps controls and technical content inside the viewport', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  await page.goto(pageUrl('/pt-br/versions/c1abea3de165/systems/renderer/'));
+
+  const layout = await page.evaluate(() => ({
+    overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    pickerRight: document
+      .querySelector('[data-mle-version-picker]')!
+      .getBoundingClientRect().right,
+    noticeRight: document
+      .querySelector('[data-mle-translation-status="fallback"]')!
+      .getBoundingClientRect().right,
+    viewportWidth: document.documentElement.clientWidth,
+  }));
+
+  expect(layout.overflow).toBeLessThanOrEqual(1);
+  expect(layout.pickerRight).toBeLessThanOrEqual(layout.viewportWidth);
+  expect(layout.noticeRight).toBeLessThanOrEqual(layout.viewportWidth);
+
+  const accessibility = await new AxeBuilder({ page }).analyze();
+  expect(accessibility.violations).toEqual([]);
 });

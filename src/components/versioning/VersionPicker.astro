@@ -127,6 +127,13 @@ const permanentPath = model.active.destination;
 	.picker-label {
 		display: block;
 		min-width: 0;
+		border-radius: var(--mle-radius-md);
+	}
+
+	.picker-label:has(select:focus-visible) {
+		box-shadow:
+			0 0 0 6px var(--mle-focus-outer),
+			0 0 0 7px var(--mle-focus-edge);
 	}
 
 	select {
@@ -139,6 +146,10 @@ const permanentPath = model.active.destination;
 		color: var(--mle-text);
 		font-family: var(--mle-font-code);
 		font-size: 0.75rem;
+	}
+
+	select:focus-visible {
+		box-shadow: none;
 	}
 
 	.permanent-link {
