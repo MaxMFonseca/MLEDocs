@@ -1,0 +1,173 @@
+---
+import type { Locale } from '../../data/taxonomy';
+import type { VersionEntry } from '../../data/versions';
+import { docsPath } from '../../lib/links/base';
+
+interface Props {
+	version: VersionEntry;
+	locale: Locale;
+}
+
+const { version, locale } = Astro.props;
+const isPortuguese = locale === 'pt-br';
+const base = import.meta.env.BASE_URL;
+const capabilities = isPortuguese
+	? [
+			{
+				title: 'Renderização Vulkan',
+				detail: 'Renderização dinâmica, ciclo de frames e swapchain, filas e recursos de GPU.',
+				slug: 'systems/renderer',
+			},
+			{
+				title: 'Modelos e animação',
+				detail: 'glTF 2.0, malhas estáticas e com skin, materiais, esqueletos e clipes de animação.',
+			},
+			{
+				title: 'UI em Lua',
+				detail: 'UI retida com layout, texto, entrada, eventos, componentes e animação nativa.',
+			},
+			{
+				title: 'Áudio',
+				detail: 'OpenAL, reprodução simples e em streaming, caixas de comando e oito buses de volume.',
+			},
+			{
+				title: 'Runtime e ferramentas',
+				detail: 'Janela SDL3, LuaJIT, loop por camadas, testes Core e Client interativo.',
+			},
+		]
+	: [
+			{
+				title: 'Vulkan rendering',
+				detail: 'Dynamic rendering, frame and swapchain lifecycle, queues, and GPU resources.',
+				slug: 'systems/renderer',
+			},
+			{
+				title: 'Models and animation',
+				detail: 'glTF 2.0, static and skinned meshes, materials, skeletons, and animation clips.',
+			},
+			{
+				title: 'Lua UI',
+				detail: 'Retained UI with layout, text, input, events, components, and native animation.',
+			},
+			{
+				title: 'Audio',
+				detail: 'OpenAL one-shots and streams, command mailboxes, and eight volume buses.',
+			},
+			{
+				title: 'Runtime and tools',
+				detail: 'SDL3 windowing, LuaJIT, a layered client loop, Core tests, and the interactive Client.',
+			},
+		];
+---
+
+<section class="capability-index" aria-labelledby="capability-index-title">
+	<header>
+		<p>{isPortuguese ? 'Verificado no snapshot fixado' : 'Verified in the pinned snapshot'}</p>
+		<h2 id="capability-index-title">
+			{isPortuguese ? 'O que existe hoje' : 'What exists today'}
+		</h2>
+	</header>
+	<ol>
+		{
+			capabilities.map((capability, index) => (
+				<li data-mle-navigation-availability={capability.slug ? 'available' : 'planned'}>
+					<span aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+					<div>
+						<h3>{capability.title}</h3>
+						<p>{capability.detail}</p>
+					</div>
+					{capability.slug ? (
+						<a href={docsPath({ base, locale, versionId: version.id, slug: capability.slug })}>
+							{isPortuguese ? 'Documentação disponível' : 'Documentation available'}
+						</a>
+					) : (
+						<small>{isPortuguese ? 'Documentação planejada' : 'Documentation planned'}</small>
+					)}
+				</li>
+			))
+		}
+	</ol>
+</section>
+
+<style>
+	.capability-index {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+		gap: var(--mle-space-7);
+	}
+
+	header p {
+		margin: 0 0 var(--mle-space-2);
+		color: var(--mle-tools);
+		font-family: var(--mle-font-code);
+		font-size: 0.75rem;
+		font-weight: 700;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+	}
+
+	h2,
+	h3 {
+		color: var(--mle-text);
+	}
+
+	h2 {
+		margin: 0;
+		font-size: clamp(1.6rem, 3vw, 2.4rem);
+	}
+
+	ol {
+		margin: 0;
+		padding: 0;
+		border-block-start: 1px solid var(--mle-border);
+		list-style: none;
+	}
+
+	li {
+		display: grid;
+		grid-template-columns: 2rem minmax(0, 1fr) minmax(8rem, auto);
+		align-items: start;
+		gap: var(--mle-space-3);
+		padding-block: var(--mle-space-4);
+		border-block-end: 1px solid var(--mle-border);
+	}
+
+	li > span,
+	small {
+		color: var(--mle-text-muted);
+		font-family: var(--mle-font-code);
+		font-size: 0.6875rem;
+	}
+
+	h3,
+	li p {
+		margin: 0;
+	}
+
+	li p {
+		margin-block-start: var(--mle-space-1);
+	}
+
+	li a {
+		color: var(--mle-accent-bright);
+		font-size: 0.875rem;
+		font-weight: 650;
+	}
+
+	@media (max-width: 56rem) {
+		.capability-index {
+			grid-template-columns: minmax(0, 1fr);
+			gap: var(--mle-space-5);
+		}
+	}
+
+	@media (max-width: 38rem) {
+		li {
+			grid-template-columns: 1.5rem minmax(0, 1fr);
+		}
+
+		li > :last-child {
+			grid-column: 2;
+		}
+	}
+</style>

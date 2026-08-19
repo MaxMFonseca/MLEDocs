@@ -1,0 +1,152 @@
+---
+import type { Locale } from '../../data/taxonomy';
+import type { VersionEntry } from '../../data/versions';
+import { docsPath } from '../../lib/links/base';
+
+interface Props {
+	version: VersionEntry;
+	locale: Locale;
+}
+
+const { version, locale } = Astro.props;
+const base = import.meta.env.BASE_URL;
+const isPortuguese = locale === 'pt-br';
+const paths = isPortuguese
+	? [
+			{
+				title: 'Usar o MLE',
+				description:
+					'Comece pelos limites de suporte, pelo estado do projeto e pelo que precisa ser validado antes de integrar este snapshot.',
+				label: 'Ler o estado do projeto',
+				slug: 'start-here/project-status',
+			},
+			{
+				title: 'Entender e contribuir',
+				description:
+					'Entre pelo ciclo de vida do renderer para ver como a documentação liga comportamento, código-fonte e testes.',
+				label: 'Explorar o renderer',
+				slug: 'systems/renderer',
+			},
+		]
+	: [
+			{
+				title: 'Use MLE',
+				description:
+					'Start with support boundaries, project status, and what you need to verify before integrating this snapshot.',
+				label: 'Read project status',
+				slug: 'start-here/project-status',
+			},
+			{
+				title: 'Understand and contribute',
+				description:
+					'Enter through the renderer lifecycle to see how the documentation connects behavior, source, and tests.',
+				label: 'Explore the renderer',
+				slug: 'systems/renderer',
+			},
+		];
+---
+
+<section class="audience-paths" aria-labelledby="audience-paths-title">
+	<header>
+		<p>{isPortuguese ? 'Dois pontos de entrada, um sistema canônico' : 'Two entry points, one canonical system'}</p>
+		<h2 id="audience-paths-title">
+			{isPortuguese ? 'Escolha pelo trabalho que você precisa fazer' : 'Choose by the work you need to do'}
+		</h2>
+	</header>
+	<div class="path-grid">
+		{
+			paths.map((path, index) => (
+				<article>
+					<span aria-hidden="true">0{index + 1}</span>
+					<h3>{path.title}</h3>
+					<p>{path.description}</p>
+					<a
+						href={docsPath({ base, locale, versionId: version.id, slug: path.slug })}
+					>
+						{path.label} <span aria-hidden="true">→</span>
+					</a>
+				</article>
+			))
+		}
+	</div>
+</section>
+
+<style>
+	.audience-paths {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+		gap: var(--mle-space-7);
+	}
+
+	header > p {
+		margin: 0 0 var(--mle-space-2);
+		color: var(--mle-accent-bright);
+		font-family: var(--mle-font-code);
+		font-size: 0.75rem;
+		font-weight: 700;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+	}
+
+	h2,
+	h3 {
+		color: var(--mle-text);
+	}
+
+	h2 {
+		margin: 0;
+		font-size: clamp(1.6rem, 3vw, 2.4rem);
+		line-height: 1.1;
+	}
+
+	.path-grid {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		border-block-start: 1px solid var(--mle-border);
+	}
+
+	article {
+		padding: var(--mle-space-5);
+		border-block-end: 1px solid var(--mle-border);
+	}
+
+	article + article {
+		border-inline-start: 1px solid var(--mle-border);
+	}
+
+	article > span {
+		color: var(--mle-accent-bright);
+		font-family: var(--mle-font-code);
+		font-size: 0.75rem;
+	}
+
+	h3 {
+		margin-block: var(--mle-space-3) var(--mle-space-2);
+	}
+
+	article p {
+		margin-block: 0 var(--mle-space-4);
+	}
+
+	a {
+		color: var(--mle-accent-bright);
+		font-weight: 650;
+	}
+
+	@media (max-width: 56rem) {
+		.audience-paths {
+			grid-template-columns: minmax(0, 1fr);
+			gap: var(--mle-space-5);
+		}
+	}
+
+	@media (max-width: 36rem) {
+		.path-grid {
+			grid-template-columns: minmax(0, 1fr);
+		}
+
+		article + article {
+			border-inline-start: 0;
+		}
+	}
+</style>

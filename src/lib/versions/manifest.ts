@@ -2,6 +2,7 @@ import { versions, type VersionEntry } from '../../data/versions';
 
 const COMMIT_SHA = /^[0-9a-f]{40}$/;
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
+const VERSIONED_ROUTE_ID = /(?:^|\/)versions\/([0-9a-f]{12})(?:\/|$)/;
 
 const isValidIsoDate = (value: string): boolean => {
 	const match = ISO_DATE.exec(value);
@@ -106,3 +107,22 @@ export const getVersion = (
 	id: string,
 	entries: readonly VersionEntry[] = versions,
 ): VersionEntry | undefined => entries.find((entry) => entry.id === id);
+
+export const resolveVersionEntryFromRouteId = (
+	routeId: string,
+	entries: readonly VersionEntry[] = versions,
+): VersionEntry => {
+	const versionId = VERSIONED_ROUTE_ID.exec(routeId)?.[1];
+	if (!versionId) {
+		throw new Error(`Cannot resolve an MLE snapshot from route ID "${routeId}".`);
+	}
+
+	const version = getVersion(versionId, entries);
+	if (!version) {
+		throw new Error(
+			`Documentation route "${routeId}" references unknown MLE snapshot "${versionId}".`,
+		);
+	}
+
+	return version;
+};

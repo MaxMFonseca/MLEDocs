@@ -1,0 +1,175 @@
+---
+import type { Locale } from '../../data/taxonomy';
+import type { VersionEntry } from '../../data/versions';
+import { docsPath } from '../../lib/links/base';
+
+interface Props {
+	version: VersionEntry;
+	locale: Locale;
+}
+
+const { version, locale } = Astro.props;
+const isPortuguese = locale === 'pt-br';
+const base = import.meta.env.BASE_URL;
+const systems = isPortuguese
+	? [
+			{ label: 'Núcleo do runtime', detail: 'Inicialização, configuração, erros e threads', accent: 'core' },
+			{ label: 'Renderização', detail: 'Contexto Vulkan, frames, pipelines e recursos', accent: 'renderer', slug: 'systems/renderer' },
+			{ label: 'Modelos e animação', detail: 'glTF, malhas, materiais, esqueletos e clipes', accent: 'renderer' },
+			{ label: 'Lua e UI', detail: 'Runtime LuaJIT, bindings e UI retida', accent: 'lua-ui' },
+			{ label: 'Áudio', detail: 'Reprodução OpenAL, streams, vozes e buses', accent: 'audio' },
+			{ label: 'Janela e entrada', detail: 'Janela SDL3, teclado, mouse e texto', accent: 'core' },
+			{ label: 'Ferramentas e testes', detail: 'Suite Core, Client interativo e MLECubes', accent: 'tools' },
+			{ label: 'Servidor experimental', detail: 'Estrutura inicial de timestep e comunicação', accent: 'experimental' },
+		]
+	: [
+			{ label: 'Core runtime', detail: 'Startup, configuration, errors, and threads', accent: 'core' },
+			{ label: 'Rendering', detail: 'Vulkan context, frames, pipelines, and resources', accent: 'renderer', slug: 'systems/renderer' },
+			{ label: 'Models and animation', detail: 'glTF, meshes, materials, skeletons, and clips', accent: 'renderer' },
+			{ label: 'Lua and UI', detail: 'LuaJIT runtime, bindings, and retained UI', accent: 'lua-ui' },
+			{ label: 'Audio', detail: 'OpenAL playback, streams, voices, and buses', accent: 'audio' },
+			{ label: 'Window and input', detail: 'SDL3 windowing, keyboard, mouse, and text', accent: 'core' },
+			{ label: 'Tools and tests', detail: 'Core suite, interactive Client, and MLECubes', accent: 'tools' },
+			{ label: 'Experimental server', detail: 'Early fixed-timestep and communication scaffolding', accent: 'experimental' },
+		];
+---
+
+<section class="system-map" data-mle-system-map aria-labelledby="system-map-title">
+	<header>
+		<p>{isPortuguese ? 'Mapa textual do código-fonte' : 'A textual map of the source tree'}</p>
+		<h2 id="system-map-title">{isPortuguese ? 'Mapa de sistemas' : 'System map'}</h2>
+		<span>
+			{isPortuguese
+				? 'Os rótulos descrevem sistemas presentes no commit; links aparecem somente onde a documentação já existe.'
+				: 'Labels describe systems present at the commit; links appear only where documentation already exists.'}
+		</span>
+	</header>
+	<ul>
+		{
+			systems.map((system) => (
+				<li data-system={system.accent} data-mle-navigation-availability={system.slug ? 'available' : 'planned'}>
+					{system.slug ? (
+						<a href={docsPath({ base, locale, versionId: version.id, slug: system.slug })}>
+							<strong>{system.label}</strong>
+							<span>{system.detail}</span>
+						</a>
+					) : (
+						<div>
+							<strong>{system.label}</strong>
+							<span>{system.detail}</span>
+							<small>{isPortuguese ? 'Página planejada' : 'Page planned'}</small>
+						</div>
+					)}
+				</li>
+			))
+		}
+	</ul>
+</section>
+
+<style>
+	.system-map {
+		padding-block-end: var(--mle-space-7);
+		container-type: inline-size;
+	}
+
+	header {
+		display: grid;
+		grid-template-columns: minmax(10rem, 0.55fr) minmax(0, 1fr);
+		gap: var(--mle-space-2) var(--mle-space-7);
+		align-items: end;
+		margin-block-end: var(--mle-space-5);
+	}
+
+	header p {
+		grid-column: 1;
+		margin: 0;
+		color: var(--mle-renderer);
+		font-family: var(--mle-font-code);
+		font-size: 0.75rem;
+		font-weight: 700;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+	}
+
+	h2 {
+		grid-column: 1;
+		margin: 0;
+		color: var(--mle-text);
+		font-size: clamp(1.6rem, 3vw, 2.4rem);
+	}
+
+	header > span {
+		grid-column: 2;
+		grid-row: 1 / span 2;
+		max-width: 50ch;
+	}
+
+	ul {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+		gap: 1px;
+		margin: 0;
+		padding: 1px;
+		background: var(--mle-border);
+		list-style: none;
+	}
+
+	li {
+		min-width: 0;
+		background: var(--mle-surface-1);
+		box-shadow: inset 0 0.2rem 0 var(--system-accent, var(--mle-border));
+	}
+
+	li[data-system='core'] { --system-accent: var(--mle-core); }
+	li[data-system='renderer'] { --system-accent: var(--mle-renderer); }
+	li[data-system='lua-ui'] { --system-accent: var(--mle-lua-ui); }
+	li[data-system='audio'] { --system-accent: var(--mle-audio); }
+	li[data-system='tools'] { --system-accent: var(--mle-tools); }
+	li[data-system='experimental'] { --system-accent: var(--mle-experimental); }
+
+	li > a,
+	li > div {
+		display: grid;
+		align-content: start;
+		gap: var(--mle-space-2);
+		min-height: 9.5rem;
+		padding: var(--mle-space-4);
+		color: var(--mle-text-muted);
+		text-decoration: none;
+	}
+
+	strong {
+		color: var(--mle-text);
+		font-family: var(--mle-font-heading);
+	}
+
+	li span {
+		font-size: 0.875rem;
+		line-height: 1.4;
+	}
+
+	small {
+		align-self: end;
+		color: var(--mle-text-muted);
+		font-family: var(--mle-font-code);
+		font-size: 0.6875rem;
+	}
+
+	@container (max-width: 42rem) {
+		header {
+			grid-template-columns: minmax(0, 1fr);
+			gap: var(--mle-space-2);
+		}
+
+		header > span {
+			grid-area: auto / 1;
+		}
+	}
+
+	@media (max-width: 30rem) {
+		li > a,
+		li > div {
+			min-height: 0;
+		}
+	}
+</style>

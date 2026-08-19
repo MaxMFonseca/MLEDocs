@@ -1,0 +1,238 @@
+---
+import type { Locale } from '../../data/taxonomy';
+import type { VersionEntry } from '../../data/versions';
+import { docsPath, withBase } from '../../lib/links/base';
+import MaturityBadge from '../status/MaturityBadge.astro';
+
+interface Props {
+	version: VersionEntry;
+	locale: Locale;
+}
+
+const { version, locale } = Astro.props;
+const isPortuguese = locale === 'pt-br';
+const base = import.meta.env.BASE_URL;
+const projectStatusPath = docsPath({
+	base,
+	locale,
+	versionId: version.id,
+	slug: 'start-here/project-status',
+});
+const rendererPath = docsPath({
+	base,
+	locale,
+	versionId: version.id,
+	slug: 'systems/renderer',
+});
+const mediaPath = withBase(`media/${version.id}/gameplay.webp`, base).replace(/\/$/, '');
+const sourcePath = `${version.repositoryUrl}/blob/${version.commit}/docs/media/gameplay.png`;
+const copy = isPortuguese
+	? {
+			eyebrow: 'Documentação versionada do motor',
+			statement:
+				'Um motor de jogos em C++23 no qual renderização Vulkan, UI orientada por Lua, áudio e ferramentas de teste evoluem junto com um jogo em desenvolvimento.',
+			context: 'Snapshot atual da documentação',
+			use: 'Usar o MLE',
+			contribute: 'Entender e contribuir',
+			alt: 'Cena do jogo desenvolvido junto com o MLE',
+			caption: 'Cena do jogo desenvolvido junto com o MLE; a integração do motor continua em andamento.',
+			source: 'Mídia original no commit fixado',
+		}
+	: {
+			eyebrow: 'Versioned engine documentation',
+			statement:
+				'A C++23 game engine where Vulkan rendering, Lua-driven UI, audio, and test tools evolve alongside a game in progress.',
+			context: 'Current documentation snapshot',
+			use: 'Use MLE',
+			contribute: 'Understand and contribute',
+			alt: 'In-game scene built alongside MLE',
+			caption: 'Scene from the game being developed alongside MLE; engine integration remains in progress.',
+			source: 'Original media at the pinned commit',
+		};
+---
+
+<section class="home-hero" data-mle-home-hero aria-labelledby="mle-home-statement">
+	<div class="hero-copy">
+		<p class="eyebrow">{copy.eyebrow}</p>
+		<p class="statement" id="mle-home-statement">{copy.statement}</p>
+		<div class="snapshot" data-mle-home-context>
+			<div>
+				<span>{copy.context}</span>
+				<a
+					data-mle-home-commit
+					href={`${version.repositoryUrl}/tree/${version.commit}`}
+					aria-label={`${copy.context}: ${version.commit}`}
+					title={version.commit}
+				>
+					<code>{version.id}</code>
+				</a>
+				<time datetime={version.committedAt}>{version.committedAt}</time>
+			</div>
+			<MaturityBadge maturity="in-development" {locale} />
+		</div>
+		<nav class="hero-actions" aria-label={isPortuguese ? 'Caminhos principais' : 'Primary paths'}>
+			<a class="primary-action" href={projectStatusPath}>{copy.use}</a>
+			<a href={rendererPath}>{copy.contribute}</a>
+		</nav>
+	</div>
+
+	<figure>
+		<img
+			src={mediaPath}
+			alt={copy.alt}
+			width="1600"
+			height="885"
+			loading="eager"
+			decoding="async"
+			fetchpriority="high"
+		/>
+		<figcaption>
+			{copy.caption}{' '}
+			<a href={sourcePath}>{copy.source}</a>.
+		</figcaption>
+	</figure>
+</section>
+
+<style>
+	:global(.sl-markdown-content:has(> [data-mle-homepage])) {
+		max-width: none;
+	}
+
+	:global([data-mle-homepage]) {
+		display: grid;
+		gap: clamp(var(--mle-space-6), 6vw, 5rem);
+		width: 100%;
+	}
+
+	.home-hero {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr));
+		align-items: center;
+		gap: clamp(var(--mle-space-5), 4vw, var(--mle-space-7));
+		padding-block: var(--mle-space-5) var(--mle-space-6);
+		border-block-end: 1px solid var(--mle-border);
+	}
+
+	.hero-copy,
+	figure {
+		min-width: 0;
+	}
+
+	.eyebrow {
+		margin: 0 0 var(--mle-space-3);
+		color: var(--mle-accent-bright);
+		font-family: var(--mle-font-code);
+		font-size: 0.75rem;
+		font-weight: 700;
+		letter-spacing: 0.09em;
+		text-transform: uppercase;
+	}
+
+	.statement {
+		margin: 0;
+		color: var(--mle-text);
+		font-family: var(--mle-font-heading);
+		font-size: clamp(1.55rem, 3.2vw, 2.8rem);
+		font-weight: 650;
+		letter-spacing: -0.035em;
+		line-height: 1.08;
+		text-wrap: balance;
+	}
+
+	.snapshot {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		flex-wrap: wrap;
+		gap: var(--mle-space-3);
+		margin-block-start: var(--mle-space-5);
+		padding-block-start: var(--mle-space-3);
+		border-block-start: 1px solid var(--mle-border);
+	}
+
+	.snapshot > div {
+		display: grid;
+		gap: var(--mle-space-1);
+		font-size: 0.8125rem;
+	}
+
+	.snapshot span,
+	.snapshot time {
+		color: var(--mle-text-muted);
+	}
+
+	.snapshot a {
+		width: fit-content;
+		color: var(--mle-accent-bright);
+	}
+
+	.hero-actions {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: var(--mle-space-3);
+		margin-block-start: var(--mle-space-5);
+	}
+
+	.hero-actions a {
+		padding: var(--mle-space-2) var(--mle-space-4);
+		border: 1px solid var(--mle-border);
+		border-radius: var(--mle-radius-md);
+		color: var(--mle-text);
+		font-weight: 650;
+		text-decoration: none;
+	}
+
+	.hero-actions .primary-action {
+		border-color: var(--mle-accent);
+		background: var(--mle-accent);
+		color: var(--mle-focus-outer);
+	}
+
+	figure {
+		margin: 0;
+	}
+
+	img {
+		display: block;
+		width: 100%;
+		height: auto;
+		border: 1px solid var(--mle-border);
+		background: var(--mle-surface-1);
+		box-shadow: var(--mle-shadow-md);
+	}
+
+	figcaption {
+		margin-block-start: var(--mle-space-2);
+		color: var(--mle-text-muted);
+		font-size: 0.8125rem;
+		line-height: 1.4;
+	}
+
+	figcaption a {
+		color: var(--mle-accent-bright);
+	}
+
+	@media (max-width: 30rem) {
+		.home-hero {
+			padding-block-start: var(--mle-space-3);
+		}
+
+		.statement {
+			font-size: 1.45rem;
+			line-height: 1.06;
+		}
+
+		.snapshot {
+			margin-block-start: var(--mle-space-4);
+		}
+
+		.hero-actions {
+			display: grid;
+		}
+
+		.hero-actions a {
+			text-align: center;
+		}
+	}
+</style>
