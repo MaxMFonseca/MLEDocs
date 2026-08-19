@@ -1,6 +1,9 @@
 export const locales = ['en', 'pt-br'] as const;
 export type Locale = (typeof locales)[number];
 
+export const translationStatuses = ['canonical', 'current', 'stale', 'fallback'] as const;
+export type TranslationStatus = (typeof translationStatuses)[number];
+
 export const maturities = ['stable-enough', 'in-development', 'experimental'] as const;
 export type Maturity = (typeof maturities)[number];
 

@@ -3,6 +3,7 @@ import {
 	audiences,
 	locales,
 	maturities,
+	translationStatuses,
 	versionStatuses,
 } from '../../src/data/taxonomy';
 import { technicalPageMetadataSchema } from '../../src/content.config';
@@ -22,6 +23,7 @@ describe('documentation taxonomy', () => {
 		expect(locales).toEqual(['en', 'pt-br']);
 		expect(maturities).toEqual(['stable-enough', 'in-development', 'experimental']);
 		expect(audiences).toEqual(['integrator', 'contributor']);
+		expect(translationStatuses).toEqual(['canonical', 'current', 'stale', 'fallback']);
 		expect(versionStatuses).toEqual(['current', 'archived']);
 	});
 });
