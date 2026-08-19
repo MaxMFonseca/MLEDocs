@@ -1,0 +1,77 @@
+---
+import { getCollection } from 'astro:content';
+import DefaultHeader from '@astrojs/starlight/components/Header.astro';
+import type { Locale } from '../../data/taxonomy';
+import { getVersion } from '../../lib/versions/manifest';
+import { buildPageIndex } from '../../lib/content/page-index';
+import {
+	pageRecordsFromContentEntries,
+	type AliasContentEntry,
+} from '../../lib/versions/latest-aliases';
+import VersionPicker from '../versioning/VersionPicker.astro';
+
+const route = Astro.locals.starlightRoute;
+const locale: Locale = route.locale === 'pt-br' ? 'pt-br' : 'en';
+const versionId = /(?:^|\/)versions\/([0-9a-f]{12})(?:\/|$)/.exec(route.id)?.[1];
+const version = versionId ? getVersion(versionId) : undefined;
+const data = route.entry.data;
+const pageId =
+	data.contentType === 'technical' || data.contentType === 'homepage' ? data.pageId : undefined;
+const hasVersionPicker = Boolean(pageId && version);
+
+const docs = await getCollection('docs');
+const entries: AliasContentEntry[] = [];
+for (const entry of docs) {
+	if (entry.data.contentType === 'technical') {
+		entries.push({
+			id: entry.id,
+			data: {
+				contentType: 'technical',
+				pageId: entry.data.pageId,
+				translationStatus: entry.data.translationStatus,
+			},
+		});
+	}
+	if (entry.data.contentType === 'homepage' || entry.data.contentType === 'redirect') {
+		entries.push({ id: entry.id, data: { contentType: entry.data.contentType } });
+	}
+}
+const pageIndex = buildPageIndex(pageRecordsFromContentEntries(entries));
+---
+
+<div
+	class="mle-header"
+	data-mle-version-picker-layout={hasVersionPicker ? 'expanded' : 'compact'}
+>
+	<DefaultHeader />
+	{pageId && version && <VersionPicker {pageId} {locale} {version} {pageIndex} />}
+</div>
+
+<style>
+	.mle-header {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		align-items: center;
+		gap: var(--mle-space-3);
+		height: 100%;
+		min-width: 0;
+	}
+
+	.mle-header :global(> .header) {
+		min-width: 0;
+	}
+
+	@media (max-width: 49.999rem) {
+		:global(:root):has(.mle-header[data-mle-version-picker-layout='expanded']) {
+			--sl-nav-height: 8rem;
+		}
+
+		.mle-header[data-mle-version-picker-layout='expanded'] {
+			grid-template-columns: minmax(0, 1fr);
+			grid-template-rows: auto auto;
+			align-content: center;
+			gap: var(--mle-space-1);
+			padding-inline-end: 3rem;
+		}
+	}
+</style>

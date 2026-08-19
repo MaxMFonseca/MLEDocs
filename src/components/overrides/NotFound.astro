@@ -1,0 +1,187 @@
+---
+import DefaultHero from '@astrojs/starlight/components/Hero.astro';
+import { versions } from '../../data/versions';
+import { docsPath } from '../../lib/links/base';
+
+const route = Astro.locals.starlightRoute;
+const isNotFound = route.entry.id === '404';
+const current = versions.find((version) => version.status === 'current');
+if (!current) throw new Error('The documentation manifest has no current version.');
+
+const serializedVersions = JSON.stringify(
+	versions.map((version) => ({
+		id: version.id,
+		commit: version.commit,
+		committedAt: version.committedAt,
+		status: version.status,
+		en: docsPath({ locale: 'en', versionId: version.id }),
+		pt: docsPath({ locale: 'pt-br', versionId: version.id }),
+	})),
+);
+---
+
+{
+	!isNotFound ? (
+		<DefaultHero />
+	) : (
+		<section
+			class="not-found"
+			data-mle-not-found="generic"
+			data-mle-versions={serializedVersions}
+			data-mle-current={current.id}
+			data-mle-base={import.meta.env.BASE_URL}
+		>
+			<p class="eyebrow" data-mle-not-found-eyebrow>Error 404</p>
+			<h1 id="_top" data-mle-not-found-title>Page not found</h1>
+			<p data-mle-not-found-message>
+				The requested documentation path does not exist. Your selected MLE commit was not changed.
+			</p>
+			<p>
+				<a data-mle-not-found-primary href={docsPath({ locale: 'en', versionId: current.id })}>
+					Open the current documentation
+				</a>
+			</p>
+			<div data-mle-available hidden>
+				<h2 data-mle-available-title>Available documentation versions</h2>
+				<ul data-mle-available-list>
+					{
+						versions.map((version) => (
+							<li>
+								<a href={docsPath({ locale: 'en', versionId: version.id })}>
+									{version.id} · {version.committedAt} · {version.status}
+								</a>
+							</li>
+						))
+					}
+				</ul>
+			</div>
+		</section>
+	)
+}
+
+{
+	isNotFound && (
+		<script is:inline>
+			const root = document.querySelector('[data-mle-not-found]');
+			if (root instanceof HTMLElement) {
+				const pathname = window.location.pathname;
+				const base = (root.dataset.mleBase || '/').replace(/\/?$/, '/');
+				const isPortuguese = pathname.startsWith(`${base}pt-br/`);
+				const versionRoot = isPortuguese ? `${base}pt-br/versions/` : `${base}versions/`;
+				const versionPath = pathname.startsWith(versionRoot)
+					? pathname.slice(versionRoot.length)
+					: undefined;
+				const versionMatch = versionPath ? /^([^/]+)(?:\/|$)/.exec(versionPath) : null;
+				const versions = JSON.parse(root.dataset.mleVersions || '[]');
+				const knownVersion = versionMatch
+					? versions.find((version) => version.id === versionMatch[1])
+					: undefined;
+				const title = root.querySelector('[data-mle-not-found-title]');
+				const message = root.querySelector('[data-mle-not-found-message]');
+				const primary = root.querySelector('[data-mle-not-found-primary]');
+				const available = root.querySelector('[data-mle-available]');
+				const availableTitle = root.querySelector('[data-mle-available-title]');
+				const list = root.querySelector('[data-mle-available-list]');
+				const current = versions.find((version) => version.id === root.dataset.mleCurrent);
+
+				if (versionMatch && !knownVersion) {
+					root.dataset.mleNotFound = 'unknown-version';
+					if (title) title.textContent = isPortuguese
+						? 'Versão da documentação não encontrada'
+						: 'Documentation version not found';
+					if (message) message.textContent = isPortuguese
+						? `A versão ${versionMatch[1]} não está disponível. Nenhum outro commit foi selecionado.`
+						: `Version ${versionMatch[1]} is not available. No other commit was selected.`;
+					if (available instanceof HTMLElement) available.hidden = false;
+					if (availableTitle) availableTitle.textContent = isPortuguese
+						? 'Versões disponíveis'
+						: 'Available documentation versions';
+					if (list) {
+						list.replaceChildren(...versions.map((version) => {
+							const item = document.createElement('li');
+							const link = document.createElement('a');
+							link.href = isPortuguese ? version.pt : version.en;
+							const status = isPortuguese
+								? version.status === 'current' ? 'atual' : 'arquivada'
+								: version.status;
+							link.textContent = `${version.id} · ${version.committedAt} · ${status}`;
+							item.append(link);
+							return item;
+						}));
+					}
+					if (primary instanceof HTMLAnchorElement && current) {
+						primary.href = isPortuguese ? current.pt : current.en;
+						primary.textContent = isPortuguese
+							? 'Abrir a documentação atual'
+							: 'Open the current documentation';
+					}
+				} else if (knownVersion) {
+					root.dataset.mleNotFound = 'missing-page';
+					if (title) title.textContent = isPortuguese
+						? 'Página indisponível nesta versão'
+						: 'Page unavailable in this version';
+					if (message) message.textContent = isPortuguese
+						? `A versão ${knownVersion.id} não contém esta página. O commit selecionado foi preservado.`
+						: `Version ${knownVersion.id} does not contain this page. The selected commit was preserved.`;
+					if (primary instanceof HTMLAnchorElement) {
+						primary.href = isPortuguese ? knownVersion.pt : knownVersion.en;
+						primary.textContent = isPortuguese
+							? 'Abrir a visão geral desta versão'
+							: 'Open this version overview';
+					}
+				} else {
+					root.dataset.mleNotFound = 'generic';
+					if (title) title.textContent = isPortuguese ? 'Página não encontrada' : 'Page not found';
+					if (message) message.textContent = isPortuguese
+						? 'O caminho solicitado não existe. O commit selecionado do MLE não foi alterado.'
+						: 'The requested path does not exist. Your selected MLE commit was not changed.';
+					if (primary instanceof HTMLAnchorElement && current) {
+						primary.href = isPortuguese ? current.pt : current.en;
+						primary.textContent = isPortuguese
+							? 'Abrir a documentação atual'
+							: 'Open the current documentation';
+					}
+				}
+			}
+		</script>
+	)
+}
+
+<style>
+	.not-found {
+		width: min(100%, 48rem);
+		margin-inline: auto;
+		padding-block: var(--mle-space-7);
+	}
+
+	.eyebrow {
+		margin: 0 0 var(--mle-space-2);
+		color: var(--mle-accent-bright);
+		font-family: var(--mle-font-code);
+		font-size: 0.875rem;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+	}
+
+	h1 {
+		margin-block: 0 var(--mle-space-4);
+		color: var(--mle-text);
+		font-size: clamp(2rem, 6vw, 4rem);
+		line-height: 1.05;
+	}
+
+	a {
+		color: var(--mle-accent-bright);
+	}
+
+	[data-mle-available] {
+		margin-block-start: var(--mle-space-6);
+		padding-block-start: var(--mle-space-4);
+		border-block-start: 1px solid var(--mle-border);
+	}
+
+	[data-mle-available] h2 {
+		font-size: 1.25rem;
+	}
+</style>

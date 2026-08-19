@@ -1,0 +1,204 @@
+---
+import type { Locale } from '../../data/taxonomy';
+import { versions } from '../../data/versions';
+import type { VersionEntry } from '../../data/versions';
+import type { PageIndex } from '../../lib/content/page-index';
+import { buildVersionPickerModel } from './version-picker-model';
+
+interface Props {
+	pageId: string;
+	locale: Locale;
+	version: VersionEntry;
+	pageIndex: PageIndex;
+}
+
+const { pageId, locale, version, pageIndex } = Astro.props;
+const isPortuguese = locale === 'pt-br';
+const pickerLabel = isPortuguese
+	? Astro.locals.t('mle.versionPicker.label')
+	: 'Documentation version';
+
+const model = buildVersionPickerModel({
+	versions,
+	pageIndex,
+	pageId,
+	locale,
+	activeVersionId: version.id,
+});
+const permanentPath = model.active.destination;
+---
+
+<div class="version-context" data-mle-version-context>
+	<label class="picker-label">
+		<span class="sr-only">{pickerLabel}</span>
+		<select data-mle-version-picker autocomplete="off" aria-describedby="mle-version-detail">
+			{
+				model.options.map((option) => (
+					<option value={option.selectionValue} selected={option.version.id === version.id}>
+						{option.label}
+					</option>
+				))
+			}
+		</select>
+	</label>
+	<a
+		class="permanent-link"
+		data-mle-permanent-link
+		href={permanentPath}
+		aria-label={`${isPortuguese ? 'Link permanente para o commit' : 'Permanent link for commit'} ${version.commit}`}
+		title={version.commit}
+	>
+		<code aria-hidden="true">{version.id}</code>
+	</a>
+	<span class="selected-version-summary" data-mle-selected-version-summary>
+		{model.active.label}
+	</span>
+	<span id="mle-version-detail" class="sr-only">
+		{isPortuguese
+			? `Commit completo ${version.commit}. Cada opção informa a data e o estado da versão.`
+			: `Full commit ${version.commit}. Each option includes the version date and status.`}
+	</span>
+</div>
+
+{
+	model.options
+		.filter((option) => option.kind === 'missing')
+		.map((option) => {
+			if (option.kind !== 'missing') return null;
+			return (
+				<aside
+					class="missing-equivalent"
+					id={option.explanationId}
+					tabindex="-1"
+				>
+					<p>
+						{isPortuguese
+							? `A página equivalente não existe em ${option.version.id}. A seleção não alterou o commit.`
+							: `The equivalent page does not exist in ${option.version.id}. Your selected commit was not changed.`}
+					</p>
+					<a href={option.overviewDestination}>
+						{isPortuguese ? 'Abrir a visão geral dessa versão' : 'Open that version overview'}
+					</a>
+				</aside>
+			);
+		})
+}
+
+<noscript>
+	<ul class="version-links">
+		{
+			model.options.map((option) => (
+				<li>
+					<a href={option.selectionValue}>{option.label}</a>
+				</li>
+			))
+		}
+	</ul>
+</noscript>
+
+<script is:inline>
+	for (const picker of document.querySelectorAll('[data-mle-version-picker]')) {
+		if (!(picker instanceof HTMLSelectElement) || picker.dataset.mleBound === 'true') continue;
+		picker.dataset.mleBound = 'true';
+		const activeDestination = picker.querySelector('option[selected]')?.value;
+		picker.addEventListener('change', () => {
+			const destination = picker.value;
+			if (destination.startsWith('#')) {
+				const explanation = document.querySelector(destination);
+				explanation?.scrollIntoView({ block: 'nearest' });
+				if (explanation instanceof HTMLElement) explanation.focus({ preventScroll: true });
+				if (activeDestination) picker.value = activeDestination;
+				return;
+			}
+			if (destination !== window.location.pathname) window.location.assign(destination);
+		});
+	}
+</script>
+
+<style>
+	.version-context {
+		display: flex;
+		align-items: center;
+		justify-content: flex-end;
+		gap: var(--mle-space-2);
+		min-width: 0;
+	}
+
+	.picker-label {
+		display: block;
+		min-width: 0;
+	}
+
+	select {
+		width: min(17rem, 30vw);
+		min-height: 2.25rem;
+		padding: var(--mle-space-1) var(--mle-space-2);
+		border: 1px solid var(--mle-border);
+		border-radius: var(--mle-radius-md);
+		background: var(--mle-surface-2);
+		color: var(--mle-text);
+		font-family: var(--mle-font-code);
+		font-size: 0.75rem;
+	}
+
+	.permanent-link {
+		flex: none;
+		padding: var(--mle-space-1) var(--mle-space-2);
+		border: 1px solid var(--mle-border);
+		border-radius: var(--mle-radius-md);
+		color: var(--mle-accent-bright);
+		font-size: 0.75rem;
+		line-height: 1.5;
+		text-decoration: none;
+	}
+
+	.selected-version-summary {
+		display: none;
+	}
+
+	.missing-equivalent,
+	.version-links {
+		margin: var(--mle-space-3) 0 0;
+		padding: var(--mle-space-3);
+		border: 1px solid var(--mle-border);
+		background: var(--mle-surface-1);
+		color: var(--mle-text-muted);
+		font-size: 0.875rem;
+	}
+
+	.missing-equivalent:focus {
+		outline: 3px solid var(--mle-accent-bright);
+		outline-offset: 2px;
+	}
+
+	@media (max-width: 49.999rem) {
+		.version-context {
+			display: grid;
+			grid-template-columns: minmax(0, 1fr);
+			gap: var(--mle-space-1);
+			width: 100%;
+		}
+
+		.picker-label {
+			width: 100%;
+		}
+
+		select {
+			width: 100%;
+		}
+
+		.permanent-link {
+			display: none;
+		}
+
+		.selected-version-summary {
+			display: block;
+			min-width: 0;
+			color: var(--mle-text-muted);
+			font-family: var(--mle-font-code);
+			font-size: 0.6875rem;
+			line-height: 1.35;
+			white-space: normal;
+		}
+	}
+</style>

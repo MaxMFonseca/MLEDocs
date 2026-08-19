@@ -1,0 +1,66 @@
+---
+import type { Locale, Maturity } from '../../data/taxonomy';
+
+interface Props {
+	maturity: Maturity;
+	locale: Locale;
+}
+
+const { maturity, locale } = Astro.props;
+
+const englishLabels: Readonly<Record<Maturity, string>> = {
+	'stable-enough': 'Stable enough',
+	'in-development': 'In development',
+	experimental: 'Experimental',
+};
+
+const cues: Readonly<Record<Maturity, string>> = {
+	'stable-enough': '✓',
+	'in-development': '◐',
+	experimental: '⚠',
+};
+const label =
+	locale === 'en'
+		? englishLabels[maturity]
+		: maturity === 'stable-enough'
+			? Astro.locals.t('mle.maturity.stableEnough')
+			: maturity === 'in-development'
+				? Astro.locals.t('mle.maturity.inDevelopment')
+				: Astro.locals.t('mle.maturity.experimental');
+---
+
+<span class="maturity" data-mle-maturity={maturity} data-mle-maturity-status={maturity}>
+	<span class="cue" data-mle-maturity-cue aria-hidden="true">{cues[maturity]}</span>
+	<span>{label}</span>
+</span>
+
+<style>
+	.maturity {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--mle-space-2);
+		min-height: 1.75rem;
+		padding-inline: var(--mle-space-2);
+		border: 1px solid var(--mle-border);
+		border-radius: var(--mle-radius-md);
+		background: var(--mle-surface-2);
+		color: var(--mle-text);
+		font-size: 0.875rem;
+		font-weight: 650;
+		line-height: 1.3;
+	}
+
+	.cue {
+		color: var(--mle-accent-bright);
+		font-family: var(--mle-font-code);
+		font-weight: 700;
+	}
+
+	.maturity[data-mle-maturity-status='stable-enough'] .cue {
+		color: var(--mle-tools);
+	}
+
+	.maturity[data-mle-maturity-status='experimental'] .cue {
+		color: var(--mle-experimental);
+	}
+</style>

@@ -1,0 +1,93 @@
+---
+import type { Locale, TranslationStatus } from '../../data/taxonomy';
+import type { VersionEntry } from '../../data/versions';
+import { getVersion } from '../../lib/versions/manifest';
+
+interface Props {
+	locale?: Locale;
+	contentLocale?: Locale;
+	version?: VersionEntry;
+	status?: TranslationStatus;
+}
+
+const route = Astro.locals.starlightRoute;
+const routeVersionId = /(?:^|\/)versions\/([0-9a-f]{12})(?:\/|$)/.exec(route.id)?.[1];
+const routeData = route.entry.data;
+const locale: Locale = Astro.props.locale ?? (route.locale === 'pt-br' ? 'pt-br' : 'en');
+const contentLocale: Locale =
+	Astro.props.contentLocale ?? (route.entryMeta.locale === 'pt-br' ? 'pt-br' : 'en');
+const version = Astro.props.version ?? (routeVersionId ? getVersion(routeVersionId) : undefined);
+const status: TranslationStatus =
+	Astro.props.status ??
+	(route.isFallback
+		? 'fallback'
+		: routeData.contentType === 'technical' || routeData.contentType === 'homepage'
+			? routeData.translationStatus
+			: 'canonical');
+const localizedFallback =
+	locale === 'pt-br'
+		? Astro.locals.t('mle.translation.fallback')
+		: 'This page is available in English for the same MLE version.';
+
+const messages: Readonly<
+	Record<Locale, Readonly<Record<Exclude<TranslationStatus, 'canonical'>, string>>>
+> = {
+	en: {
+		current: 'This translation is current for this MLE commit.',
+		stale: 'This translation trails the canonical English revision for this MLE commit.',
+		fallback: `${localizedFallback} Pinned commit: ${version?.id ?? ''}.`,
+	},
+	'pt-br': {
+		current: 'A tradução em português está atualizada para este commit do MLE.',
+		stale: 'Esta tradução está desatualizada em relação à revisão canônica em inglês deste commit.',
+		fallback: `${localizedFallback} Commit fixado: ${version?.id ?? ''}.`,
+	},
+};
+
+const shouldRender =
+	Boolean(version) && (status !== 'canonical' || (locale === 'pt-br' && contentLocale !== locale));
+const effectiveStatus: TranslationStatus =
+	locale === 'pt-br' && contentLocale !== locale ? 'fallback' : status;
+---
+
+{
+	shouldRender && effectiveStatus !== 'canonical' && (
+		<p
+			class="translation-notice"
+			data-mle-translation-status={effectiveStatus}
+			lang={locale === 'pt-br' ? 'pt-BR' : 'en'}
+		>
+			<span class="cue" aria-hidden="true">i</span>
+			<span>{messages[locale][effectiveStatus]}</span>
+		</p>
+	)
+}
+
+<style>
+	.translation-notice {
+		display: flex;
+		align-items: flex-start;
+		gap: var(--mle-space-3);
+		margin-block: var(--mle-space-4) 0;
+		padding: var(--mle-space-3) var(--mle-space-4);
+		border-inline-start: 0.25rem solid var(--mle-accent);
+		background: var(--mle-surface-2);
+		color: var(--mle-text-muted);
+		font-size: 0.9375rem;
+		line-height: 1.45;
+	}
+
+	.cue {
+		display: inline-grid;
+		place-items: center;
+		flex: 0 0 1.25rem;
+		width: 1.25rem;
+		height: 1.25rem;
+		border: 1px solid currentColor;
+		border-radius: 50%;
+		color: var(--mle-accent-bright);
+		font-family: var(--mle-font-code);
+		font-size: 0.75rem;
+		font-weight: 700;
+	}
+</style>

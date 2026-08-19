@@ -1,0 +1,75 @@
+---
+import DefaultPageTitle from '@astrojs/starlight/components/PageTitle.astro';
+import type { Locale, TranslationStatus } from '../../data/taxonomy';
+import { docsPath } from '../../lib/links/base';
+import { getVersion } from '../../lib/versions/manifest';
+import MaturityBadge from '../status/MaturityBadge.astro';
+import TranslationNotice from '../status/TranslationNotice.astro';
+
+const route = Astro.locals.starlightRoute;
+const locale: Locale = route.locale === 'pt-br' ? 'pt-br' : 'en';
+const contentLocale: Locale = route.entryMeta.locale === 'pt-br' ? 'pt-br' : 'en';
+const versionId = /(?:^|\/)versions\/([0-9a-f]{12})(?:\/|$)/.exec(route.id)?.[1];
+const version = versionId ? getVersion(versionId) : undefined;
+const pageSlug = versionId
+	? new RegExp(`(?:^|/)versions/${versionId}(?:/(.*))?$`).exec(route.id)?.[1] ?? ''
+	: '';
+const permanentPath = version ? docsPath({ locale, versionId: version.id, slug: pageSlug }) : undefined;
+const data = route.entry.data;
+const status: TranslationStatus = route.isFallback
+	? 'fallback'
+	: data.contentType === 'technical' || data.contentType === 'homepage'
+		? data.translationStatus
+		: 'canonical';
+---
+
+<DefaultPageTitle />
+{
+	version && (
+		<div class="page-context" aria-label={locale === 'pt-br' ? 'Contexto da página' : 'Page context'}>
+			{data.contentType === 'technical' && (
+				<MaturityBadge maturity={data.maturity} {locale} />
+			)}
+			<p class="commit-detail">
+				{locale === 'pt-br' ? 'Snapshot do MLE' : 'MLE snapshot'}{' '}
+				<a
+					data-mle-page-permanent-link
+					href={permanentPath}
+					aria-label={`${locale === 'pt-br' ? 'Link permanente para o commit' : 'Permanent link for commit'} ${version.commit}`}
+					title={version.commit}
+				>
+					<code aria-hidden="true">{version.id}</code>
+				</a>
+			</p>
+		</div>
+	)
+}
+{
+	version && !route.isFallback && (data.contentType === 'technical' || data.contentType === 'homepage') && (
+		<TranslationNotice {locale} {contentLocale} {version} {status} />
+	)
+}
+
+<style>
+	.page-context {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: var(--mle-space-3);
+		margin-block-start: var(--mle-space-3);
+	}
+
+	.commit-detail {
+		margin: 0;
+		color: var(--mle-text-muted);
+		font-size: 0.875rem;
+	}
+
+	.commit-detail code {
+		color: var(--mle-text);
+	}
+
+	.commit-detail a {
+		color: var(--mle-accent-bright);
+	}
+</style>

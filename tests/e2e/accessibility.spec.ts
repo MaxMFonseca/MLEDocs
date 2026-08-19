@@ -175,3 +175,126 @@ for (const { locale, path } of [
     expect(accessibility.violations).toEqual([]);
   });
 }
+
+for (const { name, path, width } of [
+  {
+    name: 'desktop page context',
+    path: '/versions/c1abea3de165/systems/renderer/',
+    width: 1440,
+  },
+  {
+    name: 'phone Portuguese fallback context',
+    path: '/pt-br/versions/c1abea3de165/systems/renderer/',
+    width: 390,
+  },
+]) {
+  test(`${name} keeps the version control keyboard-reachable and axe-clean`, async ({ page }) => {
+    await page.setViewportSize({ width, height: width < 500 ? 844 : 900 });
+    await page.goto(pageUrl(path));
+
+    const picker = page.locator('[data-mle-version-picker]');
+    await page.locator('body').click({ position: { x: 2, y: 2 } });
+    let reachedPicker = false;
+    for (let step = 0; step < 12; step += 1) {
+      await page.keyboard.press('Tab');
+      if (await picker.evaluate((element) => element === document.activeElement)) {
+        reachedPicker = true;
+        break;
+      }
+    }
+    expect(reachedPicker).toBe(true);
+    await expect(picker).toBeFocused();
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+
+    const focus = await picker.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return {
+        outlineStyle: style.outlineStyle,
+        outlineWidth: Number.parseFloat(style.outlineWidth),
+        boxShadow: style.boxShadow,
+      };
+    });
+    expect(focus.outlineStyle).not.toBe('none');
+    expect(focus.outlineWidth).toBeGreaterThanOrEqual(2);
+    expect(focus.boxShadow).not.toBe('none');
+
+    const result = await page.evaluate(() => ({
+      overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      maturityText: document.querySelector('[data-mle-maturity]')?.textContent?.trim(),
+      maturityCue: Boolean(document.querySelector('[data-mle-maturity-cue]')),
+    }));
+    expect(result.overflow).toBeLessThanOrEqual(1);
+    expect(result.maturityText).toMatch(/In development|Em desenvolvimento/);
+    expect(result.maturityCue).toBe(true);
+
+    const accessibility = await new AxeBuilder({ page }).analyze();
+    expect(accessibility.violations).toEqual([]);
+  });
+}
+
+test('version context remains readable in Light, Dark, and Auto themes', async ({ page }) => {
+  await page.goto(pageUrl('/versions/c1abea3de165/systems/renderer/'));
+
+  const themePicker = page.locator('header starlight-theme-select select');
+  for (const theme of ['light', 'dark', 'auto']) {
+    await themePicker.selectOption(theme);
+    await expect(page.locator('[data-mle-version-picker]')).toBeVisible();
+    await expect(page.locator('[data-mle-permanent-link]')).toHaveText('c1abea3de165');
+  }
+});
+
+test('phone version context visibly exposes the complete selected version metadata', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(pageUrl('/pt-br/versions/c1abea3de165/systems/renderer/'));
+
+  const summary = page.locator('[data-mle-selected-version-summary]');
+  await expect(summary).toBeVisible();
+  await expect(summary).toHaveText('c1abea3de165 · 2026-08-18 · atual');
+
+  const geometry = await summary.evaluate((element) => ({
+    clientWidth: element.clientWidth,
+    scrollWidth: element.scrollWidth,
+    right: element.getBoundingClientRect().right,
+    viewportWidth: document.documentElement.clientWidth,
+    whiteSpace: getComputedStyle(element).whiteSpace,
+  }));
+  expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.clientWidth);
+  expect(geometry.right).toBeLessThanOrEqual(geometry.viewportWidth);
+  expect(geometry.whiteSpace).not.toBe('nowrap');
+});
+
+test('mobile 404 keeps the compact header when no version picker is rendered', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(pageUrl('/not-found-without-version-context/'));
+
+  await expect(page.locator('[data-mle-version-picker]')).toHaveCount(0);
+  const headerHeight = await page
+    .locator('header.header')
+    .evaluate((header) => header.getBoundingClientRect().height);
+  expect(headerHeight).toBeLessThanOrEqual(80);
+});
+
+test('mobile version page reserves its expanded header for the readable picker', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(pageUrl('/pt-br/versions/c1abea3de165/systems/renderer/'));
+
+  const picker = page.locator('[data-mle-version-picker]');
+  const summary = page.locator('[data-mle-selected-version-summary]');
+  await expect(picker).toBeVisible();
+  await expect(summary).toBeVisible();
+
+  const layout = await page.locator('header.header').evaluate((header) => {
+    const summary = document.querySelector('[data-mle-selected-version-summary]');
+    if (!(summary instanceof HTMLElement)) throw new Error('Selected-version summary is missing.');
+    return {
+      headerHeight: header.getBoundingClientRect().height,
+      headerBottom: header.getBoundingClientRect().bottom,
+      summaryBottom: summary.getBoundingClientRect().bottom,
+    };
+  });
+  expect(layout.headerHeight).toBeGreaterThanOrEqual(120);
+  expect(layout.summaryBottom).toBeLessThanOrEqual(layout.headerBottom);
+});

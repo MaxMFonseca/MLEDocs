@@ -18,6 +18,12 @@ export default defineConfig({
         './src/styles/typography.css',
         './src/styles/global.css',
       ],
+      components: {
+        Header: './src/components/overrides/Header.astro',
+        PageTitle: './src/components/overrides/PageTitle.astro',
+        Hero: './src/components/overrides/NotFound.astro',
+        FallbackContentNotice: './src/components/status/TranslationNotice.astro',
+      },
       social: [
         {
           icon: 'github',
