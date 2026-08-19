@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { getCurrentVersion } from '../../src/lib/versions/manifest';
 import {
 	buildLatestAliases,
+	buildRootAlias,
 	pageRecordsFromContentEntries,
 	renderLatestAliasHtml,
 	type AliasRoute,
@@ -62,6 +63,21 @@ describe('alias content page records', () => {
 });
 
 describe('latest documentation aliases', () => {
+	it('builds locale roots from current overview identities without a hardcoded commit', () => {
+		expect(buildRootAlias(current, pages, 'en')).toEqual({
+			locale: 'en',
+			slug: '',
+			destination: '/MLEDocs/versions/c1abea3de165/',
+			canonical: '/MLEDocs/versions/c1abea3de165/',
+		});
+		expect(buildRootAlias(current, pages, 'pt-br')).toEqual({
+			locale: 'pt-br',
+			slug: '',
+			destination: '/MLEDocs/pt-br/versions/c1abea3de165/',
+			canonical: '/MLEDocs/pt-br/versions/c1abea3de165/',
+		});
+	});
+
 	it('builds one base-aware commit alias for every current English page', () => {
 		const aliases = buildLatestAliases(current, pages).filter(({ locale }) => locale === 'en');
 

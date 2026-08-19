@@ -1,4 +1,4 @@
-import type { Locale, VersionStatus } from './taxonomy';
+import type { Locale, VersionStatus } from './taxonomy.ts';
 
 export interface VersionEntry {
 	readonly commit: string;

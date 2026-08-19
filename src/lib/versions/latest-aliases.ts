@@ -1,6 +1,6 @@
 import type { Locale, TranslationStatus } from '../../data/taxonomy';
 import type { VersionEntry } from '../../data/versions';
-import type { PageRecord } from '../content/page-index';
+import { buildPageIndex, type PageRecord } from '../content/page-index';
 import { docsPath } from '../links/base';
 
 export interface AliasRoute {
@@ -96,6 +96,22 @@ export const buildLatestAliases = (
 	}
 
 	return aliases.sort(compareAliases);
+};
+
+export const buildRootAlias = (
+	current: VersionEntry,
+	pages: readonly PageRecord[],
+	locale: Locale,
+): AliasRoute => {
+	if (!current.locales.includes(locale)) {
+		throw new Error(`Current version ${current.id} does not declare locale ${locale}.`);
+	}
+	const overview = buildPageIndex(pages).find(current.id, locale, 'overview');
+	if (!overview) {
+		throw new Error(`Current version ${current.id} has no ${locale} overview page for the locale root.`);
+	}
+	const destination = docsPath({ locale, versionId: current.id, slug: overview.slug });
+	return { locale, slug: '', destination, canonical: destination };
 };
 
 const escapeHtml = (value: string): string =>
