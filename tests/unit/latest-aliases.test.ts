@@ -3,6 +3,7 @@ import { getCurrentVersion } from '../../src/lib/versions/manifest';
 import {
 	buildLatestAliases,
 	buildRootAlias,
+	buildVersionedPageRecords,
 	pageRecordsFromContentEntries,
 	renderLatestAliasHtml,
 	type AliasRoute,
@@ -59,6 +60,69 @@ describe('alias content page records', () => {
 				translationStatus: 'fallback',
 			},
 		]);
+	});
+
+	it('derives same-commit locale fallbacks from a reordered two-version model', () => {
+		const archived = {
+			...current,
+			commit: 'dddddddddddddddddddddddddddddddddddddddd',
+			id: 'dddddddddddd',
+			committedAt: '2026-07-01',
+			label: { en: 'Previous', 'pt-br': 'Anterior' },
+			status: 'archived',
+		} as const;
+		const contentEntries = [
+				{ id: 'versions/c1abea3de165', data: { contentType: 'homepage' } },
+				{
+					id: 'versions/c1abea3de165/start-here/project-status',
+					data: {
+						contentType: 'technical',
+						pageId: 'project-status',
+						translationStatus: 'canonical',
+					},
+				},
+				{
+					id: 'versions/c1abea3de165/systems/renderer',
+					data: {
+						contentType: 'technical',
+						pageId: 'renderer-overview',
+						translationStatus: 'canonical',
+					},
+				},
+				{ id: 'pt-br/versions/c1abea3de165', data: { contentType: 'homepage' } },
+				{ id: 'versions/dddddddddddd', data: { contentType: 'homepage' } },
+				{
+					id: 'versions/dddddddddddd/reference/legacy',
+					data: {
+						contentType: 'technical',
+						pageId: 'legacy-only',
+						translationStatus: 'canonical',
+					},
+				},
+			] as const;
+		const records = buildVersionedPageRecords(contentEntries, [archived, current]);
+		expect(records).toEqual(buildVersionedPageRecords(contentEntries, [current, archived]));
+
+		expect(
+			records
+				.filter(({ locale, versionId }) => locale === 'pt-br' && versionId === current.id)
+				.map(({ pageId, slug, translationStatus }) => ({ pageId, slug, translationStatus })),
+		).toEqual([
+			{ pageId: 'overview', slug: '', translationStatus: 'current' },
+			{ pageId: 'project-status', slug: 'start-here/project-status', translationStatus: 'fallback' },
+			{ pageId: 'renderer-overview', slug: 'systems/renderer', translationStatus: 'fallback' },
+		]);
+
+		const aliases = buildLatestAliases(current, records).filter(({ locale }) => locale === 'pt-br');
+		expect(aliases.map(({ slug }) => slug)).toEqual([
+			'',
+			'start-here/project-status',
+			'systems/renderer',
+		]);
+		expect(aliases.every(({ destination }) => destination.includes(`/versions/${current.id}/`))).toBe(
+			true,
+		);
+		expect(aliases.every(({ destination }) => !destination.includes(archived.id))).toBe(true);
 	});
 });
 

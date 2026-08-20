@@ -323,6 +323,24 @@ test('latest renderer alias declares and resolves to the permanent canonical rou
   );
 });
 
+for (const { name, slug } of [
+  { name: 'project status', slug: 'start-here/project-status' },
+  { name: 'renderer', slug: 'systems/renderer' },
+]) {
+  test(`Portuguese latest ${name} fallback stays on the current commit`, async ({ page }) => {
+    const permanentPath = `/MLEDocs/pt-br/versions/${versionId}/${slug}/`;
+    const aliasResponse = await page.request.get(pageUrl(`/pt-br/latest/${slug}/`));
+
+    expect(aliasResponse.ok()).toBe(true);
+    expect(await aliasResponse.text()).toContain(`<link rel="canonical" href="${permanentPath}">`);
+
+    await page.goto(pageUrl(`/pt-br/latest/${slug}/`));
+    await expect(page).toHaveURL(pageUrl(`/pt-br/versions/${versionId}/${slug}/`));
+    await expect(page.locator('[data-mle-translation-status="fallback"]')).toContainText(versionId);
+    await expect(page.locator('[data-mle-permanent-link]')).toHaveAttribute('href', permanentPath);
+  });
+}
+
 test('language control opens the exact Portuguese homepage for the same commit', async ({ page }) => {
   await page.goto(pageUrl(`/versions/${versionId}/`));
 

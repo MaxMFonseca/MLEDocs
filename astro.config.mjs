@@ -1,10 +1,10 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
-import { buildSnapshotSidebar } from './src/data/navigation.ts';
+import { buildVersionedSidebar } from './src/data/navigation.ts';
 import { versions } from './src/data/versions.ts';
+import { getCurrentVersion } from './src/lib/versions/manifest.ts';
 
-const currentVersion = versions.find((version) => version.status === 'current');
-if (!currentVersion) throw new Error('The documentation manifest has no current version.');
+getCurrentVersion(versions);
 
 export default defineConfig({
   site: 'https://maxmfonseca.github.io',
@@ -36,7 +36,7 @@ export default defineConfig({
           href: 'https://github.com/MaxMFonseca/MLE',
         },
       ],
-      sidebar: buildSnapshotSidebar(currentVersion.id),
+      sidebar: buildVersionedSidebar(versions),
     }),
   ],
 });

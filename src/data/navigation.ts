@@ -1,4 +1,5 @@
 import type { Locale } from './taxonomy';
+import type { VersionEntry } from './versions';
 
 export const navigationPageIds = [
 	'start',
@@ -78,3 +79,24 @@ export const buildSnapshotSidebar = (versionId: string) =>
 				]
 			: [],
 	);
+
+const versionStatusLabel = (version: VersionEntry, locale: Locale): string => {
+	const status = version.status === 'current'
+		? locale === 'pt-br' ? 'atual' : 'current'
+		: locale === 'pt-br' ? 'arquivada' : 'archived';
+	return `${version.id} · ${version.committedAt} · ${status}`;
+};
+
+const compareVersions = (left: VersionEntry, right: VersionEntry): number => {
+	if (left.status !== right.status) return left.status === 'current' ? -1 : 1;
+	if (left.committedAt !== right.committedAt) return left.committedAt > right.committedAt ? -1 : 1;
+	return left.id.localeCompare(right.id);
+};
+
+export const buildVersionedSidebar = (entries: readonly VersionEntry[]) =>
+	[...entries].sort(compareVersions).map((version) => ({
+		label: versionStatusLabel(version, 'en'),
+		translations: { 'pt-BR': versionStatusLabel(version, 'pt-br') },
+		collapsed: version.status === 'archived',
+		items: buildSnapshotSidebar(version.id),
+	}));

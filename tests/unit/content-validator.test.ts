@@ -1,8 +1,11 @@
 import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { constants } from 'node:fs';
+import { gzipSync } from 'node:zlib';
+import { createRequire } from 'node:module';
 import { afterEach, describe, expect, it } from 'vitest';
 import { validateContent } from '../../scripts/validate-content.mjs';
 import { validateBuiltLinks } from '../../scripts/validate-links.mjs';
@@ -17,6 +20,8 @@ const archivedCommit = 'dddddddddddddddddddddddddddddddddddddddd';
 const fixtures = resolve('tests/fixtures');
 const temporaryDirectories: string[] = [];
 type Diagnostic = { readonly ruleId: string; readonly line?: number };
+const require = createRequire(import.meta.url);
+const mdxCompilerPath = require.resolve('@mdx-js/mdx', { paths: [require.resolve('astro')] });
 
 const manifest = [
 	{
@@ -188,7 +193,99 @@ describe('validator filesystem safety', () => {
 });
 
 describe('content validation', () => {
-	it('accepts valid content and ignores links inside code examples', async () => {
+	it('compiles supported references, spreads, and direct URL expressions as real MDX', async () => {
+		const { compile } = await import(pathToFileURL(mdxCompilerPath).href);
+		const compilerValidForms = [
+			`[Moving source][engine-source]
+
+[engine-source]:
+  https://github.com/MaxMFonseca/MLE/blob/main/src/MLE/Renderer/Renderer.cpp`,
+			`<a {...{href: 'https://github.com/MaxMFonseca/MLE/blob/main/src/MLE/Renderer/Renderer.cpp'}}>source</a>`,
+			'<a { ...props}>source</a>',
+			'<a {\t...props}>source</a>',
+			['<a {', '  ...props', '}>source</a>'].join('\n'),
+			'<_Link {...props} />',
+			'<$Link {...props} />',
+			"<a {...{/* ' } > */ href: 'https://github.com/MaxMFonseca/MLE/blob/main/file'}}>block comment</a>",
+			[
+				'<a {...{',
+					"  // ' } >",
+					"  href: 'https://github.com/MaxMFonseca/MLE/blob/main/file'",
+				'}}>line comment</a>',
+			].join('\n'),
+			"<a {...{matcher: /['}>]/, href: 'https://github.com/MaxMFonseca/MLE/blob/main/file'}}>regex</a>",
+			"<a {...{href: `https://github.com/MaxMFonseca/MLE/blob/main/${path}`, note: `${value}>`}}>template</a>",
+			"<a data-note={/* ' } > */ 'safe'} {...{href: 'https://github.com/MaxMFonseca/MLE/blob/main/file'}}>preceded spread</a>",
+			"<a data-config={{...props}} href='https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/file'>nested object spread</a>",
+			"<a href={/* ' } > */ 'https://github.com/MaxMFonseca/MLE/blob/main/file'}>source</a>",
+			"<a href={/* ' } > */ '/MLEDocs/latest/systems/renderer/'}>archived latest</a>",
+			["<a href={// ' } >", "  'https://github.com/MaxMFonseca/MLE/blob/main/file'}>line comment</a>"].join('\n'),
+			"<a href={/['}>}]/.test(path) ? sourceUrl : fallbackUrl}>regex</a>",
+			'<img src={`https://github.com/MaxMFonseca/MLE/blob/main/${path}>`} />',
+			'<a href={({ nested: { value: sourceUrl } }).nested.value}>nested braces</a>',
+			"<a data-note={/* ' } > */ note} href={/* before */ 'https://github.com/MaxMFonseca/MLE/blob/main/file'}>preceding attribute</a>",
+			"<a href={/* before */ 'https://github.com/MaxMFonseca/MLE/blob/main/file'} data-note={/['}>}]/}>following attribute</a>",
+			"<a data-note={/* ' } > */ note}>non-URL expression</a>",
+			"<a href={/* ' } > */ 'https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/file'}>pinned source</a>",
+		];
+
+		for (const source of compilerValidForms) {
+			await expect(compile(source)).resolves.toBeDefined();
+		}
+	});
+
+	it('compiles longer-closing and unclosed EOF fences as code blocks', async () => {
+		const { compile } = await import(pathToFileURL(mdxCompilerPath).href);
+		const compilerValidFences = [
+			[
+				'```mdx',
+				'<a href="https://github.com/MaxMFonseca/MLE/blob/main/src/mle/Core.cpp">source</a>',
+				'{unterminated',
+				'````',
+			].join('\n'),
+			[
+				'~~~mdx',
+				'<a {...props}>source</a>',
+				'{unterminated',
+			].join('\n'),
+		];
+
+		for (const source of compilerValidFences) {
+			await expect(compile(source)).resolves.toBeDefined();
+		}
+	});
+
+	it('treats backticks in backtick-fence info as live Markdown but allows them in tilde info', async () => {
+		const { compile } = await import(pathToFileURL(mdxCompilerPath).href);
+		const movingUrl = 'https://github.com/MaxMFonseca/MLE/blob/main/src/mle/Core.cpp';
+		const compiledHrefTargets = async (source: string): Promise<string[]> => {
+			const targets: string[] = [];
+			await compile(source, {
+				rehypePlugins: [() => (tree: any) => {
+					const visit = (node: any): void => {
+						if (node.type === 'element' && node.tagName === 'a' && typeof node.properties?.href === 'string') {
+							targets.push(node.properties.href);
+						}
+						for (const child of node.children ?? []) visit(child);
+					};
+					visit(tree);
+				}],
+			});
+			return targets;
+		};
+		const link = `[Moving source](${movingUrl})`;
+
+		expect(await compiledHrefTargets(['```mdx`not-a-fence', link].join('\n'))).toEqual([movingUrl]);
+		for (const fence of [
+			['~~~mdx`backticks-allowed`', link, '~~~'].join('\n'),
+			['```mdx', link, '```'].join('\n'),
+			['```mdx', link].join('\n'),
+		]) {
+			expect(await compiledHrefTargets(fence)).toEqual([]);
+		}
+	});
+
+	it('accepts valid multiline references and ignores bypass-looking forms inside code examples', async () => {
 		const diagnostics = await validateContent(resolve(fixtures, 'valid-content'), { manifest });
 
 		expect(diagnostics).toEqual([]);
@@ -224,18 +321,138 @@ describe('content validation', () => {
 			'content/commit-directory',
 			'content/source-full-sha',
 			'content/archived-latest-link',
+			'content/dynamic-url',
 			'content/translation-same-commit',
 			'content/duplicate-page-id',
 			'content/technical-source-metadata',
 		]));
-		expect(diagnostics.map(({ path }) => path)).toEqual(
-			[...diagnostics.map(({ path }) => path)].sort((left, right) => left.localeCompare(right)),
+		const diagnosticOrder = diagnostics.map(
+			({ path, line, ruleId }) => `${path}:${String(line ?? 0).padStart(9, '0')}:${ruleId}`,
 		);
-		expect(diagnostics.find(({ ruleId }) => ruleId === 'content/source-full-sha')).toMatchObject({
-			path: 'versions/c1abea3de165/branch-link.mdx',
-			line: 18,
-		});
-		expect(diagnostics.filter(({ ruleId }) => ruleId === 'content/source-full-sha')).toHaveLength(1);
+		expect(diagnosticOrder).toEqual(
+			[...diagnosticOrder].sort((left, right) => left.localeCompare(right)),
+		);
+		expect.soft(
+			diagnostics
+				.filter(({ ruleId }) => ruleId === 'content/source-full-sha')
+				.map(({ path, line }) => ({ path, line })),
+		).toEqual([
+			{ path: 'versions/c1abea3de165/branch-link.mdx', line: 18 },
+			{ path: 'versions/c1abea3de165/branch-link.mdx', line: 23 },
+			{ path: 'versions/c1abea3de165/expression-links.mdx', line: 18 },
+			{ path: 'versions/c1abea3de165/expression-links.mdx', line: 19 },
+			{ path: 'versions/c1abea3de165/expression-links.mdx', line: 21 },
+			{ path: 'versions/c1abea3de165/expression-links.mdx', line: 22 },
+			{ path: 'versions/c1abea3de165/expression-links.mdx', line: 24 },
+			{ path: 'versions/c1abea3de165/expression-links.mdx', line: 28 },
+			{ path: 'versions/c1abea3de165/expression-links.mdx', line: 29 },
+			{ path: 'versions/c1abea3de165/multiline-reference-branch-link.mdx', line: 21 },
+			{ path: 'versions/c1abea3de165/reference-branch-link.mdx', line: 20 },
+		]);
+		expect.soft(
+			diagnostics
+				.filter(({ ruleId }) => ruleId === 'content/archived-latest-link')
+				.map(({ path, line }) => ({ path, line })),
+		).toEqual([
+			{ path: 'versions/dddddddddddd/archived-latest.mdx', line: 18 },
+			{ path: 'versions/dddddddddddd/archived-latest.mdx', line: 21 },
+			{ path: 'versions/dddddddddddd/expression-latest.mdx', line: 18 },
+			{ path: 'versions/dddddddddddd/expression-latest.mdx', line: 19 },
+			{ path: 'versions/dddddddddddd/expression-latest.mdx', line: 21 },
+			{ path: 'versions/dddddddddddd/multiline-reference-latest.mdx', line: 21 },
+			{ path: 'versions/dddddddddddd/reference-latest.mdx', line: 20 },
+		]);
+		expect.soft(
+			diagnostics
+				.filter(({ ruleId }) => ruleId === 'content/dynamic-url')
+				.map(({ path, line, message }) => ({ path, line, message })),
+		).toEqual([
+			{
+				path: 'versions/c1abea3de165/expression-links.mdx',
+				line: 20,
+				message: expect.stringContaining('href'),
+			},
+			{
+				path: 'versions/c1abea3de165/expression-links.mdx',
+				line: 25,
+				message: expect.stringContaining('href'),
+			},
+			{
+				path: 'versions/c1abea3de165/expression-links.mdx',
+				line: 26,
+				message: expect.stringContaining('src'),
+			},
+			{
+				path: 'versions/c1abea3de165/expression-links.mdx',
+				line: 27,
+				message: expect.stringContaining('href'),
+			},
+			{
+				path: 'versions/c1abea3de165/spread-branch-link.mdx',
+				line: 18,
+				message: expect.stringContaining('spread'),
+			},
+			{
+				path: 'versions/c1abea3de165/spread-branch-link.mdx',
+				line: 19,
+				message: expect.stringContaining('spread'),
+			},
+			{
+				path: 'versions/c1abea3de165/spread-branch-link.mdx',
+				line: 20,
+				message: expect.stringContaining('spread'),
+			},
+			{
+				path: 'versions/c1abea3de165/spread-branch-link.mdx',
+				line: 21,
+				message: expect.stringContaining('spread'),
+			},
+			{
+				path: 'versions/c1abea3de165/spread-branch-link.mdx',
+				line: 24,
+				message: expect.stringContaining('spread'),
+			},
+			{
+				path: 'versions/c1abea3de165/spread-branch-link.mdx',
+				line: 25,
+				message: expect.stringContaining('spread'),
+			},
+			{
+				path: 'versions/c1abea3de165/spread-branch-link.mdx',
+				line: 26,
+				message: expect.stringContaining('spread'),
+			},
+			{
+				path: 'versions/c1abea3de165/spread-branch-link.mdx',
+				line: 27,
+				message: expect.stringContaining('spread'),
+			},
+			{
+				path: 'versions/c1abea3de165/spread-branch-link.mdx',
+				line: 31,
+				message: expect.stringContaining('spread'),
+			},
+			{
+				path: 'versions/c1abea3de165/spread-branch-link.mdx',
+				line: 32,
+				message: expect.stringContaining('spread'),
+			},
+			{
+				path: 'versions/c1abea3de165/spread-branch-link.mdx',
+				line: 33,
+				message: expect.stringContaining('spread'),
+			},
+			{
+				path: 'versions/dddddddddddd/spread-latest.mdx',
+				line: 18,
+				message: expect.stringContaining('spread'),
+			},
+			{
+				path: 'versions/dddddddddddd/spread-latest.mdx',
+				line: 19,
+				message: expect.stringContaining('spread'),
+			},
+		]);
 		expect(
 			diagnostics.find(({ ruleId }) => ruleId === 'content/technical-source-metadata')?.message,
 		).toContain('sourceFiles');
@@ -515,6 +732,44 @@ describe('built link validation', () => {
 });
 
 describe('performance validation', () => {
+	it('counts inline executable scripts at the inclusive JavaScript budget boundary', async () => {
+		const dist = makeTemporaryDirectory();
+		const executable = ['globalThis.mleClassic = true;', 'globalThis.mleModule = true;'];
+		const inlineHead = [
+			`<script>${executable[0]}</script>`,
+			`<script type="module">${executable[1]}</script>`,
+			`<script type="application/json">${'0'.repeat(20_000)}</script>`,
+			`<script type="application/ld+json">${'1'.repeat(20_000)}</script>`,
+		].join('');
+		write(dist, 'versions/c1abea3de165/index.html', html('<h1>Home</h1>', inlineHead));
+		write(dist, 'versions/c1abea3de165/systems/renderer/index.html', html('<h1>Renderer</h1>'));
+		const expectedBytes = gzipSync(Buffer.from(executable.join('\n'), 'utf8')).length;
+
+		const atBoundary = await validatePerformance(dist, {
+			budgets: { javascript: expectedBytes },
+		});
+		expect(atBoundary.diagnostics).toEqual([]);
+		expect(
+			atBoundary.measurements.find(
+				({ kind, path }) => kind === 'javascript' && path === 'versions/c1abea3de165/index.html',
+			),
+		).toEqual({
+			kind: 'javascript',
+			path: 'versions/c1abea3de165/index.html',
+			measured: expectedBytes,
+			limit: expectedBytes,
+		});
+
+		const overBoundary = await validatePerformance(dist, {
+			budgets: { javascript: expectedBytes - 1 },
+		});
+		expect(overBoundary.diagnostics).toContainEqual({
+			path: 'versions/c1abea3de165/index.html',
+			ruleId: 'performance/javascript-gzip',
+			message: `initial local javascript gzip: measured ${expectedBytes} bytes; limit ${expectedBytes - 1} bytes`,
+		});
+	});
+
 	it('measures unique initial assets and accepts a build within every budget', async () => {
 		const dist = makeTemporaryDirectory();
 		const head = '<script src="/MLEDocs/assets/app.js"></script><script src="/MLEDocs/assets/app.js"></script><link rel="stylesheet" href="/MLEDocs/assets/app.css">';

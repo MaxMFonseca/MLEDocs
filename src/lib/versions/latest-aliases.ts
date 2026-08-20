@@ -54,6 +54,40 @@ export const pageRecordsFromContentEntries = (
 		];
 	});
 
+const comparePageRecords = (left: PageRecord, right: PageRecord): number => {
+	const leftKey = JSON.stringify([left.versionId, left.locale, left.slug, left.pageId]);
+	const rightKey = JSON.stringify([right.versionId, right.locale, right.slug, right.pageId]);
+	return leftKey.localeCompare(rightKey);
+};
+
+export const buildVersionedPageRecords = (
+	entries: readonly AliasContentEntry[],
+	manifest: readonly VersionEntry[],
+): readonly PageRecord[] => {
+	const physicalPages = pageRecordsFromContentEntries(entries);
+	const pageIndex = buildPageIndex(physicalPages);
+	const fallbacks: PageRecord[] = [];
+
+	for (const version of manifest) {
+		const englishPages = physicalPages.filter(
+			(page) => page.versionId === version.id && page.locale === 'en',
+		);
+		for (const locale of version.locales) {
+			if (locale === 'en') continue;
+			for (const englishPage of englishPages) {
+				if (pageIndex.find(version.id, locale, englishPage.pageId)) continue;
+				fallbacks.push({
+					...englishPage,
+					locale,
+					translationStatus: 'fallback',
+				});
+			}
+		}
+	}
+
+	return [...physicalPages, ...fallbacks].sort(comparePageRecords);
+};
+
 const normalizeSlug = (slug: string): string => slug.replace(/^\/+|\/+$/g, '');
 
 const compareAliases = (left: AliasRoute, right: AliasRoute): number => {

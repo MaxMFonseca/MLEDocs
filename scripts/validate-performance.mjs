@@ -1,6 +1,7 @@
 import { lstat, realpath } from 'node:fs/promises';
 import { extname, relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { gzipSync } from 'node:zlib';
 import { versions } from '../src/data/versions.ts';
 import { gzipVerifiedFile, readVerifiedFile, statVerifiedFile, walkBounded } from './validator-filesystem.mjs';
 
@@ -13,6 +14,24 @@ const LIMITS = Object.freeze({
 	raster: 750 * 1024,
 });
 const RASTER_EXTENSIONS = new Set(['.avif', '.gif', '.jpeg', '.jpg', '.png', '.webp']);
+const JAVASCRIPT_MIME_TYPES = new Set([
+	'application/ecmascript',
+	'application/javascript',
+	'application/x-ecmascript',
+	'application/x-javascript',
+	'text/ecmascript',
+	'text/javascript',
+	'text/javascript1.0',
+	'text/javascript1.1',
+	'text/javascript1.2',
+	'text/javascript1.3',
+	'text/javascript1.4',
+	'text/javascript1.5',
+	'text/jscript',
+	'text/livescript',
+	'text/x-ecmascript',
+	'text/x-javascript',
+]);
 
 const slash = (path) => path.split(sep).join('/');
 const contains = (root, candidate) => candidate === root || candidate.startsWith(`${root}${sep}`);
@@ -45,6 +64,7 @@ const localAsset = (target, root, fromRoute, base) => {
 const parseInitialAssets = (source, root, fromRoute, base) => {
 	const scripts = new Map();
 	const stylesheets = new Map();
+	const inlineJavaScript = [];
 	let hero;
 	const expression = /<([a-zA-Z][a-zA-Z0-9:-]*)(\s[^<>]*?)?\s*\/?>/g;
 	for (const match of source.matchAll(expression)) {
@@ -62,13 +82,22 @@ const parseInitialAssets = (source, root, fromRoute, base) => {
 			hero = localAsset(attributes.get('src'), root, fromRoute, base);
 		}
 	}
-	return { scripts, stylesheets, hero };
+	const scriptBlocks = /<script\b([^<>]*?)>([\s\S]*?)<\/script\s*>/gi;
+	for (const match of source.matchAll(scriptBlocks)) {
+		const attributes = parseAttributes(match[1] ?? '');
+		if (attributes.has('src')) continue;
+		const type = (attributes.get('type') ?? '').trim().toLowerCase().split(';', 1)[0].trim();
+		const executable = type === '' || type === 'module' || JAVASCRIPT_MIME_TYPES.has(type);
+		if (executable && match[2].trim()) inlineJavaScript.push(match[2]);
+	}
+	return { scripts, stylesheets, inlineJavaScript, hero };
 };
 
 const measuredMessage = (label, measured, limit) => `${label}: measured ${measured} bytes; limit ${limit} bytes`;
 
 export const validatePerformance = async (distDirectory, options = {}) => {
 	const base = (options.base ?? DEFAULT_BASE).replace(/\/$/, '');
+	const budgets = { ...LIMITS, ...options.budgets };
 	const suppliedRoot = resolve(distDirectory);
 	let root;
 	try {
@@ -123,8 +152,8 @@ export const validatePerformance = async (distDirectory, options = {}) => {
 		const assets = parseInitialAssets(readPage.data, root, pageRoute, base);
 		if (page.homepage) homepageHero = assets.hero;
 		for (const [kind, assetMap, limit, ruleId] of [
-			['javascript', assets.scripts, LIMITS.javascript, 'performance/javascript-gzip'],
-			['css', assets.stylesheets, LIMITS.css, 'performance/css-gzip'],
+			['javascript', assets.scripts, budgets.javascript, 'performance/javascript-gzip'],
+			['css', assets.stylesheets, budgets.css, 'performance/css-gzip'],
 		]) {
 			let measured = 0;
 			for (const [relativePath, assetPath] of assetMap) {
@@ -145,6 +174,9 @@ export const validatePerformance = async (distDirectory, options = {}) => {
 				}
 				measured += compressed.gzipBytes;
 			}
+			if (kind === 'javascript' && assets.inlineJavaScript.length > 0) {
+				measured += gzipSync(Buffer.from(assets.inlineJavaScript.join('\n'), 'utf8')).length;
+			}
 			measurements.push({ kind, path: slash(page.path), measured, limit });
 			if (measured > limit) diagnostics.push({ path: slash(page.path), ruleId, message: measuredMessage(`initial local ${kind} gzip`, measured, limit) });
 		}
@@ -156,16 +188,16 @@ export const validatePerformance = async (distDirectory, options = {}) => {
 		const inspected = await statVerifiedFile(root, path);
 		if (inspected.ok) fontBytes += inspected.stats.size;
 	}
-	measurements.push({ kind: 'fonts', path: 'fonts/**/*.woff2', measured: fontBytes, limit: LIMITS.fonts });
-	if (fontBytes > LIMITS.fonts) diagnostics.push({ path: 'fonts/**/*.woff2', ruleId: 'performance/fonts-total', message: measuredMessage('all shipped WOFF2', fontBytes, LIMITS.fonts) });
+	measurements.push({ kind: 'fonts', path: 'fonts/**/*.woff2', measured: fontBytes, limit: budgets.fonts });
+	if (fontBytes > budgets.fonts) diagnostics.push({ path: 'fonts/**/*.woff2', ruleId: 'performance/fonts-total', message: measuredMessage('all shipped WOFF2', fontBytes, budgets.fonts) });
 
 	if (homepageHero) {
 		let heroBytes = 0;
 		const inspectedHero = await statVerifiedFile(root, homepageHero.path);
 		if (inspectedHero.ok) heroBytes = inspectedHero.stats.size;
 		else diagnostics.push({ path: homepageHero.relativePath, ruleId: inspectedHero.reason === 'symlink' ? 'performance/symlink' : 'performance/missing-asset', message: `homepage hero is unsafe or unavailable: ${inspectedHero.reason}` });
-		measurements.push({ kind: 'hero', path: homepageHero.relativePath, measured: heroBytes, limit: LIMITS.hero });
-		if (heroBytes > LIMITS.hero) diagnostics.push({ path: homepageHero.relativePath, ruleId: 'performance/homepage-hero', message: measuredMessage('homepage hero', heroBytes, LIMITS.hero) });
+		measurements.push({ kind: 'hero', path: homepageHero.relativePath, measured: heroBytes, limit: budgets.hero });
+		if (heroBytes > budgets.hero) diagnostics.push({ path: homepageHero.relativePath, ruleId: 'performance/homepage-hero', message: measuredMessage('homepage hero', heroBytes, budgets.hero) });
 	}
 
 	for (const path of files.filter((candidate) => RASTER_EXTENSIONS.has(extname(candidate).toLowerCase())).sort()) {
@@ -173,11 +205,11 @@ export const validatePerformance = async (distDirectory, options = {}) => {
 		const inspected = await statVerifiedFile(root, path);
 		if (!inspected.ok) continue;
 		const measured = inspected.stats.size;
-		measurements.push({ kind: 'raster', path: relativePath, measured, limit: LIMITS.raster });
-		if (homepageHero?.relativePath === relativePath || measured <= LIMITS.raster) continue;
+		measurements.push({ kind: 'raster', path: relativePath, measured, limit: budgets.raster });
+		if (homepageHero?.relativePath === relativePath || measured <= budgets.raster) continue;
 		const entry = allowlist[relativePath];
 		if (entry && typeof entry.reason === 'string' && entry.reason.trim() && typeof entry.pageId === 'string' && entry.pageId.trim()) continue;
-		diagnostics.push({ path: relativePath, ruleId: 'performance/raster-size', message: measuredMessage('raster asset', measured, LIMITS.raster) });
+		diagnostics.push({ path: relativePath, ruleId: 'performance/raster-size', message: measuredMessage('raster asset', measured, budgets.raster) });
 	}
 
 	measurements.sort((left, right) => `${left.kind}:${left.path}`.localeCompare(`${right.kind}:${right.path}`));

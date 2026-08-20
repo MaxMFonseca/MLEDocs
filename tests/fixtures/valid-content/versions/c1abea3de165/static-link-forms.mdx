@@ -1,0 +1,61 @@
+---
+title: Static source link forms
+description: Valid reference-style and static MDX expression source links.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences:
+  - contributor
+subsystems:
+  - core
+sourceFiles:
+  - src/mle/Core.cpp
+lastVerified: '2026-08-20'
+translationStatus: canonical
+pageId: static-link-forms
+---
+
+[Reference evidence][core-source]
+[Multiline reference evidence][renderer-source]
+
+<SourceLink href={'https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/Core.cpp'} />
+<SourceLink href={"https://github.com/MaxMFonseca/MLE/tree/c1abea3de165032fe064300340807b7a6af388f8/src/mle"} />
+<SourceLink href={`https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/Core.h`} />
+
+[core-source]: https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/Core.cpp "Pinned core source"
+[renderer-source]:
+  https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/MLE/Renderer/Renderer.cpp "Pinned renderer source"
+
+`<SourceLink href={sourceUrl} />`
+
+<a data-config={{...props}} href="https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/file">nested object spread in named attribute</a>
+<a data-note={/* ' } > */ note}>commented non-URL expression</a>
+<a href={/* ' } > */ 'https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/file'}>commented pinned source</a>
+
+```mdx
+[Code-only reference][moving-source]
+<SourceLink href={"https://github.com/MaxMFonseca/MLE/blob/main/src/mle/Core.cpp"} />
+[moving-source]: https://github.com/MaxMFonseca/MLE/blob/main/src/mle/Core.cpp
+
+[Code-only multiline reference][multiline-moving-source]
+
+[multiline-moving-source]:
+  https://github.com/MaxMFonseca/MLE/blob/main/src/MLE/Renderer/Renderer.cpp
+
+<a {...{href: 'https://github.com/MaxMFonseca/MLE/blob/main/src/MLE/Renderer/Renderer.cpp'}}>source</a>
+```
+
+```mdx
+<a href="https://github.com/MaxMFonseca/MLE/blob/main/src/mle/Core.cpp">longer closing fence</a>
+{unterminated
+````
+
+~~~mdx`backticks-allowed`
+<a {...props}>tilde fence spread</a>
+<a href="https://github.com/MaxMFonseca/MLE/blob/main/src/mle/Core.cpp">tilde fence source</a>
+~~~
+
+```mdx
+<a {...props}>unclosed backtick fence spread</a>
+<a href="https://github.com/MaxMFonseca/MLE/blob/main/src/mle/Core.cpp">unclosed backtick fence source</a>
+{unterminated

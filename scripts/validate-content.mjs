@@ -34,19 +34,409 @@ const lineFor = (source, needle) => {
 
 const lineAt = (source, offset) => source.slice(0, Math.max(0, offset)).split(/\r?\n/).length;
 
-const bodyWithoutCode = (body) =>
-	body
-		.replace(/^(?: {0,3})(`{3,}|~{3,})[^\n]*\n[\s\S]*?^ {0,3}\1\s*$/gm, '')
-		.replace(/`[^`\n]*`/g, '');
+const maskText = (value) => value.replace(/[^\r\n]/g, ' ');
 
-const markdownLinks = (body) => {
+const maskFencedCode = (body) => {
+	const ranges = [];
+	const openerPattern = /^ {0,3}(?:(`{3,})[^`\r\n]*|(~{3,})[^\r\n]*)(?:\r?\n|$)/gm;
+	for (let opener = openerPattern.exec(body); opener; opener = openerPattern.exec(body)) {
+		const fence = opener[1] ?? opener[2];
+		const closingPattern = new RegExp(`^ {0,3}${fence[0]}{${fence.length},}[ \\t]*\\r?$`, 'gm');
+		closingPattern.lastIndex = openerPattern.lastIndex;
+		const closing = closingPattern.exec(body);
+		const end = closing ? closing.index + closing[0].length : body.length;
+		ranges.push({ start: opener.index, end });
+		openerPattern.lastIndex = end;
+	}
+	return maskRanges(body, ranges);
+};
+
+const inlineCodeRanges = (source) =>
+	[...source.matchAll(/(`+)[^\n]*?\1/g)].map((match) => ({
+		start: match.index ?? 0,
+		end: (match.index ?? 0) + match[0].length,
+	}));
+
+const inRanges = (offset, ranges) =>
+	ranges.some((range) => offset >= range.start && offset < range.end);
+
+const maskRanges = (source, ranges) => {
+	let masked = source;
+	for (const range of [...ranges].reverse()) {
+		masked = `${masked.slice(0, range.start)}${maskText(masked.slice(range.start, range.end))}${masked.slice(range.end)}`;
+	}
+	return masked;
+};
+
+const normalizeReferenceLabel = (label) => label.trim().replace(/\s+/g, ' ').toLowerCase();
+
+const referenceLinks = (source) => {
+	const definitions = [];
+	const definitionRanges = [];
+	const definitionPattern = /^ {0,3}\[([^\]\n]+)\]:(?:[ \t]*(?:<([^>\n]+)>|(\S+))|[ \t]*\r?\n[ \t]+(?:<([^>\n]+)>|(\S+)))(?:[ \t]+(?:"[^"]*"|'[^']*'|\([^)]*\)))?[ \t]*$/gm;
+	for (const match of source.matchAll(definitionPattern)) {
+		const target = match[2] ?? match[3] ?? match[4] ?? match[5];
+		const start = match.index ?? 0;
+		const destinationStart = match[0].indexOf(target, match[0].indexOf(']:') + 2);
+		definitions.push({
+			label: normalizeReferenceLabel(match[1]),
+			target,
+			offset: start + destinationStart,
+		});
+		definitionRanges.push({ start, end: start + match[0].length });
+	}
+
+	const usedLabels = new Set();
+	const usagePattern = /!?\[([^\]\n]+)\](?:\[([^\]\n]*)\])?/g;
+	for (const match of source.matchAll(usagePattern)) {
+		const offset = match.index ?? 0;
+		if (inRanges(offset, definitionRanges)) continue;
+		if (source[offset + match[0].length] === '(') continue;
+		const label = match[2] === undefined || match[2] === '' ? match[1] : match[2];
+		usedLabels.add(normalizeReferenceLabel(label));
+	}
+
+	return definitions
+		.filter((definition) => usedLabels.has(definition.label))
+		.map(({ target, offset }) => ({ target, offset }));
+};
+
+const decodeStaticStringLiteral = (expression) => {
+	const value = expression;
+	const quote = value[0];
+	if (!['"', "'", '`'].includes(quote) || value.at(-1) !== quote) return undefined;
+
+	let decoded = '';
+	for (let index = 1; index < value.length - 1; index += 1) {
+		const character = value[index];
+		if (quote === '`' && character === '$' && value[index + 1] === '{') return undefined;
+		if (character !== '\\') {
+			decoded += character;
+			continue;
+		}
+
+		index += 1;
+		if (index >= value.length - 1) return undefined;
+		const escaped = value[index];
+		const simpleEscapes = {
+			b: '\b', f: '\f', n: '\n', r: '\r', t: '\t', v: '\v',
+			'0': '\0', '\\': '\\', "'": "'", '"': '"', '`': '`', '$': '$',
+		};
+		if (Object.hasOwn(simpleEscapes, escaped)) {
+			decoded += simpleEscapes[escaped];
+			continue;
+		}
+		if (escaped === '\n') continue;
+		if (escaped === '\r') {
+			if (value[index + 1] === '\n') index += 1;
+			continue;
+		}
+		if (escaped === 'x') {
+			const digits = value.slice(index + 1, index + 3);
+			if (!/^[0-9a-f]{2}$/i.test(digits)) return undefined;
+			decoded += String.fromCodePoint(Number.parseInt(digits, 16));
+			index += 2;
+			continue;
+		}
+		if (escaped === 'u') {
+			const braced = /^\{([0-9a-f]+)\}/i.exec(value.slice(index + 1));
+			const digits = braced?.[1] ?? value.slice(index + 1, index + 5);
+			if (!/^[0-9a-f]{4}$/i.test(digits) && !braced) return undefined;
+			const codePoint = Number.parseInt(digits, 16);
+			if (codePoint > 0x10ffff) return undefined;
+			decoded += String.fromCodePoint(codePoint);
+			index += braced ? braced[0].length : 4;
+			continue;
+		}
+		decoded += escaped;
+	}
+	return decoded;
+};
+
+const quotedStringEnd = (source, start, limit) => {
+	const quote = source[start];
+	for (let index = start + 1; index < limit; index += 1) {
+		if (source[index] === '\\') index += 1;
+		else if (source[index] === quote) return index + 1;
+		else if (source[index] === '\n' || source[index] === '\r') return undefined;
+	}
+	return undefined;
+};
+
+const blockCommentEnd = (source, start, limit) => {
+	for (let index = start + 2; index < limit; index += 1) {
+		if (source[index] === '*' && source[index + 1] === '/') return index + 2;
+	}
+	return limit;
+};
+
+const lineCommentEnd = (source, start, limit) => {
+	let index = start + 2;
+	while (index < limit && source[index] !== '\n' && source[index] !== '\r') index += 1;
+	return index;
+};
+
+const skipJavascriptTrivia = (source, start, limit) => {
+	let index = start;
+	while (index < limit) {
+		if (/\s/.test(source[index])) {
+			index += 1;
+			continue;
+		}
+		if (source[index] === '/' && source[index + 1] === '/') {
+			index = lineCommentEnd(source, index, limit);
+			continue;
+		}
+		if (source[index] === '/' && source[index + 1] === '*') {
+			index = blockCommentEnd(source, index, limit);
+			continue;
+		}
+		break;
+	}
+	return index;
+};
+
+const regexLiteralEnd = (source, start, limit) => {
+	let inCharacterClass = false;
+	for (let index = start + 1; index < limit; index += 1) {
+		const character = source[index];
+		if (character === '\\') {
+			index += 1;
+			continue;
+		}
+		if (character === '\n' || character === '\r') return undefined;
+		if (character === '[') inCharacterClass = true;
+		else if (character === ']') inCharacterClass = false;
+		else if (character === '/' && !inCharacterClass) {
+			index += 1;
+			while (index < limit && /[a-z]/i.test(source[index])) index += 1;
+			return index;
+		}
+	}
+	return undefined;
+};
+
+const REGEX_PREFIX_KEYWORDS = new Set([
+	'await', 'case', 'delete', 'do', 'else', 'in', 'instanceof', 'new',
+	'of', 'return', 'throw', 'typeof', 'void', 'yield',
+]);
+
+function bracedJavascriptExpressionEnd(source, start, limit) {
+	let depth = 1;
+	let canStartRegex = true;
+	let index = start + 1;
+	while (index < limit) {
+		const character = source[index];
+		if (/\s/.test(character)) {
+			index += 1;
+			continue;
+		}
+		if (character === '/' && source[index + 1] === '/') {
+			index = lineCommentEnd(source, index, limit);
+			continue;
+		}
+		if (character === '/' && source[index + 1] === '*') {
+			index = blockCommentEnd(source, index, limit);
+			continue;
+		}
+		if (character === '"' || character === "'") {
+			const end = quotedStringEnd(source, index, limit);
+			if (end === undefined) return undefined;
+			index = end;
+			canStartRegex = false;
+			continue;
+		}
+		if (character === '`') {
+			const end = templateLiteralEnd(source, index, limit);
+			if (end === undefined) return undefined;
+			index = end;
+			canStartRegex = false;
+			continue;
+		}
+		if (character === '/' && canStartRegex) {
+			const end = regexLiteralEnd(source, index, limit);
+			if (end === undefined) return undefined;
+			index = end;
+			canStartRegex = false;
+			continue;
+		}
+		if (/[A-Za-z_$]/.test(character)) {
+			const identifierStart = index;
+			index += 1;
+			while (index < limit && /[\w$]/.test(source[index])) index += 1;
+			canStartRegex = REGEX_PREFIX_KEYWORDS.has(source.slice(identifierStart, index));
+			continue;
+		}
+		if (/\d/.test(character)) {
+			index += 1;
+			while (index < limit && /[\w.]/.test(source[index])) index += 1;
+			canStartRegex = false;
+			continue;
+		}
+		if (character === '{') {
+			depth += 1;
+			index += 1;
+			canStartRegex = true;
+			continue;
+		}
+		if (character === '}') {
+			depth -= 1;
+			if (depth === 0) return index;
+			index += 1;
+			canStartRegex = false;
+			continue;
+		}
+		if (character === ')' || character === ']') {
+			index += 1;
+			canStartRegex = false;
+			continue;
+		}
+		if (source.startsWith('...', index)) {
+			index += 3;
+			canStartRegex = true;
+			continue;
+		}
+		if (source.startsWith('++', index) || source.startsWith('--', index)) {
+			index += 2;
+			continue;
+		}
+		canStartRegex = character !== '.';
+		index += 1;
+	}
+	return undefined;
+}
+
+function templateLiteralEnd(source, start, limit) {
+	let index = start + 1;
+	while (index < limit) {
+		if (source[index] === '\\') {
+			index += 2;
+			continue;
+		}
+		if (source[index] === '`') return index + 1;
+		if (source[index] === '$' && source[index + 1] === '{') {
+			const interpolationEnd = bracedJavascriptExpressionEnd(source, index + 1, limit);
+			if (interpolationEnd === undefined) return undefined;
+			index = interpolationEnd + 1;
+			continue;
+		}
+		index += 1;
+	}
+	return undefined;
+}
+
+const decodeStaticStringExpression = (source, start, end) => {
+	const literalStart = skipJavascriptTrivia(source, start, end);
+	const quote = source[literalStart];
+	const literalEnd = quote === '`'
+		? templateLiteralEnd(source, literalStart, end)
+		: quote === '"' || quote === "'"
+			? quotedStringEnd(source, literalStart, end)
+			: undefined;
+	if (literalEnd === undefined || skipJavascriptTrivia(source, literalEnd, end) !== end) return undefined;
+	const target = decodeStaticStringLiteral(source.slice(literalStart, literalEnd));
+	return target === undefined ? undefined : { target, offset: literalStart + 1 };
+};
+
+const tagAttributeLinks = (source, codeRanges) => {
 	const links = [];
-	const source = bodyWithoutCode(body);
-	const expression = /(?:!?\[[^\]]*\]\(([^\s)]+)(?:\s+["'][^"']*["'])?\)|<(https?:\/\/[^>]+)>|\b(href|src)=["']([^"']+)["'])/g;
-	for (const match of source.matchAll(expression)) {
-		links.push({ target: match[1] ?? match[2] ?? match[4], offset: match.index ?? 0 });
+	for (let tagStart = source.indexOf('<'); tagStart >= 0; tagStart = source.indexOf('<', tagStart + 1)) {
+		if (inRanges(tagStart, codeRanges)) continue;
+		if (!/[A-Za-z_$\/]/.test(source[tagStart + 1] ?? '')) continue;
+		let index = tagStart + 1;
+		if (source[index] === '/') index += 1;
+		while (index < source.length && !/[\s/>]/.test(source[index])) index += 1;
+		let end;
+		while (index < source.length) {
+			while (index < source.length && /\s/.test(source[index])) index += 1;
+			if (source[index] === '>') {
+				end = index;
+				break;
+			}
+			if (source[index] === '/') {
+				index += 1;
+				continue;
+			}
+			if (source[index] === '{') {
+				const expressionStart = index;
+				const spreadMarker = skipJavascriptTrivia(source, expressionStart + 1, source.length);
+				if (source.startsWith('...', spreadMarker)) {
+					links.push({ dynamicAttribute: 'spread', offset: expressionStart });
+				}
+				const expressionEnd = bracedJavascriptExpressionEnd(source, expressionStart, source.length);
+				if (expressionEnd === undefined) break;
+				index = expressionEnd + 1;
+				continue;
+			}
+			const nameStart = index;
+			while (index < source.length && !/[\s=/>]/.test(source[index])) index += 1;
+			if (nameStart === index) {
+				index += 1;
+				continue;
+			}
+			const attribute = source.slice(nameStart, index).toLowerCase();
+			while (index < source.length && /\s/.test(source[index])) index += 1;
+			if (source[index] !== '=') continue;
+			index += 1;
+			while (index < source.length && /\s/.test(source[index])) index += 1;
+
+			let target;
+			let targetOffset = index;
+			let dynamic = false;
+			const quote = source[index];
+			if (quote === '"' || quote === "'") {
+				const valueStart = index + 1;
+				const valueEnd = quotedStringEnd(source, index, source.length);
+				if (valueEnd === undefined) break;
+				target = source.slice(valueStart, valueEnd - 1);
+				targetOffset = valueStart;
+				index = valueEnd;
+			} else if (source[index] === '{') {
+				const expressionBrace = index;
+				const expressionEnd = bracedJavascriptExpressionEnd(source, expressionBrace, source.length);
+				if (expressionEnd === undefined) {
+					if (attribute === 'href' || attribute === 'src') {
+						links.push({ dynamicAttribute: attribute, offset: nameStart });
+					}
+					break;
+				}
+				const expressionStart = index + 1;
+				const staticString = decodeStaticStringExpression(source, expressionStart, expressionEnd);
+				target = staticString?.target;
+				targetOffset = staticString?.offset ?? expressionStart;
+				dynamic = staticString === undefined;
+				index = expressionEnd + 1;
+			} else {
+				const valueStart = index;
+				while (index < source.length && !/[\s>]/.test(source[index])) index += 1;
+				target = source.slice(valueStart, index);
+				targetOffset = valueStart;
+			}
+
+			if (attribute !== 'href' && attribute !== 'src') continue;
+			if (dynamic) links.push({ dynamicAttribute: attribute, offset: nameStart });
+			else if (target) links.push({ target, offset: targetOffset });
+		}
+		if (end !== undefined) tagStart = end;
 	}
 	return links;
+};
+
+const markdownLinks = (body) => {
+	const fencedSource = maskFencedCode(body);
+	const codeRanges = inlineCodeRanges(fencedSource);
+	const source = maskRanges(fencedSource, codeRanges);
+	const links = [...referenceLinks(source), ...tagAttributeLinks(fencedSource, codeRanges)];
+	const inlinePattern = /!?\[[^\]\n]*\]\(\s*(?:<([^>\n]+)>|([^\s)]+))/g;
+	for (const match of source.matchAll(inlinePattern)) {
+		const target = match[1] ?? match[2];
+		links.push({ target, offset: (match.index ?? 0) + match[0].indexOf(target) });
+	}
+	const autolinkPattern = /<(https?:\/\/[^>\n]+)>/g;
+	for (const match of source.matchAll(autolinkPattern)) {
+		links.push({ target: match[1], offset: (match.index ?? 0) + 1 });
+	}
+	return links.sort((left, right) => left.offset - right.offset);
 };
 
 const metadataLine = (source, issue) => {
@@ -166,8 +556,16 @@ export const validateContent = async (contentDirectory = resolve('src/content/do
 
 		const bodyStart = source.indexOf(parsed.content);
 		for (const link of markdownLinks(parsed.content)) {
-			const linkOffset = source.indexOf(link.target, Math.max(0, bodyStart));
-			const linkLine = lineAt(source, linkOffset < 0 ? bodyStart + link.offset : linkOffset);
+			const linkLine = lineAt(source, Math.max(0, bodyStart) + link.offset);
+			if (link.dynamicAttribute) {
+				diagnostics.push({
+					path: displayPath,
+					line: linkLine,
+					ruleId: 'content/dynamic-url',
+					message: `${link.dynamicAttribute} uses a dynamic MDX expression; URL attributes must be static so snapshot source and latest-link rules can be verified`,
+				});
+				continue;
+			}
 			const sourceMatch = MLE_SOURCE_URL.exec(link.target);
 			if (sourceMatch && (!version || sourceMatch[1] !== version.commit || !/^[0-9a-f]{40}$/.test(sourceMatch[1]))) {
 				diagnostics.push({ path: displayPath, line: linkLine, ruleId: 'content/source-full-sha', message: `MLE source URL must use snapshot full SHA ${version?.commit ?? versionId}; found ${sourceMatch[1]}` });

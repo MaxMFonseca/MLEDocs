@@ -3,14 +3,15 @@ import type { APIRoute, GetStaticPaths } from 'astro';
 import { getCurrentVersion } from '../../../lib/versions/manifest';
 import {
 	buildLatestAliases,
-	pageRecordsFromContentEntries,
+	buildVersionedPageRecords,
 	renderLatestAliasHtml,
 	type AliasRoute,
 } from '../../../lib/versions/latest-aliases';
+import { versions } from '../../../data/versions';
 
 export const getStaticPaths = (async () => {
 	const current = getCurrentVersion();
-	const pages = pageRecordsFromContentEntries(await getCollection('docs'));
+	const pages = buildVersionedPageRecords(await getCollection('docs'), versions);
 
 	return buildLatestAliases(current, pages)
 		.filter(({ locale }) => locale === 'pt-br')
