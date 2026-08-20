@@ -1,0 +1,219 @@
+---
+import { getCollection } from 'astro:content';
+import {
+	buildSectionIndexModel,
+	type NavigationPageId,
+} from '../../data/navigation';
+import type { Locale } from '../../data/taxonomy';
+import {
+	buildVersionedPageRecords,
+	type AliasContentEntry,
+} from '../../lib/versions/latest-aliases';
+import { resolveVersionEntryFromRouteId } from '../../lib/versions/manifest';
+import { versions } from '../../data/versions';
+
+interface Props {
+	sectionId: NavigationPageId;
+	locale: Locale;
+}
+
+const { sectionId, locale } = Astro.props;
+const version = resolveVersionEntryFromRouteId(Astro.locals.starlightRoute.id);
+const docs = await getCollection('docs');
+const entries: AliasContentEntry[] = [];
+for (const entry of docs) {
+	if (entry.data.contentType === 'technical' || entry.data.contentType === 'section') {
+		entries.push({
+			id: entry.id,
+			data: {
+				contentType: entry.data.contentType,
+				pageId: entry.data.pageId,
+				translationStatus: entry.data.translationStatus,
+			},
+		});
+	}
+	if (entry.data.contentType === 'homepage' || entry.data.contentType === 'redirect') {
+		entries.push({ id: entry.id, data: { contentType: entry.data.contentType } });
+	}
+}
+const pages = buildVersionedPageRecords(entries, versions);
+const model = buildSectionIndexModel({ sectionId, version, locale, pages });
+const { section } = model;
+const isPortuguese = locale === 'pt-br';
+---
+
+<section
+	class="section-index"
+	data-mle-section-index={section.pageId}
+	data-system={section.accent}
+>
+	<p class="audience-guidance">{section.audienceGuidance[locale]}</p>
+	<div class="available-block">
+		<h2>{isPortuguese ? 'Documentação disponível' : 'Available documentation'}</h2>
+		<ul data-mle-section-available>
+			{
+				model.available.length > 0 ? (
+					model.available.map((item) => (
+						<li>
+							<div>
+								<small>{item.groupLabel}</small>
+								<a href={item.href}>{item.label}</a>
+							</div>
+							<span>
+								{item.translationStatus === 'fallback'
+									? isPortuguese
+										? 'Inglês do mesmo commit'
+										: 'Same-commit English fallback'
+									: isPortuguese
+										? 'Disponível'
+										: 'Available'}
+							</span>
+						</li>
+					))
+				) : (
+					<li class="empty">{isPortuguese ? 'Nenhuma página filha foi publicada ainda.' : 'No child pages are published yet.'}</li>
+				)
+			}
+		</ul>
+	</div>
+	<div class="planned-block" data-mle-section-planned>
+		<h2>{isPortuguese ? 'Documentação planejada' : 'Planned documentation'}</h2>
+		<p>
+			{isPortuguese
+				? 'Estes rótulos descrevem a cobertura documental planejada, não a disponibilidade nem a estabilidade do produto.'
+				: 'These labels describe planned documentation coverage, not product availability or stability.'}
+		</p>
+		{
+			model.plannedGroups.map((plannedGroup) => (
+				<section aria-labelledby={`planned-${section.pageId}-${plannedGroup.id}`}>
+					<h3 id={`planned-${section.pageId}-${plannedGroup.id}`}>{plannedGroup.label}</h3>
+					<ul>
+						{plannedGroup.children.map((item) => (
+							<li data-mle-navigation-availability="planned">
+								<span>{item.label}</span>
+								<small>{isPortuguese ? 'Página planejada' : 'Page planned'}</small>
+							</li>
+						))}
+					</ul>
+				</section>
+			))
+		}
+	</div>
+</section>
+
+<style>
+	.section-index {
+		--section-accent: var(--mle-border);
+		display: grid;
+		gap: var(--mle-space-6);
+		margin-block-start: var(--mle-space-6);
+	}
+
+	.section-index[data-system='core'] { --section-accent: var(--mle-core); }
+	.section-index[data-system='renderer'] { --section-accent: var(--mle-renderer); }
+	.section-index[data-system='lua-ui'] { --section-accent: var(--mle-lua-ui); }
+	.section-index[data-system='audio'] { --section-accent: var(--mle-audio); }
+	.section-index[data-system='tools'] { --section-accent: var(--mle-tools); }
+
+	.audience-guidance {
+		margin: 0;
+		padding: var(--mle-space-4);
+		border-inline-start: 0.25rem solid var(--section-accent);
+		background: var(--mle-surface-1);
+		color: var(--mle-text);
+		font-size: 1.0625rem;
+	}
+
+	h2,
+	h3,
+	ul,
+	li,
+	.planned-block > p {
+		margin: 0;
+	}
+
+	h2,
+	h3 {
+		color: var(--mle-text);
+	}
+
+	h2 {
+		font-size: 1.35rem;
+	}
+
+	h3 {
+		font-size: 1rem;
+	}
+
+	ul {
+		padding: 0;
+		border-block-start: 1px solid var(--mle-border);
+		list-style: none;
+	}
+
+	.available-block,
+	.planned-block,
+	.planned-block > section {
+		display: grid;
+		gap: var(--mle-space-3);
+	}
+
+	.available-block li,
+	.planned-block li {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		gap: var(--mle-space-3);
+		align-items: center;
+		padding: var(--mle-space-3) var(--mle-space-2);
+		border-block-end: 1px solid var(--mle-border);
+	}
+
+	.available-block li > div {
+		display: grid;
+		gap: var(--mle-space-1);
+	}
+
+	.available-block a {
+		width: fit-content;
+		color: var(--mle-text);
+		font-family: var(--mle-font-heading);
+		font-weight: 650;
+		text-decoration-color: var(--section-accent);
+		text-underline-offset: 0.2em;
+	}
+
+	.available-block small,
+	.available-block li > span,
+	.planned-block small {
+		color: var(--mle-text-muted);
+		font-family: var(--mle-font-code);
+		font-size: 0.6875rem;
+	}
+
+	.empty {
+		color: var(--mle-text-muted);
+		font-style: italic;
+	}
+
+	.planned-block {
+		padding-block-start: var(--mle-space-2);
+		border-block-start: 0.2rem solid var(--section-accent);
+	}
+
+	.planned-block > p {
+		max-width: 62ch;
+		color: var(--mle-text-muted);
+		font-size: 0.9375rem;
+	}
+
+	.planned-block > section + section {
+		margin-block-start: var(--mle-space-3);
+	}
+
+	@media (max-width: 34rem) {
+		.available-block li,
+		.planned-block li {
+			grid-template-columns: minmax(0, 1fr);
+		}
+	}
+</style>

@@ -16,17 +16,19 @@ const versionId = /(?:^|\/)versions\/([0-9a-f]{12})(?:\/|$)/.exec(route.id)?.[1]
 const version = versionId ? getVersion(versionId) : undefined;
 const data = route.entry.data;
 const pageId =
-	data.contentType === 'technical' || data.contentType === 'homepage' ? data.pageId : undefined;
+	data.contentType === 'technical' || data.contentType === 'section' || data.contentType === 'homepage'
+		? data.pageId
+		: undefined;
 const hasVersionPicker = Boolean(pageId && version);
 
 const docs = await getCollection('docs');
 const entries: AliasContentEntry[] = [];
 for (const entry of docs) {
-	if (entry.data.contentType === 'technical') {
+	if (entry.data.contentType === 'technical' || entry.data.contentType === 'section') {
 		entries.push({
 			id: entry.id,
 			data: {
-				contentType: 'technical',
+				contentType: entry.data.contentType,
 				pageId: entry.data.pageId,
 				translationStatus: entry.data.translationStatus,
 			},

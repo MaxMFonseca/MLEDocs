@@ -46,6 +46,8 @@ const manifest = [
 	},
 ] as const;
 
+const syntheticSectionRegistry = [{ pageId: 'systems', segment: 'section' }] as const;
+
 const makeTemporaryDirectory = (): string => {
 	const directory = mkdtempSync(resolve(tmpdir(), 'mle-docs-validator-'));
 	temporaryDirectories.push(directory);
@@ -57,6 +59,26 @@ const write = (root: string, relativePath: string, contents: string | Uint8Array
 	mkdirSync(dirname(path), { recursive: true });
 	writeFileSync(path, contents);
 };
+
+const sectionPage = ({
+	pageId,
+	locale,
+	commit = currentCommit,
+}: {
+	pageId: string;
+	locale: 'en' | 'pt-br';
+	commit?: string;
+}): string => `---
+title: ${locale === 'pt-br' ? `Seção ${pageId}` : `${pageId} section`}
+description: ${locale === 'pt-br' ? 'Um diretório de documentação para este snapshot.' : 'A documentation directory for this snapshot.'}
+contentType: section
+pageId: ${pageId}
+mleCommit: ${commit}
+lastVerified: '2026-08-20'
+translationStatus: ${locale === 'pt-br' ? 'current' : 'canonical'}
+${locale === 'pt-br' ? "translationSourceLastVerified: '2026-08-20'\n" : ''}---
+
+Section directory.`;
 
 const html = (body: string, head = ''): string =>
 	`<!doctype html><html><head>${head}</head><body>${body}</body></html>`;
@@ -286,7 +308,10 @@ describe('content validation', () => {
 	});
 
 	it('accepts valid multiline references and ignores bypass-looking forms inside code examples', async () => {
-		const diagnostics = await validateContent(resolve(fixtures, 'valid-content'), { manifest });
+		const diagnostics = await validateContent(resolve(fixtures, 'valid-content'), {
+			manifest: [manifest[0]],
+			sectionRegistry: syntheticSectionRegistry,
+		});
 
 		expect(diagnostics).toEqual([]);
 	});
@@ -296,6 +321,7 @@ describe('content validation', () => {
 
 		const diagnostics = await validateContent(resolve(fixtures, 'valid-content'), {
 			manifest: englishOnlyManifest,
+			sectionRegistry: syntheticSectionRegistry,
 		});
 
 		expect(diagnostics).toEqual([
@@ -313,19 +339,28 @@ describe('content validation', () => {
 	});
 
 	it('accepts redirect content through the exact shared redirect schema', async () => {
-		const diagnostics = await validateContent(resolve(fixtures, 'valid-content'), { manifest });
+		const diagnostics = await validateContent(resolve(fixtures, 'valid-content'), {
+			manifest,
+			sectionRegistry: syntheticSectionRegistry,
+		});
 
 		expect(diagnostics.some(({ path }) => path.endsWith('moved.mdx'))).toBe(false);
 	});
 
 	it('accepts canonical English and current same-revision Portuguese section pages', async () => {
-		const diagnostics = await validateContent(resolve(fixtures, 'valid-content'), { manifest });
+		const diagnostics = await validateContent(resolve(fixtures, 'valid-content'), {
+			manifest,
+			sectionRegistry: syntheticSectionRegistry,
+		});
 
 		expect(diagnostics.filter(({ path }) => path.endsWith('section.mdx'))).toEqual([]);
 	});
 
 	it('rejects a section page whose MLE commit disagrees with its version directory', async () => {
-		const diagnostics = await validateContent(resolve(fixtures, 'invalid-content'), { manifest });
+		const diagnostics = await validateContent(resolve(fixtures, 'invalid-content'), {
+			manifest,
+			sectionRegistry: syntheticSectionRegistry,
+		});
 
 		expect(diagnostics).toContainEqual(expect.objectContaining({
 			path: 'versions/c1abea3de165/section-wrong-commit.mdx',
@@ -360,7 +395,7 @@ translationSourceLastVerified: '2026-08-19'
 
 Sistemas.`);
 
-		expect(await validateContent(content, { manifest: [manifest[0]] })).toContainEqual(
+		expect(await validateContent(content, { manifest: [manifest[0]], sectionRegistry: syntheticSectionRegistry })).toContainEqual(
 			expect.objectContaining({
 				path: 'pt-br/versions/c1abea3de165/section.mdx',
 				ruleId: 'content/translation-current',
@@ -393,7 +428,7 @@ translationStatus: fallback
 
 Sistemas.`);
 
-		expect(await validateContent(content, { manifest: [manifest[0]] })).toContainEqual(
+		expect(await validateContent(content, { manifest: [manifest[0]], sectionRegistry: syntheticSectionRegistry })).toContainEqual(
 			expect.objectContaining({
 				path: 'pt-br/versions/c1abea3de165/section.mdx',
 				ruleId: 'content/schema',
@@ -434,7 +469,7 @@ translationSourceLastVerified: '2026-08-20'
 
 Sistemas.`);
 
-		expect(await validateContent(content, { manifest: [manifest[0]] })).toContainEqual(
+		expect(await validateContent(content, { manifest: [manifest[0]], sectionRegistry: syntheticSectionRegistry })).toContainEqual(
 			expect.objectContaining({
 				path: 'pt-br/versions/c1abea3de165/sistemas.mdx',
 				ruleId: 'content/translation-content-type',
@@ -475,7 +510,7 @@ translationSourceLastVerified: '2026-08-20'
 
 Sistemas técnicos.`);
 
-		expect(await validateContent(content, { manifest: [manifest[0]] })).toContainEqual(
+		expect(await validateContent(content, { manifest: [manifest[0]], sectionRegistry: syntheticSectionRegistry })).toContainEqual(
 			expect.objectContaining({
 				path: 'pt-br/versions/c1abea3de165/sistemas.mdx',
 				ruleId: 'content/translation-content-type',
@@ -483,8 +518,118 @@ Sistemas técnicos.`);
 		);
 	});
 
+	it('accepts a complete bilingual synthetic section registry', async () => {
+		const content = makeTemporaryDirectory();
+		const sectionRegistry = [
+			{ pageId: 'start', segment: 'start' },
+			{ pageId: 'systems', segment: 'systems' },
+		] as const;
+		for (const pageId of ['start', 'systems']) {
+			write(content, `versions/c1abea3de165/${pageId}.mdx`, sectionPage({ pageId, locale: 'en' }));
+			write(
+				content,
+				`pt-br/versions/c1abea3de165/${pageId}.mdx`,
+				sectionPage({ pageId, locale: 'pt-br' }),
+			);
+		}
+
+		expect(
+			await validateContent(content, { manifest: [manifest[0]], sectionRegistry }),
+		).toEqual([]);
+	});
+
+	it('reports a section pageId authored under the wrong registry route', async () => {
+		const content = makeTemporaryDirectory();
+		write(content, 'versions/c1abea3de165/section.mdx', sectionPage({ pageId: 'systems', locale: 'en' }));
+		write(
+			content,
+			'pt-br/versions/c1abea3de165/section.mdx',
+			sectionPage({ pageId: 'systems', locale: 'pt-br' }),
+		);
+
+		expect(
+			await validateContent(content, {
+				manifest: [manifest[0]],
+				sectionRegistry: [{ pageId: 'systems', segment: 'systems' }],
+			}),
+		).toEqual([
+			{
+				path: 'pt-br/versions/c1abea3de165/section.mdx',
+				ruleId: 'content/section-route',
+				message: 'section pageId systems must use route systems; found section',
+			},
+			{
+				path: 'versions/c1abea3de165/section.mdx',
+				ruleId: 'content/section-route',
+				message: 'section pageId systems must use route systems; found section',
+			},
+		]);
+	});
+
+	it('reports a missing English section hub from the explicit registry', async () => {
+		const content = makeTemporaryDirectory();
+		write(content, 'versions/c1abea3de165/systems.mdx', sectionPage({ pageId: 'systems', locale: 'en' }));
+		write(content, 'pt-br/versions/c1abea3de165/systems.mdx', sectionPage({ pageId: 'systems', locale: 'pt-br' }));
+
+		expect(
+			await validateContent(content, {
+				manifest: [manifest[0]],
+				sectionRegistry: [
+					{ pageId: 'start', segment: 'start' },
+					{ pageId: 'systems', segment: 'systems' },
+				],
+			}),
+		).toContainEqual({
+			path: 'versions/c1abea3de165',
+			ruleId: 'content/section-missing',
+			message: 'section pageId start is missing for en/c1abea3de165',
+		});
+	});
+
+	it('reports a missing Brazilian Portuguese section hub from the explicit registry', async () => {
+		const content = makeTemporaryDirectory();
+		write(content, 'versions/c1abea3de165/systems.mdx', sectionPage({ pageId: 'systems', locale: 'en' }));
+
+		expect(
+			await validateContent(content, {
+				manifest: [manifest[0]],
+				sectionRegistry: syntheticSectionRegistry,
+			}),
+		).toContainEqual({
+			path: 'pt-br/versions/c1abea3de165',
+			ruleId: 'content/section-missing',
+			message: 'section pageId systems is missing for pt-br/c1abea3de165',
+		});
+	});
+
+	it('reports duplicate and unexpected real section identities without inferring from paths', async () => {
+		const content = makeTemporaryDirectory();
+		write(content, 'versions/c1abea3de165/first.mdx', sectionPage({ pageId: 'systems', locale: 'en' }));
+		write(content, 'versions/c1abea3de165/nested/second.mdx', sectionPage({ pageId: 'systems', locale: 'en' }));
+		write(content, 'versions/c1abea3de165/start-here/index.mdx', sectionPage({ pageId: 'unregistered', locale: 'en' }));
+		write(content, 'pt-br/versions/c1abea3de165/systems.mdx', sectionPage({ pageId: 'systems', locale: 'pt-br' }));
+
+		const diagnostics = await validateContent(content, {
+			manifest: [manifest[0]],
+			sectionRegistry: syntheticSectionRegistry,
+		});
+
+		expect(diagnostics).toContainEqual(expect.objectContaining({
+			path: 'versions/c1abea3de165/nested/second.mdx',
+			ruleId: 'content/duplicate-page-id',
+		}));
+		expect(diagnostics).toContainEqual({
+			path: 'versions/c1abea3de165/start-here/index.mdx',
+			ruleId: 'content/section-unexpected',
+			message: 'section pageId unregistered is not declared in the navigation registry',
+		});
+	});
+
 	it('reports each content invariant with stable rule IDs and ordering', async () => {
-		const diagnostics = await validateContent(resolve(fixtures, 'invalid-content'), { manifest });
+		const diagnostics = await validateContent(resolve(fixtures, 'invalid-content'), {
+			manifest,
+			sectionRegistry: syntheticSectionRegistry,
+		});
 		const ruleIds = diagnostics.map((diagnostic: Diagnostic) => diagnostic.ruleId);
 
 		expect(ruleIds).toEqual(expect.arrayContaining([
@@ -643,7 +788,7 @@ Sistemas técnicos.`);
 		const content = makeTemporaryDirectory();
 		write(content, 'versions/c1abea3de165/oversized.mdx', Buffer.alloc(8 * 1024 * 1024 + 1, 0x20));
 
-		expect(await validateContent(content, { manifest })).toEqual([
+		expect(await validateContent(content, { manifest, sectionRegistry: [] })).toEqual([
 			expect.objectContaining({
 				path: 'versions/c1abea3de165/oversized.mdx',
 				ruleId: 'content/file-size',
@@ -654,6 +799,7 @@ Sistemas técnicos.`);
 	it('bounds content traversal depth deterministically', async () => {
 		const diagnostics = await validateContent(resolve(fixtures, 'valid-content'), {
 			manifest,
+			sectionRegistry: [],
 			limits: { maxDepth: 1 },
 		});
 

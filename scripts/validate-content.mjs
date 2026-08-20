@@ -9,6 +9,7 @@ import {
 	technicalPageMetadataSchema,
 } from '../src/lib/content/schema.ts';
 import { versions } from '../src/data/versions.ts';
+import { navigationSections } from '../src/data/navigation.ts';
 import { validateVersions } from '../src/lib/versions/manifest.ts';
 import { readVerifiedFile, walkBounded } from './validator-filesystem.mjs';
 
@@ -447,6 +448,7 @@ const metadataLine = (source, issue) => {
 
 export const validateContent = async (contentDirectory = resolve('src/content/docs'), options = {}) => {
 	const manifest = options.manifest ?? versions;
+	const sectionRegistry = options.sectionRegistry ?? navigationSections;
 	const root = resolve(contentDirectory);
 	const diagnostics = [];
 	let rootReal;
@@ -482,6 +484,11 @@ export const validateContent = async (contentDirectory = resolve('src/content/do
 		}
 		const locale = match[1] ? 'pt-br' : 'en';
 		const versionId = match[2];
+		const authoredRoute = match[3] === 'index'
+			? ''
+			: match[3].endsWith('/index')
+				? match[3].slice(0, -'/index'.length)
+				: match[3];
 		const version = versionsById.get(versionId);
 		const read = await readVerifiedFile(rootReal, path, { maxBytes: limits.maxTextBytes, encoding: 'utf8' });
 		if (!read.ok) {
@@ -582,7 +589,7 @@ export const validateContent = async (contentDirectory = resolve('src/content/do
 		}
 
 		if (data.contentType !== 'redirect') {
-			pages.push({ path: displayPath, locale, versionId, contentType: data.contentType, metadata });
+			pages.push({ path: displayPath, locale, versionId, authoredRoute, contentType: data.contentType, metadata });
 		}
 	}
 
@@ -636,6 +643,54 @@ export const validateContent = async (contentDirectory = resolve('src/content/do
 		}
 		if (page.metadata.translationStatus === 'stale' && page.metadata.translationSourceLastVerified === english.metadata.lastVerified) {
 			diagnostics.push({ path: page.path, ruleId: 'content/translation-stale', message: 'stale translation source date must differ from the English revision' });
+		}
+	}
+
+	const expectedSectionIds = new Set(sectionRegistry.map((section) => section.pageId));
+	for (const page of pages.filter((candidate) => candidate.contentType === 'section')) {
+		if (
+			versionsById.has(page.versionId) &&
+			versionsById.get(page.versionId)?.locales.includes(page.locale) &&
+			!expectedSectionIds.has(page.metadata.pageId)
+		) {
+			diagnostics.push({
+				path: page.path,
+				ruleId: 'content/section-unexpected',
+				message: `section pageId ${page.metadata.pageId} is not declared in the navigation registry`,
+			});
+		}
+	}
+
+	for (const version of manifest) {
+		for (const locale of version.locales) {
+			const sectionPages = pages.filter(
+				(page) =>
+					page.contentType === 'section' &&
+					page.versionId === version.id &&
+					page.locale === locale,
+			);
+			for (const section of sectionRegistry) {
+				const matchingPages = sectionPages.filter(
+					(page) => page.metadata.pageId === section.pageId,
+				);
+				if (matchingPages.length > 0) {
+					for (const page of matchingPages) {
+						if (page.authoredRoute === section.segment) continue;
+						diagnostics.push({
+							path: page.path,
+							ruleId: 'content/section-route',
+							message: `section pageId ${section.pageId} must use route ${section.segment}; found ${page.authoredRoute || '(root)'}`,
+						});
+					}
+					continue;
+				}
+				const prefix = locale === 'pt-br' ? 'pt-br/' : '';
+				diagnostics.push({
+					path: `${prefix}versions/${version.id}`,
+					ruleId: 'content/section-missing',
+					message: `section pageId ${section.pageId} is missing for ${locale}/${version.id}`,
+				});
+			}
 		}
 	}
 

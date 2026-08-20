@@ -1,0 +1,142 @@
+---
+import { navigationSections } from '../../data/navigation';
+import type { Locale } from '../../data/taxonomy';
+import type { VersionEntry } from '../../data/versions';
+import { docsPath } from '../../lib/links/base';
+
+interface Props {
+	version: VersionEntry;
+	locale: Locale;
+}
+
+const { version, locale } = Astro.props;
+const isPortuguese = locale === 'pt-br';
+const base = import.meta.env.BASE_URL;
+---
+
+<section class="section-directory" data-mle-section-directory aria-labelledby="section-directory-title">
+	<header>
+		<p>{isPortuguese ? 'Sete áreas, um snapshot fixado' : 'Seven areas, one pinned snapshot'}</p>
+		<h2 id="section-directory-title">
+			{isPortuguese ? 'Diretório da documentação' : 'Documentation directory'}
+		</h2>
+	</header>
+	<ol>
+		{
+			navigationSections.map((section, index) => (
+				<li data-system={section.accent}>
+					<span aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+					<div>
+						<h3>
+							<a href={docsPath({ base, locale, versionId: version.id, slug: section.segment })}>
+								{section.labels[locale]}
+							</a>
+						</h3>
+						<p>{section.summaries[locale]}</p>
+					</div>
+					<small>{isPortuguese ? 'Abrir seção' : 'Open section'} <span aria-hidden="true">→</span></small>
+				</li>
+			))
+		}
+	</ol>
+</section>
+
+<style>
+	.section-directory {
+		display: grid;
+		grid-template-columns: minmax(12rem, 0.55fr) minmax(0, 1fr);
+		gap: var(--mle-space-7);
+	}
+
+	header > p {
+		margin: 0 0 var(--mle-space-2);
+		color: var(--mle-tools);
+		font-family: var(--mle-font-code);
+		font-size: 0.75rem;
+		font-weight: 700;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+	}
+
+	h2,
+	h3 {
+		color: var(--mle-text);
+	}
+
+	h2 {
+		margin: 0;
+		font-size: clamp(1.6rem, 3vw, 2.4rem);
+		line-height: 1.1;
+	}
+
+	ol {
+		margin: 0;
+		padding: 0;
+		border-block-start: 1px solid var(--mle-border);
+		list-style: none;
+	}
+
+	li {
+		--section-accent: var(--mle-border);
+		display: grid;
+		grid-template-columns: 2rem minmax(0, 1fr) auto;
+		gap: var(--mle-space-3);
+		align-items: start;
+		padding: var(--mle-space-4) 0 var(--mle-space-4) var(--mle-space-3);
+		border-block-end: 1px solid var(--mle-border);
+		border-inline-start: 0.2rem solid var(--section-accent);
+	}
+
+	li[data-system='core'] { --section-accent: var(--mle-core); }
+	li[data-system='renderer'] { --section-accent: var(--mle-renderer); }
+	li[data-system='lua-ui'] { --section-accent: var(--mle-lua-ui); }
+	li[data-system='audio'] { --section-accent: var(--mle-audio); }
+	li[data-system='tools'] { --section-accent: var(--mle-tools); }
+
+	li > span,
+	small {
+		color: var(--mle-text-muted);
+		font-family: var(--mle-font-code);
+		font-size: 0.6875rem;
+	}
+
+	h3,
+	li p {
+		margin: 0;
+	}
+
+	h3 a {
+		color: var(--mle-text);
+		text-decoration-color: var(--section-accent);
+		text-underline-offset: 0.2em;
+	}
+
+	li p {
+		margin-block-start: var(--mle-space-1);
+		font-size: 0.9375rem;
+		line-height: 1.45;
+	}
+
+	small {
+		padding-block-start: 0.2rem;
+		white-space: nowrap;
+	}
+
+	@media (max-width: 56rem) {
+		.section-directory {
+			grid-template-columns: minmax(0, 1fr);
+			gap: var(--mle-space-5);
+		}
+	}
+
+	@media (max-width: 38rem) {
+		li {
+			grid-template-columns: 1.5rem minmax(0, 1fr);
+		}
+
+		small {
+			grid-column: 2;
+			white-space: normal;
+		}
+	}
+</style>

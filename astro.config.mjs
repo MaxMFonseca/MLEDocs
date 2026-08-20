@@ -26,6 +26,7 @@ export default defineConfig({
       components: {
         Header: './src/components/overrides/Header.astro',
         PageTitle: './src/components/overrides/PageTitle.astro',
+        Sidebar: './src/components/overrides/Sidebar.astro',
         Hero: './src/components/overrides/NotFound.astro',
         FallbackContentNotice: './src/components/status/TranslationNotice.astro',
       },

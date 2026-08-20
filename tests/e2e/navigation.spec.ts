@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
 
 const siteOrigin = process.env.MLE_DOCS_E2E_ORIGIN ?? 'http://127.0.0.1:4321';
 const versionId = 'c1abea3de165';
@@ -17,7 +18,15 @@ const homepageCases = [
     maturity: 'In development',
     alt: 'In-game scene built alongside MLE',
     systemLabels: ['Core runtime', 'Rendering', 'Models and animation', 'Lua and UI', 'Audio', 'Window and input'],
-    sidebarLabels: ['Start Here', 'Engine Systems'],
+    sidebarLabels: [
+      'Start Here',
+      'Concepts',
+      'Engine Systems',
+      'Practical Guides',
+      'Reference',
+      'Tools and Test Applications',
+      'Contributing',
+    ],
   },
   {
     locale: 'Português (Brasil)',
@@ -27,7 +36,15 @@ const homepageCases = [
     maturity: 'Em desenvolvimento',
     alt: 'Cena do jogo desenvolvido junto com o MLE',
     systemLabels: ['Núcleo do runtime', 'Renderização', 'Modelos e animação', 'Lua e UI', 'Áudio', 'Janela e entrada'],
-    sidebarLabels: ['Comece aqui', 'Sistemas do motor'],
+    sidebarLabels: [
+      'Comece aqui',
+      'Conceitos',
+      'Sistemas do motor',
+      'Guias práticos',
+      'Referência',
+      'Ferramentas e aplicativos de teste',
+      'Como contribuir',
+    ],
   },
 ] as const;
 
@@ -78,11 +95,111 @@ for (const homepageCase of homepageCases) {
     }
 
     for (const label of homepageCase.sidebarLabels) {
-      await expect(page.locator('nav').getByText(label, { exact: true })).toBeVisible();
+      await expect(page.locator('nav').getByRole('link', { name: label, exact: true })).toBeVisible();
     }
 
     await expect(homepage.locator('blockquote')).toHaveCount(0);
     await expect(homepage.locator('[data-mle-metrics], [data-mle-testimonial]')).toHaveCount(0);
+  });
+}
+
+const sectionCases = [
+  { segment: 'start-here', pageId: 'start', en: 'Start Here', pt: 'Comece aqui' },
+  { segment: 'concepts', pageId: 'concepts', en: 'Concepts', pt: 'Conceitos' },
+  { segment: 'systems', pageId: 'systems', en: 'Engine Systems', pt: 'Sistemas do motor' },
+  { segment: 'guides', pageId: 'guides', en: 'Practical Guides', pt: 'Guias práticos' },
+  { segment: 'reference', pageId: 'reference', en: 'Reference', pt: 'Referência' },
+  { segment: 'tools', pageId: 'tools', en: 'Tools and Test Applications', pt: 'Ferramentas e aplicativos de teste' },
+  { segment: 'contributing', pageId: 'contributing', en: 'Contributing', pt: 'Como contribuir' },
+] as const;
+
+for (const localeCase of [
+  { name: 'English', prefix: '', label: (section: (typeof sectionCases)[number]) => section.en },
+  { name: 'Brazilian Portuguese', prefix: '/pt-br', label: (section: (typeof sectionCases)[number]) => section.pt },
+]) {
+  test(`homepage exposes seven immutable section destinations in ${localeCase.name}`, async ({ page }) => {
+    await page.goto(pageUrl(`${localeCase.prefix}/versions/${versionId}/`));
+    const directory = page.locator('[data-mle-section-directory]');
+    await expect(directory.getByRole('link')).toHaveCount(7);
+
+    for (const section of sectionCases) {
+      await expect(directory.getByRole('link', { name: localeCase.label(section) })).toHaveAttribute(
+        'href',
+        `/MLEDocs${localeCase.prefix}/versions/${versionId}/${section.segment}/`,
+      );
+    }
+  });
+
+  test(`all seven physical ${localeCase.name} hubs preserve commit and locale`, async ({ page }) => {
+    for (const section of sectionCases) {
+      const path = `${localeCase.prefix}/versions/${versionId}/${section.segment}/`;
+      const response = await page.goto(pageUrl(path));
+      expect(response?.ok(), path).toBe(true);
+      await expect(page).toHaveURL(pageUrl(path));
+      await expect(page.locator('[data-mle-section-index]')).toHaveAttribute(
+        'data-mle-section-index',
+        section.pageId,
+      );
+      await expect(page.locator('[data-mle-maturity]')).toHaveCount(0);
+      await expect(page.locator('[data-mle-version-picker]')).toBeVisible();
+      await expect(page.locator('[data-mle-page-permanent-link]')).toHaveAttribute(
+        'href',
+        `/MLEDocs${path}`,
+      );
+      if (localeCase.prefix === '/pt-br') {
+        await expect(page.locator('[data-mle-translation-status="current"]')).toBeVisible();
+      }
+      await expect(page.locator('[data-mle-section-planned] a')).toHaveCount(0);
+    }
+  });
+}
+
+for (const journey of [
+  {
+    section: 'Start Here',
+    child: 'Project status',
+    sectionPath: `/versions/${versionId}/start-here/`,
+    childPath: `/versions/${versionId}/start-here/project-status/`,
+  },
+  {
+    section: 'Engine Systems',
+    child: 'Renderer',
+    sectionPath: `/versions/${versionId}/systems/`,
+    childPath: `/versions/${versionId}/systems/renderer/`,
+  },
+]) {
+  test(`${journey.section} reaches its authored child within two homepage decisions`, async ({ page }) => {
+    await page.goto(pageUrl(`/versions/${versionId}/`));
+    await page.locator('[data-mle-section-directory]').getByRole('link', { name: journey.section }).click();
+    await expect(page).toHaveURL(pageUrl(journey.sectionPath));
+    await page.locator('[data-mle-section-available]').getByRole('link', { name: journey.child }).click();
+    await expect(page).toHaveURL(pageUrl(journey.childPath));
+  });
+}
+
+for (const { name, path } of [
+  { name: 'English', path: `/versions/${versionId}/concepts/` },
+  { name: 'Brazilian Portuguese', path: `/pt-br/versions/${versionId}/tools/` },
+]) {
+  test(`360px ${name} section hub has no horizontal overflow`, async ({ page }) => {
+    await page.setViewportSize({ width: 360, height: 800 });
+    await page.goto(pageUrl(path));
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      ),
+    ).toBeLessThanOrEqual(1);
+  });
+}
+
+for (const { name, path } of [
+  { name: 'English systems hub', path: `/versions/${versionId}/systems/` },
+  { name: 'Brazilian Portuguese tools hub', path: `/pt-br/versions/${versionId}/tools/` },
+]) {
+  test(`${name} is axe-clean`, async ({ page }) => {
+    await page.goto(pageUrl(path));
+    const accessibility = await new AxeBuilder({ page }).analyze();
+    expect(accessibility.violations).toEqual([]);
   });
 }
 
@@ -101,6 +218,13 @@ test('keeps every homepage internal destination base-aware and marks planned sec
   expect(internalHrefs.every((href) => href.startsWith('/MLEDocs/'))).toBe(true);
   expect(new Set(internalHrefs)).toEqual(
     new Set([
+      `/MLEDocs/versions/${versionId}/start-here/`,
+      `/MLEDocs/versions/${versionId}/concepts/`,
+      `/MLEDocs/versions/${versionId}/systems/`,
+      `/MLEDocs/versions/${versionId}/guides/`,
+      `/MLEDocs/versions/${versionId}/reference/`,
+      `/MLEDocs/versions/${versionId}/tools/`,
+      `/MLEDocs/versions/${versionId}/contributing/`,
       `/MLEDocs/versions/${versionId}/start-here/project-status/`,
       `/MLEDocs/versions/${versionId}/systems/renderer/`,
     ]),

@@ -2,8 +2,8 @@
 import type { Locale } from '../../data/taxonomy';
 import { resolveVersionEntryFromRouteId } from '../../lib/versions/manifest';
 import AudiencePaths from './AudiencePaths.astro';
-import CapabilityIndex from './CapabilityIndex.astro';
 import HomeHero from './HomeHero.astro';
+import SectionDirectory from './SectionDirectory.astro';
 import SystemMap from './SystemMap.astro';
 
 interface Props {
@@ -17,6 +17,6 @@ const version = resolveVersionEntryFromRouteId(Astro.locals.starlightRoute.id);
 <div data-mle-homepage data-mle-homepage-version={version.id}>
 	<HomeHero {version} {locale} />
 	<AudiencePaths {version} {locale} />
-	<CapabilityIndex {version} {locale} />
+	<SectionDirectory {version} {locale} />
 	<SystemMap {version} {locale} />
 </div>

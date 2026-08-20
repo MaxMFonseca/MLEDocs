@@ -18,7 +18,7 @@ const permanentPath = version ? docsPath({ locale, versionId: version.id, slug: 
 const data = route.entry.data;
 const status: TranslationStatus = route.isFallback
 	? 'fallback'
-	: data.contentType === 'technical' || data.contentType === 'homepage'
+	: data.contentType === 'technical' || data.contentType === 'section' || data.contentType === 'homepage'
 		? data.translationStatus
 		: 'canonical';
 ---
@@ -45,7 +45,7 @@ const status: TranslationStatus = route.isFallback
 	)
 }
 {
-	version && !route.isFallback && (data.contentType === 'technical' || data.contentType === 'homepage') && (
+	version && !route.isFallback && (data.contentType === 'technical' || data.contentType === 'section' || data.contentType === 'homepage') && (
 		<TranslationNotice {locale} {contentLocale} {version} {status} />
 	)
 }
