@@ -3,6 +3,7 @@ import DefaultPageTitle from '@astrojs/starlight/components/PageTitle.astro';
 import type { Locale, TranslationStatus } from '../../data/taxonomy';
 import { docsPath } from '../../lib/links/base';
 import { getVersion } from '../../lib/versions/manifest';
+import VersionBreadcrumbs from '../discovery/VersionBreadcrumbs.astro';
 import MaturityBadge from '../status/MaturityBadge.astro';
 import TranslationNotice from '../status/TranslationNotice.astro';
 
@@ -16,6 +17,10 @@ const pageSlug = versionId
 	: '';
 const permanentPath = version ? docsPath({ locale, versionId: version.id, slug: pageSlug }) : undefined;
 const data = route.entry.data;
+const pageId =
+	data.contentType === 'technical' || data.contentType === 'section' || data.contentType === 'homepage'
+		? data.pageId
+		: undefined;
 const status: TranslationStatus = route.isFallback
 	? 'fallback'
 	: data.contentType === 'technical' || data.contentType === 'section' || data.contentType === 'homepage'
@@ -23,6 +28,7 @@ const status: TranslationStatus = route.isFallback
 		: 'canonical';
 ---
 
+<VersionBreadcrumbs routeId={route.id} {locale} {pageId} pageTitle={data.title} />
 <DefaultPageTitle />
 {
 	version && (

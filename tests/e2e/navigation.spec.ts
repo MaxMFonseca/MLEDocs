@@ -489,6 +489,92 @@ test('direct renderer deep link survives reload without changing commit or route
   await expect(page.locator('[data-mle-permanent-link]')).toHaveText(versionId);
 });
 
+for (const breadcrumbCase of [
+  {
+    name: 'English renderer',
+    path: `/versions/${versionId}/systems/renderer/`,
+    ariaLabel: 'Breadcrumb',
+    labels: ['English', versionId, 'Engine Systems', 'Renderer overview'],
+    hrefs: [
+      `/MLEDocs/versions/${versionId}/`,
+      `/MLEDocs/versions/${versionId}/`,
+      `/MLEDocs/versions/${versionId}/systems/`,
+    ],
+  },
+  {
+    name: 'Portuguese fallback renderer',
+    path: `/pt-br/versions/${versionId}/systems/renderer/`,
+    ariaLabel: 'Caminho de navegação',
+    labels: ['Português (Brasil)', versionId, 'Sistemas do motor', 'Renderer overview'],
+    hrefs: [
+      `/MLEDocs/pt-br/versions/${versionId}/`,
+      `/MLEDocs/pt-br/versions/${versionId}/`,
+      `/MLEDocs/pt-br/versions/${versionId}/systems/`,
+    ],
+  },
+] as const) {
+  test(`${breadcrumbCase.name} breadcrumb preserves label order, commit, and focus`, async ({ page }) => {
+    await page.setViewportSize({ width: 360, height: 800 });
+    await page.goto(pageUrl(breadcrumbCase.path));
+
+    const breadcrumb = page.getByRole('navigation', { name: breadcrumbCase.ariaLabel });
+    await expect(breadcrumb.locator('[data-mle-breadcrumb-label]')).toHaveText(breadcrumbCase.labels);
+    await expect(breadcrumb.locator('a')).toHaveCount(3);
+    for (const [index, href] of breadcrumbCase.hrefs.entries()) {
+      await expect(breadcrumb.locator('a').nth(index)).toHaveAttribute('href', href);
+    }
+    await expect(breadcrumb.getByText(breadcrumbCase.labels[3], { exact: true })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    await expect(breadcrumb.locator('a').nth(1)).toHaveAttribute('title', fullCommit);
+    await breadcrumb.locator('a').nth(2).focus();
+    await expect(breadcrumb.locator('a').nth(2)).toBeFocused();
+    expect(
+      await breadcrumb.locator('a').nth(2).evaluate((element) =>
+        Number.parseFloat(getComputedStyle(element).outlineWidth),
+      ),
+    ).toBeGreaterThanOrEqual(2);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth),
+    ).toBeLessThanOrEqual(1);
+  });
+}
+
+test('unknown-version and unrelated 404 routes do not invent a breadcrumb hierarchy', async ({ page }) => {
+  for (const path of ['/pt-br/versions/ffffffffffff/guia/', '/pt-br/nao-existe/']) {
+    await page.goto(pageUrl(path));
+    await expect(page.locator('[data-mle-version-breadcrumbs]')).toHaveCount(0);
+  }
+});
+
+test('Portuguese section hubs keep their exact translation breadcrumb current', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto(pageUrl(`/pt-br/versions/${versionId}/systems/`));
+
+  const breadcrumb = page.getByRole('navigation', { name: 'Caminho de navegação' });
+  await expect(breadcrumb.locator('[data-mle-breadcrumb-label]')).toHaveText([
+    'Português (Brasil)',
+    versionId,
+    'Sistemas do motor',
+  ]);
+  await expect(breadcrumb.locator('a')).toHaveCount(2);
+  await expect(breadcrumb.getByText('Sistemas do motor', { exact: true })).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
+});
+
+test('version overview breadcrumbs retain locale and commit context without self-links', async ({ page }) => {
+  await page.goto(pageUrl(`/versions/${versionId}/`));
+
+  const breadcrumb = page.getByRole('navigation', { name: 'Breadcrumb' });
+  await expect(breadcrumb.locator('[data-mle-breadcrumb-label]')).toHaveText(['English', versionId]);
+  await expect(breadcrumb.locator('a')).toHaveCount(0);
+  await expect(breadcrumb.getByText(versionId, { exact: true })).toHaveAttribute('aria-current', 'page');
+  await expect(breadcrumb.getByText(versionId, { exact: true })).toHaveAttribute('title', fullCommit);
+});
+
 test('mobile menu opens from the keyboard and Escape restores focus to its named control', async ({
   page,
 }) => {

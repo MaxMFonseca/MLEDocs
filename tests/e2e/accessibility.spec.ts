@@ -454,3 +454,17 @@ test('360px renderer reflow keeps controls and technical content inside the view
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(accessibility.violations).toEqual([]);
 });
+
+test('version-aware breadcrumbs remain semantic and axe-clean on exact and fallback routes', async ({ page }) => {
+  for (const { path, name } of [
+    { path: '/versions/c1abea3de165/systems/renderer/', name: 'Breadcrumb' },
+    { path: '/pt-br/versions/c1abea3de165/systems/renderer/', name: 'Caminho de navegação' },
+  ]) {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(pageUrl(path));
+    const breadcrumb = page.getByRole('navigation', { name });
+    await expect(breadcrumb.locator('ol')).toBeVisible();
+    await expect(breadcrumb.locator('[aria-hidden="true"]')).not.toHaveCount(0);
+    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  }
+});
