@@ -90,21 +90,29 @@ describe('version-aware breadcrumb model', () => {
 		]);
 	});
 
-	it('resolves an archived non-systems section by stable identities despite reversed fixtures', () => {
-		const reversedSections = [...navigationSections].reverse();
+	it('resolves a reordered current non-systems section by stable identities', () => {
+		const reorderedSections = [...navigationSections].reverse();
+		const reorderedVersions = [archived, current];
+		const originalIndex = navigationSections.findIndex((section) => section.pageId === 'tools');
+		const reorderedIndex = reorderedSections.findIndex((section) => section.pageId === 'tools');
+		const originalVersionIndex = [current, archived].findIndex((version) => version.id === current.id);
+		const reorderedVersionIndex = reorderedVersions.findIndex((version) => version.id === current.id);
+		expect(originalIndex).not.toBe(reorderedIndex);
+		expect(originalVersionIndex).not.toBe(reorderedVersionIndex);
+
 		const model = buildBreadcrumbModel({
-			route: parseDocumentationRoute('pt-br/versions/aaaaaaaaaaaa/guides/build-workflow', 'pt-br'),
-			pageId: 'build-workflow',
-			pageTitle: 'Build workflow',
-			versions: [archived, current],
-			sections: reversedSections,
+			route: parseDocumentationRoute('pt-br/versions/c1abea3de165/tools/core-suite', 'pt-br'),
+			pageId: 'core-suite',
+			pageTitle: 'Core suite',
+			versions: reorderedVersions,
+			sections: reorderedSections,
 		});
 
 		expect(model).toEqual([
-			{ label: 'Português (Brasil)', href: '/MLEDocs/pt-br/versions/aaaaaaaaaaaa/' },
-			{ label: 'aaaaaaaaaaaa', href: '/MLEDocs/pt-br/versions/aaaaaaaaaaaa/', title: archived.commit },
-			{ label: 'Guias práticos', href: '/MLEDocs/pt-br/versions/aaaaaaaaaaaa/guides/' },
-			{ label: 'Build workflow', current: true },
+			{ label: 'Português (Brasil)', href: '/MLEDocs/pt-br/versions/c1abea3de165/' },
+			{ label: 'c1abea3de165', href: '/MLEDocs/pt-br/versions/c1abea3de165/', title: current.commit },
+			{ label: 'Ferramentas e aplicativos de teste', href: '/MLEDocs/pt-br/versions/c1abea3de165/tools/' },
+			{ label: 'Core suite', current: true },
 		]);
 	});
 
