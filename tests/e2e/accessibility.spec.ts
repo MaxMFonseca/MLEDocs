@@ -413,6 +413,23 @@ test('fallback and maturity statuses remain explicit without their color or deco
   await expect(fallback).toContainText('Commit fixado: c1abea3de165');
 });
 
+test('styles dynamically listed unknown-version links with the MLE accent', async ({ page }) => {
+  await page.goto(pageUrl('/pt-br/versions/ffffffffffff/guia/'));
+
+  const themePicker = page.locator('header starlight-theme-select select');
+  const availableVersion = page
+    .locator('[data-mle-available-list]')
+    .getByRole('link', { name: /c1abea3de165/ });
+
+  for (const { theme, expectedColor } of [
+    { theme: 'dark', expectedColor: 'rgb(237, 101, 173)' },
+    { theme: 'light', expectedColor: 'rgb(168, 47, 112)' },
+  ]) {
+    await themePicker.selectOption(theme);
+    await expect(availableVersion).toHaveCSS('color', expectedColor);
+  }
+});
+
 test('360px renderer reflow keeps controls and technical content inside the viewport', async ({
   page,
 }) => {
