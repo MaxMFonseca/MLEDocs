@@ -1,0 +1,795 @@
+---
+// Pinned adaptation of @astrojs/starlight 0.41.5 (MIT), installed at
+// node_modules/@astrojs/starlight/components/Search.astro. The local boundary adds only MLE search
+// scope controls, Pagefind filters/language merging, and immutable-route result context.
+import { Icon } from '@astrojs/starlight/components';
+import project from 'virtual:starlight/project-context';
+
+const isPortuguese = Astro.locals.starlightRoute.locale === 'pt-br';
+const searchLabels = {
+	scopeActive: isPortuguese
+		? Astro.locals.t('mle.search.scopeActive')
+		: 'Current commit and language',
+	scopeAll: isPortuguese
+		? Astro.locals.t('mle.search.scopeAll')
+		: 'All commits and languages',
+	versionBadge: isPortuguese ? Astro.locals.t('mle.search.versionBadge') : 'Commit',
+	languageBadge: isPortuguese ? Astro.locals.t('mle.search.languageBadge') : 'Language',
+	resultsContext: isPortuguese
+		? Astro.locals.t('mle.search.resultsContext')
+		: 'Results context',
+	languageNames: isPortuguese
+		? { en: 'Inglês', 'pt-br': 'Português (Brasil)' }
+		: { en: 'English', 'pt-br': 'Brazilian Portuguese' },
+	unknownVersion: isPortuguese ? 'Commit desconhecido' : 'Unknown commit',
+	unknownLanguage: isPortuguese ? 'Idioma desconhecido' : 'Unknown language',
+};
+
+const pagefindTranslations = {
+	placeholder: Astro.locals.t('search.label'),
+	...Object.fromEntries(
+		Object.entries(Astro.locals.t.all())
+			.filter(([key]) => key.startsWith('pagefind.'))
+			.map(([key, value]) => [key.replace('pagefind.', ''), value])
+	),
+};
+
+const dataAttributes: DOMStringMap = {
+	'data-translations': JSON.stringify(pagefindTranslations),
+	'data-search-labels': JSON.stringify(searchLabels),
+};
+if (project.trailingSlash === 'never') dataAttributes['data-strip-trailing-slash'] = '';
+---
+
+<site-search class={Astro.props.class} {...dataAttributes}>
+	<button
+		data-open-modal
+		disabled
+		aria-label={Astro.locals.t('search.label')}
+		aria-keyshortcuts="Control+K"
+	>
+		<Icon name="magnifier" />
+		<span class="sl-hidden md:sl-block" aria-hidden="true">{Astro.locals.t('search.label')}</span>
+		<kbd class="sl-hidden md:sl-flex" style="display: none;">
+			<kbd>{Astro.locals.t('search.ctrlKey')}</kbd><kbd>K</kbd>
+		</kbd>
+	</button>
+
+	<dialog style="padding:0" aria-label={Astro.locals.t('search.label')}>
+		<div class="dialog-frame sl-flex">
+			{
+				/* TODO: Make the layout of this button flexible to accommodate different word lengths. Currently hard-coded for English: “Cancel” */
+			}
+			<button data-close-modal class="sl-flex md:sl-hidden">
+				{Astro.locals.t('search.cancelLabel')}
+			</button>
+			{
+				import.meta.env.DEV ? (
+					<div style="margin: auto; text-align: center; white-space: pre-line;" dir="ltr">
+						<p>{Astro.locals.t('search.devWarning')}</p>
+					</div>
+				) : (
+					<div class="search-container">
+						<fieldset class="search-scope" data-mle-search-scope>
+							<legend>{searchLabels.resultsContext}</legend>
+							<label>
+								<input type="radio" name="mle-search-scope" value="active" checked />
+								<span>{searchLabels.scopeActive}</span>
+							</label>
+							<label>
+								<input type="radio" name="mle-search-scope" value="all" />
+								<span>{searchLabels.scopeAll}</span>
+							</label>
+						</fieldset>
+						<p class="sr-only" aria-live="polite" data-mle-search-scope-status>
+							{searchLabels.scopeActive}
+						</p>
+						<div id="starlight__search" />
+					</div>
+				)
+			}
+		</div>
+	</dialog>
+</site-search>
+
+{
+	/**
+	 * This is intentionally inlined to avoid briefly showing an invalid shortcut.
+	 * Purposely using the deprecated `navigator.platform` property to detect Apple devices, as the
+	 * user agent is spoofed by some browsers when opening the devtools.
+	 */
+}
+<script is:inline>
+	(() => {
+		const openBtn = document.querySelector('button[data-open-modal]');
+		const shortcut = openBtn?.querySelector('kbd');
+		if (!openBtn || !(shortcut instanceof HTMLElement)) return;
+		const platformKey = shortcut.querySelector('kbd');
+		if (platformKey && /(Mac|iPhone|iPod|iPad)/i.test(navigator.platform)) {
+			platformKey.textContent = '⌘';
+			openBtn.setAttribute('aria-keyshortcuts', 'Meta+K');
+		}
+		shortcut.style.display = '';
+	})();
+</script>
+
+<script>
+	// @ts-expect-error — Starlight 0.41.5 does not publish this internal virtual module to user code.
+	import { pagefindUserConfig } from 'virtual:starlight/pagefind-config';
+	import { versions } from '../../data/versions';
+	import {
+		buildSearchContext,
+		describeSearchResult,
+		type SearchLabels,
+		type SearchScope,
+	} from '../../lib/search/search-scope-model';
+
+	interface PagefindResultData {
+		url: string;
+		meta?: Record<string, string>;
+		sub_results: Array<{ url: string }>;
+	}
+
+	interface PagefindUIInstance {
+		triggerFilters(filters: Record<string, string | string[]>): void;
+		destroy(): void;
+	}
+
+	class SiteSearch extends HTMLElement {
+		constructor() {
+			super();
+			const openBtn = this.querySelector<HTMLButtonElement>('button[data-open-modal]')!;
+			const closeBtn = this.querySelector<HTMLButtonElement>('button[data-close-modal]')!;
+			const dialog = this.querySelector('dialog')!;
+			const dialogFrame = this.querySelector('.dialog-frame')!;
+			const searchRoot = this.querySelector<HTMLElement>('#starlight__search');
+			const scopeInputs = [...this.querySelectorAll<HTMLInputElement>('[name="mle-search-scope"]')];
+			const scopeStatus = this.querySelector<HTMLElement>('[data-mle-search-scope-status]');
+			const activeContext = buildSearchContext({
+				pathname: window.location.pathname,
+				versions,
+				base: import.meta.env.BASE_URL,
+			});
+
+			let labels: SearchLabels & {
+				scopeActive: string;
+				scopeAll: string;
+				resultsContext: string;
+				unknownVersion: string;
+				unknownLanguage: string;
+			} = {
+				scopeActive: 'Current commit and language',
+				scopeAll: 'All commits and languages',
+				versionBadge: 'Commit',
+				languageBadge: 'Language',
+				resultsContext: 'Results context',
+				languageNames: { en: 'English', 'pt-br': 'Brazilian Portuguese' },
+				unknownVersion: 'Unknown commit',
+				unknownLanguage: 'Unknown language',
+			};
+			try {
+				labels = { ...labels, ...JSON.parse(this.dataset.searchLabels || '{}') };
+			} catch {}
+
+			let scope: SearchScope = 'active';
+			let pagefindUi: PagefindUIInstance | undefined;
+			let resultObserver: MutationObserver | undefined;
+
+			const decorateResults = () => {
+				if (!searchRoot) return;
+				for (const result of searchRoot.querySelectorAll<HTMLElement>('.pagefind-ui__result')) {
+					const link = result.querySelector<HTMLAnchorElement>('.pagefind-ui__result-link');
+					const existingContext = result.querySelector<HTMLElement>(
+						'[data-mle-search-result-context]',
+					);
+					if (!link) {
+						existingContext?.remove();
+						continue;
+					}
+
+					const description = describeSearchResult({
+						url: link.getAttribute('href') ?? link.href,
+						active: activeContext,
+						labels,
+					});
+
+					result.dataset.mleSearchVersion =
+						description.kind === 'versioned' ? description.versionId : 'unknown';
+					result.dataset.mleSearchLocale =
+						description.kind === 'versioned' ? description.locale : 'unknown';
+					result.dataset.mleSearchActive = String(description.isActive);
+
+					if (scope !== 'all') {
+						existingContext?.remove();
+						continue;
+					}
+
+					const context = existingContext ?? document.createElement('p');
+					context.className = 'mle-search-result-context';
+					context.dataset.mleSearchResultContext = '';
+					const versionText =
+						description.kind === 'versioned'
+							? description.versionBadge
+							: labels.unknownVersion;
+					const languageText =
+						description.kind === 'versioned'
+							? description.languageBadge
+							: labels.unknownLanguage;
+
+					let versionBadge = context.querySelector<HTMLElement>('[data-mle-search-version]');
+					if (!versionBadge) {
+						versionBadge = document.createElement('span');
+						context.append(versionBadge);
+					}
+					versionBadge.dataset.mleSearchVersion =
+						description.kind === 'versioned' ? description.versionId : 'unknown';
+					if (versionBadge.textContent !== versionText) versionBadge.textContent = versionText;
+
+					let languageBadge = context.querySelector<HTMLElement>('[data-mle-search-language]');
+					if (!languageBadge) {
+						languageBadge = document.createElement('span');
+						context.append(languageBadge);
+					}
+					languageBadge.dataset.mleSearchLanguage =
+						description.kind === 'versioned' ? description.locale : 'unknown';
+					if (languageBadge.textContent !== languageText) languageBadge.textContent = languageText;
+
+					if (!existingContext) {
+						result.querySelector('.pagefind-ui__result-inner')?.append(context);
+					}
+				}
+			};
+
+			const startResultObserver = () => {
+				if (!searchRoot || resultObserver) return;
+				resultObserver = new MutationObserver(decorateResults);
+				resultObserver.observe(searchRoot, { childList: true, subtree: true });
+				decorateResults();
+			};
+
+			const stopResultObserver = () => {
+				resultObserver?.disconnect();
+				resultObserver = undefined;
+			};
+
+			/** Close the modal if a user clicks on a link or outside of the modal. */
+			const onClick = (event: MouseEvent) => {
+				const isLink = 'href' in (event.target || {});
+				if (
+					isLink ||
+					(document.body.contains(event.target as Node) &&
+						!dialogFrame.contains(event.target as Node))
+				) {
+					closeModal();
+				}
+			};
+
+			const openModal = (event?: MouseEvent) => {
+				dialog.showModal();
+				document.body.toggleAttribute('data-search-modal-open', true);
+				this.querySelector<HTMLInputElement>('.pagefind-ui__search-input')?.focus();
+				startResultObserver();
+				event?.stopPropagation();
+				window.addEventListener('click', onClick);
+			};
+
+			const closeModal = () => dialog.close();
+
+			openBtn.addEventListener('click', openModal);
+			openBtn.disabled = false;
+			closeBtn.addEventListener('click', closeModal);
+
+			dialog.addEventListener('close', () => {
+				document.body.toggleAttribute('data-search-modal-open', false);
+				window.removeEventListener('click', onClick);
+				stopResultObserver();
+				openBtn.focus();
+			});
+
+			// Listen for `ctrl + k` and `cmd + k` keyboard shortcuts.
+			window.addEventListener('keydown', (e) => {
+				if ((e.metaKey === true || e.ctrlKey === true) && e.key === 'k') {
+					dialog.open ? closeModal() : openModal();
+					e.preventDefault();
+				}
+			});
+
+			let translations = {};
+			try {
+				translations = JSON.parse(this.dataset.translations || '{}');
+			} catch {}
+
+			const shouldStrip = this.dataset.stripTrailingSlash !== undefined;
+			const stripTrailingSlash = (path: string) => path.replace(/(.)\/(#.*)?$/, '$1$2');
+			const formatURL = shouldStrip ? stripTrailingSlash : (path: string) => path;
+
+			for (const input of scopeInputs) {
+				input.addEventListener('change', () => {
+					if (!input.checked || (input.value !== 'active' && input.value !== 'all')) return;
+					scope = input.value;
+					const filters = activeContext.filters[scope];
+					pagefindUi?.triggerFilters(
+						filters
+							? { ...filters }
+							: scope === 'active'
+								? { mleVersion: '__unknown__', mleLocale: '__unknown__' }
+								: {},
+					);
+					if (scopeStatus) {
+						scopeStatus.textContent = scope === 'active' ? labels.scopeActive : labels.scopeAll;
+					}
+					decorateResults();
+				});
+			}
+
+			window.addEventListener('DOMContentLoaded', () => {
+				if (import.meta.env.DEV) return;
+				const onIdle = window.requestIdleCallback || ((cb) => setTimeout(cb, 1));
+				onIdle(async () => {
+					// @ts-expect-error — Missing types for @pagefind/default-ui package.
+					const { PagefindUI } = await import('@pagefind/default-ui');
+					const bundlePath = import.meta.env.BASE_URL.replace(/\/$/, '') + '/pagefind/';
+					const documentLocale = document.documentElement.lang.toLocaleLowerCase();
+					const indexedLocales = [...new Set(versions.flatMap((version) => version.locales))];
+					const configuredMergeIndexes = (
+						(pagefindUserConfig as { mergeIndex?: Array<Record<string, unknown>> }).mergeIndex ?? []
+					).map((index) => ({ ...index }));
+					// Pagefind skips a merge whose path string exactly matches the primary index. Use the
+					// equivalent same-origin absolute URL to load another language from this local bundle.
+					const localBundleUrl = new URL(bundlePath, window.location.origin).toString();
+					const localLanguageIndexes = indexedLocales
+						.filter((locale) => locale !== documentLocale)
+						.map((language) => ({ bundlePath: localBundleUrl, language }));
+
+					const ui: PagefindUIInstance = new PagefindUI({
+						...pagefindUserConfig,
+						element: '#starlight__search',
+						baseUrl: import.meta.env.BASE_URL,
+						bundlePath,
+						mergeIndex: [...configuredMergeIndexes, ...localLanguageIndexes],
+						showImages: false,
+						translations,
+						showSubResults: true,
+						processResult: (result: PagefindResultData) => {
+							result.url = formatURL(result.url);
+							if (result.meta?.url) result.meta.url = formatURL(result.meta.url);
+							result.sub_results = result.sub_results.map((sub_result) => {
+								sub_result.url = formatURL(sub_result.url);
+								return sub_result;
+							});
+							return result;
+						},
+					});
+					pagefindUi = ui;
+					const pagefindInput = this.querySelector<HTMLInputElement>(
+						'.pagefind-ui__search-input',
+					);
+					if (pagefindInput && !pagefindInput.hasAttribute('aria-label')) {
+						pagefindInput.setAttribute(
+							'aria-label',
+							pagefindInput.title || pagefindInput.placeholder,
+						);
+					}
+					const filters = activeContext.filters[scope];
+					ui.triggerFilters(
+						filters
+							? { ...filters }
+							: scope === 'active'
+								? { mleVersion: '__unknown__', mleLocale: '__unknown__' }
+								: {},
+					);
+					if (dialog.open) {
+						startResultObserver();
+						this.querySelector<HTMLInputElement>('.pagefind-ui__search-input')?.focus();
+					}
+				});
+			});
+		}
+	}
+	customElements.define('site-search', SiteSearch);
+</script>
+
+<style>
+	@layer starlight.core {
+		site-search {
+			display: contents;
+		}
+		button[data-open-modal] {
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+			border: 0;
+			background-color: transparent;
+			color: var(--sl-color-gray-1);
+			cursor: pointer;
+			height: 2.5rem;
+			font-size: var(--sl-text-xl);
+		}
+
+		@media (min-width: 50rem) {
+			button[data-open-modal] {
+				border: 1px solid var(--sl-color-gray-5);
+				border-radius: 0.5rem;
+				padding-inline-start: 0.75rem;
+				padding-inline-end: 0.5rem;
+				background-color: var(--sl-color-black);
+				color: var(--sl-color-gray-2);
+				font-size: var(--sl-text-sm);
+				width: 100%;
+				max-width: 22rem;
+			}
+			button[data-open-modal]:hover {
+				border-color: var(--sl-color-gray-2);
+				color: var(--sl-color-white);
+			}
+
+			button[data-open-modal] > :last-child {
+				margin-inline-start: auto;
+			}
+		}
+
+		button > kbd {
+			border-radius: 0.25rem;
+			font-size: var(--sl-text-2xs);
+			gap: 0.25em;
+			padding-inline: 0.375rem;
+			background-color: var(--sl-color-gray-6);
+		}
+
+		kbd {
+			font-family: var(--__sl-font);
+		}
+
+		dialog {
+			margin: 0;
+			background-color: var(--sl-color-gray-6);
+			border: 1px solid var(--sl-color-gray-5);
+			width: 100%;
+			max-width: 100%;
+			height: 100%;
+			max-height: 100%;
+			box-shadow: var(--sl-shadow-lg);
+		}
+		dialog[open] {
+			display: flex;
+		}
+
+		dialog::backdrop {
+			background-color: var(--sl-color-backdrop-overlay);
+			-webkit-backdrop-filter: blur(0.25rem);
+			backdrop-filter: blur(0.25rem);
+		}
+
+		.dialog-frame {
+			position: relative;
+			overflow: auto;
+			flex-direction: column;
+			flex-grow: 1;
+			gap: 1rem;
+			padding: 1rem;
+		}
+
+		.search-container {
+			display: grid;
+			gap: var(--mle-space-3);
+			min-width: 0;
+		}
+
+		.search-scope {
+			display: flex;
+			flex-wrap: wrap;
+			gap: var(--mle-space-2) var(--mle-space-3);
+			min-width: 0;
+			margin: 0;
+			padding: 0;
+			border: 0;
+		}
+
+		.search-scope legend {
+			width: 100%;
+			margin-block-end: var(--mle-space-1);
+			color: var(--mle-text-muted);
+			font-size: 0.8125rem;
+			font-weight: 650;
+		}
+
+		.search-scope label {
+			display: inline-flex;
+			align-items: flex-start;
+			gap: var(--mle-space-2);
+			min-width: 0;
+			color: var(--mle-text);
+			font-size: 0.875rem;
+			line-height: 1.35;
+			cursor: pointer;
+		}
+
+		.search-scope input {
+			flex: none;
+			margin: 0.15em 0 0;
+			accent-color: var(--mle-accent-bright);
+		}
+
+		.search-scope input:focus-visible {
+			outline: 2px solid var(--mle-focus-inner);
+			outline-offset: 2px;
+			box-shadow: 0 0 0 5px var(--mle-focus-outer);
+		}
+
+		button[data-close-modal] {
+			position: absolute;
+			z-index: 1;
+			align-items: center;
+			align-self: flex-end;
+			height: calc(64px * var(--pagefind-ui-scale));
+			padding: 0.25rem;
+			border: 0;
+			background: transparent;
+			cursor: pointer;
+			color: var(--sl-color-text-accent);
+		}
+
+		#starlight__search {
+			--pagefind-ui-primary: var(--sl-color-text);
+			--pagefind-ui-text: var(--sl-color-gray-2);
+			--pagefind-ui-font: var(--__sl-font);
+			--pagefind-ui-background: var(--sl-color-black);
+			--pagefind-ui-border: var(--sl-color-gray-5);
+			--pagefind-ui-border-width: 1px;
+			--pagefind-ui-tag: var(--sl-color-gray-5);
+			--sl-search-cancel-space: 5rem;
+		}
+
+		:root[data-theme='light'] #starlight__search {
+			--pagefind-ui-tag: var(--sl-color-gray-6);
+		}
+
+		@media (min-width: 50rem) {
+			#starlight__search {
+				--sl-search-cancel-space: 0px;
+			}
+
+			dialog {
+				margin: 4rem auto auto;
+				border-radius: 0.5rem;
+				width: 90%;
+				max-width: 40rem;
+				height: max-content;
+				min-height: 15rem;
+				max-height: calc(100% - 8rem);
+			}
+
+			.dialog-frame {
+				padding: 1.5rem;
+			}
+		}
+
+		@media (max-width: 30rem) {
+			.search-scope label {
+				flex: 1 1 100%;
+			}
+		}
+	}
+</style>
+
+<style is:global>
+	@import url('@pagefind/default-ui/css/ui.css') layer(starlight.core);
+
+	@layer starlight.core {
+		[data-search-modal-open] {
+			overflow: hidden;
+		}
+
+		#starlight__search {
+			--sl-search-result-spacing: calc(1.25rem * var(--pagefind-ui-scale));
+			--sl-search-result-pad-inline-start: calc(3.75rem * var(--pagefind-ui-scale));
+			--sl-search-result-pad-inline-end: calc(1.25rem * var(--pagefind-ui-scale));
+			--sl-search-result-pad-block: calc(0.9375rem * var(--pagefind-ui-scale));
+			--sl-search-result-nested-pad-block: calc(0.625rem * var(--pagefind-ui-scale));
+			--sl-search-corners: calc(0.3125rem * var(--pagefind-ui-scale));
+			--sl-search-page-icon-size: calc(1.875rem * var(--pagefind-ui-scale));
+			--sl-search-page-icon-inline-start: calc(
+				(var(--sl-search-result-pad-inline-start) - var(--sl-search-page-icon-size)) / 2
+			);
+			--sl-search-tree-diagram-size: calc(2.5rem * var(--pagefind-ui-scale));
+			--sl-search-tree-diagram-inline-start: calc(
+				(var(--sl-search-result-pad-inline-start) - var(--sl-search-tree-diagram-size)) / 2
+			);
+		}
+
+		#starlight__search .pagefind-ui__form::before {
+			--pagefind-ui-text: var(--sl-color-gray-1);
+			opacity: 1;
+		}
+
+		#starlight__search .pagefind-ui__search-input {
+			color: var(--sl-color-white);
+			font-weight: 400;
+			width: calc(100% - var(--sl-search-cancel-space));
+		}
+
+		#starlight__search input:focus {
+			--pagefind-ui-border: var(--sl-color-accent);
+		}
+
+		#starlight__search .pagefind-ui__search-clear {
+			inset-inline-end: var(--sl-search-cancel-space);
+			width: calc(60px * var(--pagefind-ui-scale));
+			padding: 0;
+			background-color: transparent;
+			overflow: hidden;
+		}
+		#starlight__search .pagefind-ui__search-clear:focus {
+			outline: 1px solid var(--sl-color-accent);
+		}
+		#starlight__search .pagefind-ui__search-clear::before {
+			content: '';
+			-webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m13.41 12 6.3-6.29a1 1 0 1 0-1.42-1.42L12 10.59l-6.29-6.3a1 1 0 0 0-1.42 1.42l6.3 6.29-6.3 6.29a1 1 0 0 0 .33 1.64 1 1 0 0 0 1.09-.22l6.29-6.3 6.29 6.3a1 1 0 0 0 1.64-.33 1 1 0 0 0-.22-1.09L13.41 12Z'/%3E%3C/svg%3E")
+				center / 50% no-repeat;
+			mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m13.41 12 6.3-6.29a1 1 0 1 0-1.42-1.42L12 10.59l-6.29-6.3a1 1 0 0 0-1.42 1.42l6.3 6.29-6.3 6.29a1 1 0 0 0 .33 1.64 1 1 0 0 0 1.09-.22l6.29-6.3 6.29 6.3a1 1 0 0 0 1.64-.33 1 1 0 0 0-.22-1.09L13.41 12Z'/%3E%3C/svg%3E")
+				center / 50% no-repeat;
+			background-color: var(--sl-color-text-accent);
+			display: block;
+			width: 100%;
+			height: 100%;
+		}
+
+		#starlight__search .pagefind-ui__results > * + * {
+			margin-top: var(--sl-search-result-spacing);
+		}
+		#starlight__search .pagefind-ui__result {
+			border: 0;
+			padding: 0;
+		}
+
+		#starlight__search .pagefind-ui__result-nested {
+			position: relative;
+			padding: var(--sl-search-result-nested-pad-block) var(--sl-search-result-pad-inline-end);
+			padding-inline-start: var(--sl-search-result-pad-inline-start);
+		}
+
+		#starlight__search .pagefind-ui__result-title:not(:where(.pagefind-ui__result-nested *)),
+		#starlight__search .pagefind-ui__result-nested {
+			position: relative;
+			background-color: var(--sl-color-black);
+		}
+
+		#starlight__search .pagefind-ui__result-title:not(:where(.pagefind-ui__result-nested *)):hover,
+		#starlight__search
+			.pagefind-ui__result-title:not(:where(.pagefind-ui__result-nested *)):focus-within,
+		#starlight__search .pagefind-ui__result-nested:hover,
+		#starlight__search .pagefind-ui__result-nested:focus-within {
+			outline: 1px solid var(--sl-color-accent-high);
+		}
+
+		#starlight__search
+			.pagefind-ui__result-title:not(:where(.pagefind-ui__result-nested *)):focus-within,
+		#starlight__search .pagefind-ui__result-nested:focus-within {
+			background-color: var(--sl-color-accent-low);
+		}
+
+		#starlight__search .pagefind-ui__result-thumb,
+		#starlight__search .pagefind-ui__result-inner {
+			margin-top: 0;
+		}
+
+		#starlight__search .pagefind-ui__result-inner > :first-child {
+			border-radius: var(--sl-search-corners) var(--sl-search-corners) 0 0;
+		}
+		#starlight__search .pagefind-ui__result-inner > :last-child {
+			border-radius: 0 0 var(--sl-search-corners) var(--sl-search-corners);
+		}
+
+		#starlight__search .pagefind-ui__result-inner > .pagefind-ui__result-title {
+			padding: var(--sl-search-result-pad-block) var(--sl-search-result-pad-inline-end);
+			padding-inline-start: var(--sl-search-result-pad-inline-start);
+		}
+		#starlight__search .pagefind-ui__result-inner > .pagefind-ui__result-title::before {
+			content: '';
+			position: absolute;
+			inset-block: 0;
+			inset-inline-start: var(--sl-search-page-icon-inline-start);
+			width: var(--sl-search-page-icon-size);
+			background: var(--sl-color-gray-3);
+			-webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='currentColor' viewBox='0 0 24 24'%3E%3Cpath d='M9 10h1a1 1 0 1 0 0-2H9a1 1 0 0 0 0 2Zm0 2a1 1 0 0 0 0 2h6a1 1 0 0 0 0-2H9Zm11-3V8l-6-6a1 1 0 0 0-1 0H7a3 3 0 0 0-3 3v14a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V9Zm-6-4 3 3h-2a1 1 0 0 1-1-1V5Zm4 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h5v3a3 3 0 0 0 3 3h3v9Zm-3-3H9a1 1 0 0 0 0 2h6a1 1 0 0 0 0-2Z'/%3E%3C/svg%3E")
+				center no-repeat;
+			mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='currentColor' viewBox='0 0 24 24'%3E%3Cpath d='M9 10h1a1 1 0 1 0 0-2H9a1 1 0 0 0 0 2Zm0 2a1 1 0 0 0 0 2h6a1 1 0 0 0 0-2H9Zm11-3V8l-6-6a1 1 0 0 0-1 0H7a3 3 0 0 0-3 3v14a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V9Zm-6-4 3 3h-2a1 1 0 0 1-1-1V5Zm4 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h5v3a3 3 0 0 0 3 3h3v9Zm-3-3H9a1 1 0 0 0 0 2h6a1 1 0 0 0 0-2Z'/%3E%3C/svg%3E")
+				center no-repeat;
+		}
+
+		#starlight__search .pagefind-ui__result-inner {
+			align-items: stretch;
+			gap: 1px;
+		}
+
+		#starlight__search .pagefind-ui__result-link {
+			position: unset;
+			--pagefind-ui-text: var(--sl-color-white);
+			font-weight: 600;
+		}
+
+		#starlight__search .pagefind-ui__result-link:hover {
+			text-decoration: none;
+		}
+
+		#starlight__search .pagefind-ui__result-nested .pagefind-ui__result-link::before {
+			content: unset;
+		}
+
+		#starlight__search .pagefind-ui__result-nested::before {
+			content: '';
+			position: absolute;
+			inset-block: 0;
+			inset-inline-start: var(--sl-search-tree-diagram-inline-start);
+			width: var(--sl-search-tree-diagram-size);
+			background: var(--sl-color-gray-4);
+			-webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='currentColor' stroke-linecap='round' viewBox='0 0 16 1000' preserveAspectRatio='xMinYMin slice'%3E%3Cpath d='M8 0v1000m6-988H8'/%3E%3C/svg%3E")
+				0% 0% / 100% no-repeat;
+			mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='currentColor' stroke-linecap='round' viewBox='0 0 16 1000' preserveAspectRatio='xMinYMin slice'%3E%3Cpath d='M8 0v1000m6-988H8'/%3E%3C/svg%3E")
+				0% 0% / 100% no-repeat;
+		}
+		#starlight__search .pagefind-ui__result-nested:last-of-type::before {
+			-webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 16 16'%3E%3Cpath d='M8 0v12m6 0H8'/%3E%3C/svg%3E");
+			mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 16 16'%3E%3Cpath d='M8 0v12m6 0H8'/%3E%3C/svg%3E");
+		}
+
+		/* Flip page and tree icons around the vertical axis when in an RTL layout. */
+		[dir='rtl'] .pagefind-ui__result-title::before,
+		[dir='rtl'] .pagefind-ui__result-nested::before {
+			transform: matrix(-1, 0, 0, 1, 0, 0);
+		}
+
+		#starlight__search .pagefind-ui__result-link::after {
+			content: '';
+			position: absolute;
+			inset: 0;
+		}
+
+		#starlight__search .pagefind-ui__result-excerpt {
+			font-size: calc(1rem * var(--pagefind-ui-scale));
+			overflow-wrap: anywhere;
+		}
+
+		#starlight__search mark {
+			color: var(--sl-color-gray-2);
+			background-color: transparent;
+			font-weight: 600;
+		}
+
+		#starlight__search .pagefind-ui__filter-value::before {
+			border-color: var(--sl-color-text-invert);
+		}
+
+		#starlight__search .pagefind-ui__filter-panel {
+			display: none;
+		}
+
+		#starlight__search .pagefind-ui__result-tags {
+			background-color: var(--sl-color-black);
+			margin-top: 0;
+			padding: var(--sl-search-result-nested-pad-block) var(--sl-search-result-pad-inline-end);
+		}
+
+		#starlight__search .mle-search-result-context {
+			display: flex;
+			flex-wrap: wrap;
+			gap: var(--mle-space-2);
+			margin: 0;
+			padding: var(--sl-search-result-nested-pad-block) var(--sl-search-result-pad-inline-end);
+			padding-inline-start: var(--sl-search-result-pad-inline-start);
+			background: var(--sl-color-black);
+			color: var(--mle-text-muted);
+			font-size: 0.75rem;
+		}
+
+		#starlight__search .mle-search-result-context > span {
+			padding: 0.2rem 0.45rem;
+			border: 1px solid var(--mle-border);
+			border-radius: var(--mle-radius-sm);
+			background: var(--mle-surface-2);
+			color: var(--mle-text);
+			font-family: var(--mle-font-code);
+			line-height: 1.35;
+		}
+	}
+</style>

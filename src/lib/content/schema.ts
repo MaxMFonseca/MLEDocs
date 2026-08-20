@@ -85,7 +85,9 @@ export const customI18nSchema = z.object({
 	'mle.missingPage.overviewLink': z.string(),
 	'mle.source.label': z.string(),
 	'mle.source.tests': z.string(),
-	'mle.search.scopeLabel': z.string(),
-	'mle.search.currentSnapshot': z.string(),
-	'mle.search.allSnapshots': z.string(),
+	'mle.search.scopeActive': z.string(),
+	'mle.search.scopeAll': z.string(),
+	'mle.search.versionBadge': z.string(),
+	'mle.search.languageBadge': z.string(),
+	'mle.search.resultsContext': z.string(),
 });

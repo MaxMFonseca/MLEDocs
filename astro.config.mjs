@@ -1,15 +1,36 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import { createRequire } from 'node:module';
+import { dirname, join } from 'node:path';
 import { buildVersionedSidebar } from './src/data/navigation.ts';
 import { versions } from './src/data/versions.ts';
 import { getCurrentVersion } from './src/lib/versions/manifest.ts';
 
 getCurrentVersion(versions);
 
+// The scoped Search override adapts Starlight's installed Pagefind UI without making Starlight's
+// transitive dependency a new direct project dependency. Resolve the pinned 1.5.2 package from the
+// installed Starlight component, then expose only its existing ESM entry and stylesheet to Vite.
+const projectRequire = createRequire(import.meta.url);
+const starlightRequire = createRequire(
+  projectRequire.resolve('@astrojs/starlight/components/Search.astro'),
+);
+const pagefindUiDirectory = dirname(starlightRequire.resolve('@pagefind/default-ui/package.json'));
+const pagefindUiModule = join(pagefindUiDirectory, 'npm_dist/mjs/ui-core.mjs');
+const pagefindUiStyles = join(pagefindUiDirectory, 'css/ui.css');
+
 export default defineConfig({
   site: 'https://maxmfonseca.github.io',
   base: '/MLEDocs',
   trailingSlash: 'always',
+  vite: {
+    resolve: {
+      alias: [
+        { find: '@pagefind/default-ui/css/ui.css', replacement: pagefindUiStyles },
+        { find: '@pagefind/default-ui', replacement: pagefindUiModule },
+      ],
+    },
+  },
   integrations: [
     starlight({
       title: 'MLE',
@@ -24,8 +45,10 @@ export default defineConfig({
         './src/styles/global.css',
       ],
       components: {
+        Head: './src/components/overrides/Head.astro',
         Header: './src/components/overrides/Header.astro',
         PageTitle: './src/components/overrides/PageTitle.astro',
+        Search: './src/components/overrides/Search.astro',
         Sidebar: './src/components/overrides/Sidebar.astro',
         Hero: './src/components/overrides/NotFound.astro',
         FallbackContentNotice: './src/components/status/TranslationNotice.astro',

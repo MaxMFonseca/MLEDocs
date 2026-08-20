@@ -1,0 +1,32 @@
+---
+import DefaultHead from '@astrojs/starlight/components/Head.astro';
+import type { Locale } from '../../data/taxonomy';
+import { versions } from '../../data/versions';
+import { parseDocumentationRoute } from '../../lib/navigation/route-context';
+
+const starlightRoute = Astro.locals.starlightRoute;
+const locale: Locale = starlightRoute.locale === 'pt-br' ? 'pt-br' : 'en';
+const route = parseDocumentationRoute(starlightRoute.id, locale);
+const version =
+	route.kind === 'versioned'
+		? versions.find((entry) => entry.id === route.versionId && entry.locales.includes(locale))
+		: undefined;
+const contentType = starlightRoute.entry.data.contentType;
+const isVersionedContent =
+	Boolean(version) &&
+	(contentType === 'homepage' || contentType === 'section' || contentType === 'technical');
+---
+
+<DefaultHead />
+{
+	isVersionedContent && version && (
+		<>
+			{/* Keep explicit values available to tests and other static consumers. */}
+			<meta data-pagefind-filter="mleVersion" content={version.id} />
+			<meta data-pagefind-filter="mleLocale" content={locale} />
+			{/* Pagefind 1.5.2 reads head-only filters from its supported name:value form. */}
+			<meta data-pagefind-filter={`mleVersion:${version.id}`} />
+			<meta data-pagefind-filter={`mleLocale:${locale}`} />
+		</>
+	)
+}

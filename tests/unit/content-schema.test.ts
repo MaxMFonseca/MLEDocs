@@ -268,7 +268,7 @@ describe('section page metadata', () => {
 });
 
 describe('custom Portuguese UI strings', () => {
-	it('provides every project-specific picker, status, fallback, source, and search label', () => {
+	it('provides every project-specific picker, status, fallback, source, and scoped-search label', () => {
 		const ui = JSON.parse(
 			readFileSync(resolve('src/content/i18n/pt-BR.json'), 'utf8'),
 		) as unknown;
@@ -285,9 +285,11 @@ describe('custom Portuguese UI strings', () => {
 			'mle.missingPage.overviewLink': 'Voltar para a visão geral desta versão',
 			'mle.source.label': 'Evidências no código-fonte',
 			'mle.source.tests': 'Testes relacionados',
-			'mle.search.scopeLabel': 'Escopo da pesquisa',
-			'mle.search.currentSnapshot': 'Versão e idioma atuais',
-			'mle.search.allSnapshots': 'Todas as versões e idiomas',
+			'mle.search.scopeActive': 'Commit e idioma atuais',
+			'mle.search.scopeAll': 'Todos os commits e idiomas',
+			'mle.search.versionBadge': 'Commit',
+			'mle.search.languageBadge': 'Idioma',
+			'mle.search.resultsContext': 'Contexto dos resultados',
 		});
 	});
 });
