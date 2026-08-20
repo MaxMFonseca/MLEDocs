@@ -36,6 +36,18 @@ export const pageTranslationMetadataSchema = z
 
 export const homepagePageMetadataSchema = pageTranslationMetadataSchema;
 
+export const sectionPageMetadataSchema = pageTranslationMetadataSchema.extend({
+	mleCommit: z.string().regex(/^[0-9a-f]{40}$/),
+}).superRefine((page, context) => {
+	if (page.translationStatus === 'fallback') {
+		context.addIssue({
+			code: 'custom',
+			path: ['translationStatus'],
+			message: 'Section pages cannot declare fallback; fallback records are generated for missing translations.',
+		});
+	}
+});
+
 export const technicalPageMetadataSchema = pageTranslationMetadataSchema.extend({
 	mleCommit: z.string().regex(/^[0-9a-f]{40}$/),
 	maturity: z.enum(maturities),
@@ -47,6 +59,10 @@ export const technicalPageMetadataSchema = pageTranslationMetadataSchema.extend(
 
 export const technicalPageSchema = technicalPageMetadataSchema.extend({
 	contentType: z.literal('technical'),
+});
+
+export const sectionPageSchema = sectionPageMetadataSchema.extend({
+	contentType: z.literal('section'),
 });
 
 export const homepagePageSchema = homepagePageMetadataSchema.extend({

@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { z } from 'astro/zod';
 import { describe, expect, it } from 'vitest';
 import {
 	audiences,
@@ -11,8 +12,10 @@ import {
 import {
 	customI18nSchema,
 	homepagePageMetadataSchema,
+	sectionPageMetadataSchema,
 	technicalPageMetadataSchema,
 } from '../../src/content.config';
+import { collections } from '../../src/content.config';
 
 const snapshotDirectory = resolve('src/content/docs/versions/c1abea3de165');
 const portugueseSnapshotDirectory = resolve('src/content/docs/pt-br/versions/c1abea3de165');
@@ -56,6 +59,13 @@ const technicalPage = {
 	lastVerified: '2026-08-18',
 	translationStatus: 'canonical',
 	pageId: 'core-overview',
+};
+
+const englishSection = {
+	pageId: 'systems',
+	mleCommit: 'c1abea3de165032fe064300340807b7a6af388f8',
+	lastVerified: '2026-08-20',
+	translationStatus: 'canonical',
 };
 
 describe('documentation taxonomy', () => {
@@ -180,6 +190,80 @@ describe('homepage translation metadata', () => {
 			translationStatus: 'current',
 			translationSourceLastVerified: english.lastVerified,
 		});
+	});
+});
+
+describe('section page metadata', () => {
+	it('accepts canonical English and current Brazilian Portuguese section controls', () => {
+		expect(sectionPageMetadataSchema.parse(englishSection)).toEqual(englishSection);
+		expect(
+			sectionPageMetadataSchema.parse({
+				...englishSection,
+				translationStatus: 'current',
+				translationSourceLastVerified: '2026-08-20',
+			}),
+		).toMatchObject({
+			pageId: 'systems',
+			translationStatus: 'current',
+			translationSourceLastVerified: '2026-08-20',
+		});
+	});
+
+	it('rejects malformed section commits and incomplete translated revision metadata', () => {
+		expect(
+			sectionPageMetadataSchema.safeParse({
+				...englishSection,
+				mleCommit: 'c1abea3de165',
+			}).success,
+		).toBe(false);
+		expect(
+			sectionPageMetadataSchema.safeParse({
+				...englishSection,
+				translationStatus: 'current',
+			}).success,
+		).toBe(false);
+	});
+
+	it('rejects fallback as authored section metadata', () => {
+		expect(
+			sectionPageMetadataSchema.safeParse({
+				...englishSection,
+				translationStatus: 'fallback',
+			}).success,
+		).toBe(false);
+	});
+
+	it('accepts section pages in the Astro docs collection', () => {
+		const collectionSchema = collections.docs.schema;
+		if (typeof collectionSchema !== 'function') {
+			throw new Error('The Starlight docs collection must expose a schema factory.');
+		}
+
+		expect(
+			collectionSchema({
+				image: () =>
+					z.object({
+						src: z.string(),
+						width: z.number(),
+						height: z.number(),
+						format: z.union([
+							z.literal('png'),
+							z.literal('jpg'),
+							z.literal('jpeg'),
+							z.literal('tiff'),
+							z.literal('webp'),
+							z.literal('gif'),
+							z.literal('svg'),
+							z.literal('avif'),
+						]),
+					}),
+			}).safeParse({
+				title: 'Engine Systems',
+				description: 'Navigation for the engine systems documentation area.',
+				contentType: 'section',
+				...englishSection,
+			}).success,
+		).toBe(true);
 	});
 });
 

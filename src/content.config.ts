@@ -6,12 +6,14 @@ import {
 	customI18nSchema,
 	homepagePageSchema,
 	redirectPageSchema,
+	sectionPageSchema,
 	technicalPageSchema,
 } from './lib/content/schema';
 
 export {
 	customI18nSchema,
 	homepagePageMetadataSchema,
+	sectionPageMetadataSchema,
 	technicalPageMetadataSchema,
 } from './lib/content/schema';
 
@@ -19,7 +21,12 @@ export const collections = {
 	docs: defineCollection({
 		loader: docsLoader(),
 		schema: docsSchema({
-			extend: z.union([technicalPageSchema, homepagePageSchema, redirectPageSchema]),
+			extend: z.union([
+				technicalPageSchema,
+				sectionPageSchema,
+				homepagePageSchema,
+				redirectPageSchema,
+			]),
 		}),
 	}),
 	i18n: defineCollection({

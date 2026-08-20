@@ -29,6 +29,14 @@ describe('alias content page records', () => {
 					},
 				},
 				{
+					id: 'versions/c1abea3de165/systems',
+					data: {
+						contentType: 'section',
+						pageId: 'systems',
+						translationStatus: 'canonical',
+					},
+				},
+				{
 					id: 'pt-br/versions/c1abea3de165/systems/renderer',
 					data: { contentType: 'redirect' },
 				},
@@ -50,6 +58,13 @@ describe('alias content page records', () => {
 				locale: 'en',
 				versionId: 'c1abea3de165',
 				slug: 'systems/core',
+				translationStatus: 'canonical',
+			},
+			{
+				pageId: 'systems',
+				locale: 'en',
+				versionId: 'c1abea3de165',
+				slug: 'systems',
 				translationStatus: 'canonical',
 			},
 			{
@@ -89,6 +104,14 @@ describe('alias content page records', () => {
 						translationStatus: 'canonical',
 					},
 				},
+				{
+					id: 'versions/c1abea3de165/systems',
+					data: {
+						contentType: 'section',
+						pageId: 'systems',
+						translationStatus: 'canonical',
+					},
+				},
 				{ id: 'pt-br/versions/c1abea3de165', data: { contentType: 'homepage' } },
 				{ id: 'versions/dddddddddddd', data: { contentType: 'homepage' } },
 				{
@@ -110,6 +133,7 @@ describe('alias content page records', () => {
 		).toEqual([
 			{ pageId: 'overview', slug: '', translationStatus: 'current' },
 			{ pageId: 'project-status', slug: 'start-here/project-status', translationStatus: 'fallback' },
+			{ pageId: 'systems', slug: 'systems', translationStatus: 'fallback' },
 			{ pageId: 'renderer-overview', slug: 'systems/renderer', translationStatus: 'fallback' },
 		]);
 
@@ -117,6 +141,7 @@ describe('alias content page records', () => {
 		expect(aliases.map(({ slug }) => slug)).toEqual([
 			'',
 			'start-here/project-status',
+			'systems',
 			'systems/renderer',
 		]);
 		expect(aliases.every(({ destination }) => destination.includes(`/versions/${current.id}/`))).toBe(

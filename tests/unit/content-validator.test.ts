@@ -304,6 +304,11 @@ describe('content validation', () => {
 				ruleId: 'content/locale-manifest',
 				message: expect.stringContaining('pt-br'),
 			}),
+			expect.objectContaining({
+				path: 'pt-br/versions/c1abea3de165/section.mdx',
+				ruleId: 'content/locale-manifest',
+				message: expect.stringContaining('pt-br'),
+			}),
 		]);
 	});
 
@@ -311,6 +316,171 @@ describe('content validation', () => {
 		const diagnostics = await validateContent(resolve(fixtures, 'valid-content'), { manifest });
 
 		expect(diagnostics.some(({ path }) => path.endsWith('moved.mdx'))).toBe(false);
+	});
+
+	it('accepts canonical English and current same-revision Portuguese section pages', async () => {
+		const diagnostics = await validateContent(resolve(fixtures, 'valid-content'), { manifest });
+
+		expect(diagnostics.filter(({ path }) => path.endsWith('section.mdx'))).toEqual([]);
+	});
+
+	it('rejects a section page whose MLE commit disagrees with its version directory', async () => {
+		const diagnostics = await validateContent(resolve(fixtures, 'invalid-content'), { manifest });
+
+		expect(diagnostics).toContainEqual(expect.objectContaining({
+			path: 'versions/c1abea3de165/section-wrong-commit.mdx',
+			ruleId: 'content/commit-directory',
+			line: 6,
+		}));
+	});
+
+	it('requires a current translated section revision to match its English section', async () => {
+		const content = makeTemporaryDirectory();
+		write(content, 'versions/c1abea3de165/section.mdx', `---
+title: Systems
+description: A section directory.
+contentType: section
+pageId: systems
+mleCommit: ${currentCommit}
+lastVerified: '2026-08-20'
+translationStatus: canonical
+---
+
+Systems.`);
+		write(content, 'pt-br/versions/c1abea3de165/section.mdx', `---
+title: Sistemas
+description: Um diretório de seção.
+contentType: section
+pageId: systems
+mleCommit: ${currentCommit}
+lastVerified: '2026-08-20'
+translationStatus: current
+translationSourceLastVerified: '2026-08-19'
+---
+
+Sistemas.`);
+
+		expect(await validateContent(content, { manifest: [manifest[0]] })).toContainEqual(
+			expect.objectContaining({
+				path: 'pt-br/versions/c1abea3de165/section.mdx',
+				ruleId: 'content/translation-current',
+			}),
+		);
+	});
+
+	it('rejects fallback as an authored Portuguese section translation', async () => {
+		const content = makeTemporaryDirectory();
+		write(content, 'versions/c1abea3de165/section.mdx', `---
+title: Systems
+description: A section directory.
+contentType: section
+pageId: systems
+mleCommit: ${currentCommit}
+lastVerified: '2026-08-20'
+translationStatus: canonical
+---
+
+Systems.`);
+		write(content, 'pt-br/versions/c1abea3de165/section.mdx', `---
+title: Sistemas
+description: Um diretório de seção.
+contentType: section
+pageId: systems
+mleCommit: ${currentCommit}
+lastVerified: '2026-08-20'
+translationStatus: fallback
+---
+
+Sistemas.`);
+
+		expect(await validateContent(content, { manifest: [manifest[0]] })).toContainEqual(
+			expect.objectContaining({
+				path: 'pt-br/versions/c1abea3de165/section.mdx',
+				ruleId: 'content/schema',
+			}),
+		);
+	});
+
+	it('rejects a translated section paired with a same-ID English technical page', async () => {
+		const content = makeTemporaryDirectory();
+		write(content, 'versions/c1abea3de165/systems.mdx', `---
+title: Systems technical page
+description: A technical page deliberately sharing the section identity.
+contentType: technical
+pageId: systems
+mleCommit: ${currentCommit}
+maturity: in-development
+audiences:
+  - contributor
+subsystems:
+  - core
+sourceFiles:
+  - src/mle/Systems.cpp
+lastVerified: '2026-08-20'
+translationStatus: canonical
+---
+
+Technical systems.`);
+		write(content, 'pt-br/versions/c1abea3de165/sistemas.mdx', `---
+title: Sistemas
+description: Um diretório de seção.
+contentType: section
+pageId: systems
+mleCommit: ${currentCommit}
+lastVerified: '2026-08-20'
+translationStatus: current
+translationSourceLastVerified: '2026-08-20'
+---
+
+Sistemas.`);
+
+		expect(await validateContent(content, { manifest: [manifest[0]] })).toContainEqual(
+			expect.objectContaining({
+				path: 'pt-br/versions/c1abea3de165/sistemas.mdx',
+				ruleId: 'content/translation-content-type',
+			}),
+		);
+	});
+
+	it('rejects a translated technical page paired with a same-ID English section', async () => {
+		const content = makeTemporaryDirectory();
+		write(content, 'versions/c1abea3de165/systems.mdx', `---
+title: Systems
+description: A section directory.
+contentType: section
+pageId: systems
+mleCommit: ${currentCommit}
+lastVerified: '2026-08-20'
+translationStatus: canonical
+---
+
+Systems.`);
+		write(content, 'pt-br/versions/c1abea3de165/sistemas.mdx', `---
+title: Sistemas técnicos
+description: Uma página técnica deliberadamente com a identidade da seção.
+contentType: technical
+pageId: systems
+mleCommit: ${currentCommit}
+maturity: in-development
+audiences:
+  - contributor
+subsystems:
+  - core
+sourceFiles:
+  - src/mle/Systems.cpp
+lastVerified: '2026-08-20'
+translationStatus: current
+translationSourceLastVerified: '2026-08-20'
+---
+
+Sistemas técnicos.`);
+
+		expect(await validateContent(content, { manifest: [manifest[0]] })).toContainEqual(
+			expect.objectContaining({
+				path: 'pt-br/versions/c1abea3de165/sistemas.mdx',
+				ruleId: 'content/translation-content-type',
+			}),
+		);
 	});
 
 	it('reports each content invariant with stable rule IDs and ordering', async () => {

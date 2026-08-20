@@ -5,6 +5,7 @@ import { parseFrontmatter } from 'astro/markdown';
 import {
 	homepagePageMetadataSchema,
 	redirectPageSchema,
+	sectionPageMetadataSchema,
 	technicalPageMetadataSchema,
 } from '../src/lib/content/schema.ts';
 import { versions } from '../src/data/versions.ts';
@@ -506,13 +507,15 @@ export const validateContent = async (contentDirectory = resolve('src/content/do
 		const data = parsed.frontmatter;
 		const schema = data.contentType === 'technical'
 			? technicalPageMetadataSchema
-			: data.contentType === 'homepage'
-				? homepagePageMetadataSchema
-				: data.contentType === 'redirect'
-					? redirectPageSchema
-					: undefined;
+			: data.contentType === 'section'
+				? sectionPageMetadataSchema
+				: data.contentType === 'homepage'
+					? homepagePageMetadataSchema
+					: data.contentType === 'redirect'
+						? redirectPageSchema
+						: undefined;
 		if (!schema) {
-			diagnostics.push({ path: displayPath, line: lineFor(source, 'contentType:') ?? 1, ruleId: 'content/schema', message: 'contentType must be technical, homepage, or redirect' });
+			diagnostics.push({ path: displayPath, line: lineFor(source, 'contentType:') ?? 1, ruleId: 'content/schema', message: 'contentType must be technical, section, homepage, or redirect' });
 			continue;
 		}
 		const result = schema.safeParse(data);
@@ -532,7 +535,10 @@ export const validateContent = async (contentDirectory = resolve('src/content/do
 			diagnostics.push({ path: displayPath, line: 1, ruleId: 'content/unknown-version', message: `directory version ${versionId} is not in the manifest` });
 		} else if (!version.locales.includes(locale)) {
 			diagnostics.push({ path: displayPath, line: 1, ruleId: 'content/locale-manifest', message: `locale ${locale} is not declared for manifest version ${versionId}` });
-		} else if (data.contentType === 'technical' && metadata.mleCommit !== version.commit) {
+		} else if (
+			(data.contentType === 'technical' || data.contentType === 'section') &&
+			metadata.mleCommit !== version.commit
+		) {
 			diagnostics.push({ path: displayPath, line: lineFor(source, 'mleCommit:'), ruleId: 'content/commit-directory', message: `mleCommit ${metadata.mleCommit} does not match directory version ${versionId} (${version.commit})` });
 		}
 
@@ -575,21 +581,50 @@ export const validateContent = async (contentDirectory = resolve('src/content/do
 			}
 		}
 
-		if (data.contentType !== 'redirect') pages.push({ path: displayPath, locale, versionId, metadata });
+		if (data.contentType !== 'redirect') {
+			pages.push({ path: displayPath, locale, versionId, contentType: data.contentType, metadata });
+		}
 	}
 
 	const firstByIdentity = new Map();
+	const firstByTranslationIdentity = new Map();
 	for (const page of pages) {
 		const key = JSON.stringify([page.versionId, page.locale, page.metadata.pageId]);
 		const existing = firstByIdentity.get(key);
 		if (existing) {
 			diagnostics.push({ path: page.path, ruleId: 'content/duplicate-page-id', message: `pageId ${page.metadata.pageId} duplicates ${existing.path} for ${page.locale}/${page.versionId}` });
 		} else firstByIdentity.set(key, page);
+
+		const translationKey = JSON.stringify([
+			page.versionId,
+			page.locale,
+			page.metadata.pageId,
+			page.contentType,
+		]);
+		if (!firstByTranslationIdentity.has(translationKey)) {
+			firstByTranslationIdentity.set(translationKey, page);
+		}
 	}
 
 	for (const page of pages.filter((candidate) => candidate.locale === 'pt-br')) {
-		const english = firstByIdentity.get(JSON.stringify([page.versionId, 'en', page.metadata.pageId]));
+		const identityKey = JSON.stringify([page.versionId, 'en', page.metadata.pageId]);
+		const sameCommitEnglish = firstByIdentity.get(identityKey);
+		const requiresSectionParity =
+			page.contentType === 'section' || sameCommitEnglish?.contentType === 'section';
+		const english = requiresSectionParity
+			? firstByTranslationIdentity.get(
+				JSON.stringify([page.versionId, 'en', page.metadata.pageId, page.contentType]),
+			)
+			: sameCommitEnglish;
 		if (!english) {
+			if (requiresSectionParity && sameCommitEnglish) {
+				diagnostics.push({
+					path: page.path,
+					ruleId: 'content/translation-content-type',
+					message: `Portuguese page ${page.metadata.pageId} must match English content type ${sameCommitEnglish.contentType}, not ${page.contentType}`,
+				});
+				continue;
+			}
 			const otherEnglish = pages.find((candidate) => candidate.locale === 'en' && candidate.metadata.pageId === page.metadata.pageId);
 			diagnostics.push({ path: page.path, ruleId: 'content/translation-same-commit', message: otherEnglish
 				? `Portuguese page ${page.metadata.pageId} can only fall back to English in ${page.versionId}, not ${otherEnglish.versionId}`

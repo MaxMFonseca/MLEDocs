@@ -19,6 +19,11 @@ export interface AliasContentEntry {
 				readonly translationStatus: TranslationStatus;
 			}
 		| {
+				readonly contentType: 'section';
+				readonly pageId: string;
+				readonly translationStatus: TranslationStatus;
+			}
+		| {
 				readonly contentType: 'homepage' | 'redirect';
 			};
 }
@@ -35,15 +40,16 @@ export const pageRecordsFromContentEntries = (
 		const locale: Locale = match[1] ? 'pt-br' : 'en';
 		const versionId = match[2] as string;
 		const slug = match[3] ?? '';
-		const isTechnical = entry.data.contentType === 'technical';
+		const isVersionedPage =
+			entry.data.contentType === 'technical' || entry.data.contentType === 'section';
 
 		return [
 			{
-				pageId: isTechnical ? entry.data.pageId : slug || 'overview',
+				pageId: isVersionedPage ? entry.data.pageId : slug || 'overview',
 				locale,
 				versionId,
 				slug,
-				translationStatus: isTechnical
+				translationStatus: isVersionedPage
 					? entry.data.translationStatus
 					: entry.data.contentType === 'redirect'
 						? 'fallback'
