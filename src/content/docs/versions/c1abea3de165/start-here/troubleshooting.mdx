@@ -1,0 +1,98 @@
+---
+title: Diagnose setup and build failures
+description: Check sourced helper state, dependencies, resources, build configuration, and the unverified Windows boundary for this MLE snapshot.
+contentType: technical
+pageId: troubleshooting
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [project]
+sourceFiles: [scripts/envsetup.sh, CMakeLists.txt, external/CMakeLists.txt]
+testFiles: []
+lastVerified: '2026-08-21'
+translationStatus: canonical
+---
+
+Start each diagnosis at the repository root. The supported helper path is a sourced Bash workflow on the currently tested Linux platform; Windows is intended but unverified for this snapshot. The checks below name observable state rather than treating a helper's final status as proof that every delegated command succeeded.
+
+## Sourced functions are unavailable
+
+**Symptom:** `mle_setup`, `mle_config`, or another `mle_*` command is not found.
+
+**Likely cause:** `scripts/envsetup.sh` was executed instead of sourced, sourced in a different shell, or sourced outside a directory containing `README.md`.
+
+**Check:** In the repository root, source the script and confirm that it prints `MLE environment loaded.` and its command list.
+
+**Recovery:** Run `source scripts/envsetup.sh` in the current shell. Source it again for every new terminal. The load message only proves that functions were defined; continue checking submodules and build output separately.
+
+## Submodules or LuaJIT are missing
+
+**Symptom:** setup cannot enter `external/LuaJIT`, dependencies are absent, or the LuaJIT build did not appear.
+
+**Likely cause:** recursive submodules were not initialized, or `make` was unavailable or failed.
+
+**Check:** Inspect the output from `git submodule update --init --recursive` and the `make` invocation in `external/LuaJIT`. `mle_setup` can return after its final directory change even when an earlier submodule or Make command failed.
+
+**Recovery:** From the repository root, rerun `git submodule update --init --recursive`, then run `make` in `external/LuaJIT` after correcting the reported access or tool issue. Do not use build cleanup to repair missing source dependencies.
+
+## CMake, compiler, or C++23 configuration fails
+
+**Symptom:** CMake rejects the project, selects an unsuitable compiler, or compilation reports missing C++23 support.
+
+**Likely cause:** CMake is older than 3.16, the selected compiler lacks C++23 support, or the configured build directory retains incompatible choices.
+
+**Check:** Confirm CMake is 3.16 or newer, inspect the compiler selected during configuration, and verify the target environment can provide the required `cxx_std_23` and `stdc++exp` link dependency.
+
+**Recovery:** Correct the toolchain selection, then reconfigure the intended build directory. If configuration state must be discarded, `mle_clean` removes the exact generated `${_MLE_ROOT}/build` tree, losing every build configuration; it also removes `compile_commands.json` and `latest.log` in the directory where it is invoked. Run it only from a directory whose two relative names you intend to lose.
+
+## Vulkan discovery or shader compiler fails
+
+**Symptom:** CMake cannot find Vulkan, or the helper reports `Shader compilation failed.`.
+
+**Likely cause:** the Vulkan SDK or driver is unavailable to CMake, or a `glslangValidator` invocation fails while compiling discovered shader sources.
+
+**Check:** Confirm CMake's Vulkan discovery, then inspect `glslangValidator` and `nproc` in the sourced shell. A failed compiler or parallel shader job produces `Some shaders failed.` and returns 1 from `mle_compile_shaders_all`, which makes `mle_build` report `Shader compilation failed.`.
+
+**Recovery:** Correct the SDK, driver, or shell tools. If a bad nonempty shader value persisted from sourcing outside the root, return to the root, run `unset MLE_SHADER_DIRS`, and source `scripts/envsetup.sh` again before rebuilding.
+
+An empty `MLE_SHADER_DIRS` search or directories that contain no matching shader source instead prints `No shaders found.` and returns 0; a missing directory is reported and skipped. That is a successful no-file result, not a shader compiler failure. Inspect the variable and directories when an expected shader was skipped.
+
+## ICU, OpenAL, or LuaJIT discovery fails
+
+**Symptom:** CMake cannot find ICU, OpenAL, or a dependency supplied through the initialized tree.
+
+**Likely cause:** ICU's `uc` and `i18n` components or OpenAL are not discoverable to CMake, or recursive submodule setup did not complete.
+
+**Check:** Read the CMake configure diagnostics and confirm the initialized submodule state before changing build files.
+
+**Recovery:** Install or expose the missing development dependency by the method appropriate to the target environment, then rerun configuration. The pinned source does not provide package-manager commands for these dependencies.
+
+## Test or Client resources are missing
+
+**Symptom:** a Core or Client launch cannot find expected Lua, shader, texture, font, sound, or model resources.
+
+**Likely cause:** the executable was launched without `mle_run_test`, or its generated resource links are stale or inaccessible.
+
+**Check:** Inspect `build/<build_type>/tests/<name>/res` for `mle` and `i` links across the six resource kinds. Also inspect the selected target's output and log; helper link errors may be suppressed.
+
+**Recovery:** Use `mle_run_test -n Core -t Debug` or `mle_run_test -n Client -t Debug` to recreate the documented resource layout, then inspect the new links. Do not publish or rely on a helper form for `AudioLifecycle`; its executable remains under `tests/Core`.
+
+## A build directory behaves as if options are stale
+
+**Symptom:** changing build type or `MLE_BUILD_TESTS` does not produce the expected targets.
+
+**Likely cause:** the existing directory was configured with different CMake options, or tests were disabled with `-DMLE_BUILD_TESTS=OFF`.
+
+**Check:** Inspect the configuration command and the configured directory under `build/<build_type>`. With tests enabled, the root CMake path reaches `Core`, `AudioLifecycle`, and `Client`.
+
+**Recovery:** Reconfigure the intended `build/<build_type>` directory with the desired options. If you deliberately discard all generated configurations, use the exact cleanup boundary described above and accept the loss of `${_MLE_ROOT}/build`.
+
+## Windows behavior is not established
+
+**Symptom:** the Bash helper, compiler flags, dependency discovery, shader path, or output layout behaves differently on Windows.
+
+**Likely cause:** the snapshot documents Linux as the tested development platform; Windows is intended but unverified.
+
+**Check:** Independently verify the compiler, Vulkan, ICU, OpenAL, shader compiler, and generated output locations on the target Windows environment.
+
+**Recovery:** Treat the result as local validation work rather than a documented support claim. Do not transpose the Linux helper procedure into a Windows guarantee.

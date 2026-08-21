@@ -1,0 +1,46 @@
+---
+title: Explore the interactive Client
+description: Launch the Client demonstration, understand its resource links and lifecycle, and distinguish manual observations from automated tests.
+contentType: technical
+pageId: client
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [client, tools, tests]
+sourceFiles: [README.md, tests/Client/CMakeLists.txt, tests/Client/src/Main.cpp, tests/Client/src/layers/Init.cpp, src/mle/client/Client.cpp, scripts/envsetup.sh]
+testFiles: []
+lastVerified: '2026-08-21'
+translationStatus: canonical
+---
+
+`Client` is the interactive executable assembled from `tests/Client/src/**` and linked with `MLE`. It is not a GoogleTest target and has no GoogleTest discovery in its CMake definition. Use it to inspect the engine's test scenes manually, not as proof that the automated suite passed.
+
+## Launch the target
+
+Build and launch Client from a repository-root shell that has sourced `scripts/envsetup.sh`:
+
+```bash
+mle_ber -n Client -t Debug
+```
+
+This form runs the helper build first and launches Client only when that build helper succeeds. To launch an existing Debug build without rebuilding, use:
+
+```bash
+mle_run_test -n Client -t Debug
+```
+
+The target is `Client`; its expected Linux executable location is `build/Debug/tests/Client/Client`. Both helper paths expect the selected executable below `build/<build_type>/tests/<name>`.
+
+## Startup, layers, and resources
+
+The Client entry point initializes Core, Client, and Renderer; pushes the initial/menu `mle::user::InitLayer`; enters the Client loop; then invokes renderer and Core shutdown. `InitLayer` registers the Model Test, UI Test, and Audio Test transitions and sets the `i/ui/InitLayer` UI root. Those are interactive pages for visual and manual exploration, not automated assertions.
+
+At the start of `Client::run()`, the Client adds `mle::user::PerfLayer` and `mle::user::TerminalLayer` as debug layers automatically. During every update it calls `Window::i().poolEvents()`, then `UserInputManager::i().update()`, updates the active game and debug layers, and finally calls `UserInputManager::i().lateUpdate()`. This documents the first-run input boundary and update order, not a stable control map for each interactive page. A registered window-close listener calls `requestStop()`: closing the window requests stop, after which the run loop leaves `RUNNING` and performs its shutdown sequence.
+
+Before it runs the executable, `mle_run_test` runs `rm -rf "build/${build_type}/tests/${test_name}/res"`. For Client, that deletes `build/<build_type>/tests/Client/res` recursively and loses its generated resource-link tree before it is rebuilt. It then links each engine resource kind—`lua`, `textures`, `shaders`, `fonts`, `sounds`, and `models`—as `mle`, and the matching `tests/Client/res/<kind>` tree as `i`. Both link commands suppress errors; if a target-specific resource directory is absent, an `i` link can be dangling. This is why a direct launch from another working directory is not an equivalent first-run procedure: it bypasses the documented resource-link setup.
+
+## What counts as a first run
+
+A useful manual observation is that Client reaches its interactive test pages with the expected engine and Client resource trees available. Inspect the window and its output; the helper updates `latest.log` after execution, but its later cleanup and `echo` mean its final status does not establish whether Client exited successfully.
+
+For automated assertions, return to [the Core test guide](/MLEDocs/versions/c1abea3de165/start-here/tests/). If resource links are missing or startup fails, use [setup troubleshooting](/MLEDocs/versions/c1abea3de165/start-here/troubleshooting/).

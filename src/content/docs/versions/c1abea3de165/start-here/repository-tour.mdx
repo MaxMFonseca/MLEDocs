@@ -1,0 +1,37 @@
+---
+title: Tour the repository
+description: Locate MLE engine code, resources, tests, scripts, vendored dependencies, tools, and obsolete documentation inputs.
+contentType: technical
+pageId: repository-tour
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [project]
+sourceFiles: [CMakeLists.txt, README.md, tools/CMakeLists.txt, tools/MLECubes/CMakeLists.txt, tools/MLECubes/src/Main.cpp, docs/Doxyfile.in, docs/footer.html, docs/style.css, src/mle/mainpage.dox, docs/media/gameplay.png]
+testFiles: []
+lastVerified: '2026-08-21'
+translationStatus: canonical
+---
+
+The root CMake project builds the `MLE` static library from `src/**` and conditionally adds tests. The tree also contains resource material, test applications, helper scripts, dependencies, and a tool directory whose CMake entry point is not reached from the inspected root configuration. Use this map to choose the next source area without mistaking a directory for a supported build path.
+
+| Path | Role | Primary audience |
+| --- | --- | --- |
+| `src/mle/` | First-party engine implementation, organized into audio, client, core, Lua, math, renderer, server, UI, utilities, and windowing areas. | Contributors; later system guides own detailed behavior. |
+| `res/` | Engine Lua, shaders, models, fonts, textures, and sounds. | Integrators and contributors working with resources. |
+| `tests/Core/` | GoogleTest sources, fixtures, and the `Core` and `AudioLifecycle` target definitions. | Contributors running automated verification. |
+| `tests/Client/` | The `Client` interactive executable, its layers, and test-specific resources. | Readers exploring manual demonstrations. |
+| `tools/MLECubes/` | Early voxel-asset tool source and tool-specific resources. | Contributors reading source layout; no root-default build/run procedure is established here. |
+| `scripts/` | Sourced Bash helpers for setup, configuration, shader compilation, build, launch, cleanup, and legacy documentation generation. | Linux/Unix-oriented contributor workflow. |
+| `external/` | Vendored and submodule dependency material, including LuaJIT. It is outside the first-party documentation scope. | Build support only. |
+| `docs/` | Legacy Doxygen inputs and project media. | See the distinction below. |
+
+## Tests and tools are not the same thing
+
+The root CMake path reaches `tests/` when `MLE_BUILD_TESTS` is on, yielding the `Core`, `AudioLifecycle`, and `Client` targets. The root file does not add `tools/`; although `tools/CMakeLists.txt` can discover `MLECubes`, this snapshot provides no root-supported configure, build, or launch procedure for it. Treat MLECubes as source-layout evidence rather than an established first-run target.
+
+## Legacy documentation and genuine media
+
+`docs/Doxyfile.in`, `docs/footer.html`, `docs/style.css`, and `src/mle/mainpage.dox` are obsolete Doxygen inputs for this documentation project. Do not use their generated prose as authority for this site. `docs/media/gameplay.png` is different: it is project media linked from the README and can serve as orientation imagery, but it does not establish technical behavior.
+
+For execution paths, continue with [automated tests](/MLEDocs/versions/c1abea3de165/start-here/tests/) or [the interactive Client](/MLEDocs/versions/c1abea3de165/start-here/client/). For missing tools and build prerequisites, see [troubleshooting](/MLEDocs/versions/c1abea3de165/start-here/troubleshooting/).

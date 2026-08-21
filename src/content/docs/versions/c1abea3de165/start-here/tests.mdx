@@ -1,0 +1,58 @@
+---
+title: Run the automated tests
+description: Run the Core and AudioLifecycle GoogleTest executables and separate their evidence from the interactive Client.
+contentType: technical
+pageId: tests
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [tests, core]
+sourceFiles: [tests/CMakeLists.txt, tests/Core/CMakeLists.txt, scripts/envsetup.sh]
+testFiles: [tests/Core/src/Main.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+---
+
+With the default `MLE_BUILD_TESTS=ON` configuration, the root project reaches the `Core`, `AudioLifecycle`, and `Client` target definitions. Only `Core` and `AudioLifecycle` are automated GoogleTest executables. `Client` is an interactive demonstration; use its [separate guide](/MLEDocs/versions/c1abea3de165/start-here/client/) for manual observations.
+
+## Automated verification
+
+`Core` initializes Core, Client, and Renderer, calls `RUN_ALL_TESTS()`, then shuts Renderer and Core down and returns the GoogleTest result. CMake discovers `Core` and `AudioLifecycle` as GoogleTest tests with the `unit` label. `AudioLifecycle` is built below the Core test directory and exercises audio lifecycle behavior through GoogleTest.
+
+After [setup](/MLEDocs/versions/c1abea3de165/start-here/setup/) and a default [build](/MLEDocs/versions/c1abea3de165/start-here/build/), the Linux output paths are:
+
+| Target | Executable path | Evidence |
+| --- | --- | --- |
+| `Core` | `build/<build_type>/tests/Core/Core` | Automated GoogleTest runner. |
+| `AudioLifecycle` | `build/<build_type>/tests/Core/AudioLifecycle` | Automated GoogleTest runner. |
+| `Client` | `build/<build_type>/tests/Client/Client` | Interactive demonstration, not an automated assertion target. |
+
+The Core CMake file calls `gtest_discover_tests`, but the inspected first-party CMake files do not establish a root `enable_testing()` or `include(CTest)` path. Therefore this snapshot does not document a verified `ctest` command; run the executable or the sourced helper instead.
+
+## Run Core with resources
+
+From a shell where `scripts/envsetup.sh` was sourced at the repository root, launch the default automated target with:
+
+```bash
+mle_run_test -n Core -t Debug
+```
+
+Before recreating resources, the helper runs `rm -rf "build/${build_type}/tests/${test_name}/res"`: for the selected target, it deletes `build/<build_type>/tests/<name>/res` recursively, losing that target's generated resource-link tree. It then recreates the directory. For each of `lua`, `textures`, `shaders`, `fonts`, `sounds`, and `models`, it creates an `mle` link to the engine `res/<kind>` tree and an `i` link to `tests/<name>/res/<kind>`.
+
+Both link commands redirect errors to `/dev/null`. If a target-specific resource directory is absent, the helper can still create a dangling `i` link; inspect the resulting links rather than treating suppressed link errors as success. It then runs the selected executable and rewrites the repository-root `latest.log` link to the target log.
+
+Forward GoogleTest filtering arguments after `--`; for example:
+
+```bash
+mle_run_test -n Core -t Debug -- --gtest_filter=AnimationTest.*
+```
+
+An automated pass is established by the executable's GoogleTest result and output. `mle_run_test` later updates links and prints `Latest logs in latest.log`, so its final shell status alone does not prove that the executable passed. Inspect the test output and the selected target log when a failure matters.
+
+## Target boundary
+
+The helper's `-n` value supplies both a test directory and executable name. It can launch `Core` and `Client`, whose directory-derived names match that layout. It cannot reach `AudioLifecycle` through a documented helper form: the executable is under `tests/Core`, while `-n AudioLifecycle` would seek `tests/AudioLifecycle/AudioLifecycle`. Run `build/<build_type>/tests/Core/AudioLifecycle` directly when that executable is present.
+
+## Interactive demonstration
+
+`mle_run_test -n Client -t Debug` prepares Client resources and launches the Client executable, but it is not a test result. For a build-and-launch workflow, use `mle_ber -n Client -t Debug`; a successful helper return still does not prove the interactive process exited successfully. Continue with [the Client guide](/MLEDocs/versions/c1abea3de165/start-here/client/) for its manual success boundary.
