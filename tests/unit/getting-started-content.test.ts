@@ -1,8 +1,10 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { parseFrontmatter } from 'astro/markdown';
 import { describe, expect, it } from 'vitest';
 import { technicalPageMetadataSchema } from '../../src/content.config';
+import { buildSectionIndexModel, navigationSections } from '../../src/data/navigation';
+import { versions } from '../../src/data/versions';
 
 const snapshotDirectory = resolve('src/content/docs/versions/c1abea3de165');
 const commit = 'c1abea3de165032fe064300340807b7a6af388f8';
@@ -55,6 +57,70 @@ const expected = [
 	},
 ] as const;
 
+const contributorFoundations = [
+	{
+		path: 'contributing/contributor-environment.mdx',
+		pageId: 'contributor-environment',
+		sources: ['README.md', 'CMakeLists.txt', 'scripts/envsetup.sh', 'src/mle/Entry.inl'],
+		tests: [],
+		links: [
+			'/MLEDocs/versions/c1abea3de165/start-here/setup/',
+			'/MLEDocs/versions/c1abea3de165/start-here/build/',
+			'/MLEDocs/versions/c1abea3de165/start-here/repository-tour/',
+		],
+	},
+	{
+		path: 'contributing/contributor-testing.mdx',
+		pageId: 'contributor-testing',
+		sources: ['tests/CMakeLists.txt', 'tests/Core/CMakeLists.txt', 'tests/Client/CMakeLists.txt'],
+		tests: ['tests/Core/src/Main.cpp', 'tests/Client/src/Main.cpp'],
+		links: [
+			'/MLEDocs/versions/c1abea3de165/start-here/tests/',
+			'/MLEDocs/versions/c1abea3de165/start-here/client/',
+		],
+	},
+	{
+		path: 'contributing/resources-shaders.mdx',
+		pageId: 'resources-shaders',
+		sources: [
+			'scripts/envsetup.sh',
+			'res/shaders/ui/bg.frag',
+			'tests/Core/res/shaders/test.vert',
+			'tests/Client/res/shaders/ui/bg.frag',
+		],
+		tests: [],
+		links: [
+			'/MLEDocs/versions/c1abea3de165/start-here/build/',
+			'/MLEDocs/versions/c1abea3de165/start-here/client/',
+		],
+	},
+	{
+		path: 'contributing/documentation.mdx',
+		pageId: 'documentation',
+		sources: ['README.md', 'scripts/envsetup.sh', 'docs/Doxyfile.in', 'src/mle/mainpage.dox'],
+		tests: [],
+		links: ['/MLEDocs/versions/c1abea3de165/start-here/repository-tour/'],
+	},
+	{
+		path: 'contributing/translations.mdx',
+		pageId: 'translations',
+		sources: ['README.md'],
+		tests: [],
+		links: ['/MLEDocs/versions/c1abea3de165/start-here/repository-tour/'],
+	},
+] as const;
+
+const contributorPageIds = contributorFoundations.map(({ pageId }) => pageId).sort();
+
+const physicalContributorPageIds = (): string[] =>
+	readdirSync(resolve(snapshotDirectory, 'contributing'))
+		.filter((name) => name.endsWith('.mdx') && name !== 'index.mdx')
+		.map((name) => {
+			const source = readFileSync(resolve(snapshotDirectory, 'contributing', name), 'utf8');
+			return technicalPageMetadataSchema.parse(parseFrontmatter(source).frontmatter).pageId;
+		})
+		.sort();
+
 describe('getting-started foundations', () => {
 	it.each(expected)('publishes verified canonical metadata for $path', ({ path, pageId, sources, tests }) => {
 		const source = readFileSync(resolve(snapshotDirectory, path), 'utf8');
@@ -71,8 +137,101 @@ describe('getting-started foundations', () => {
 			translationStatus: 'canonical',
 		});
 		expect((frontmatter.description as string).trim()).not.toBe('');
-		expect(metadata.sourceFiles).toEqual(expect.arrayContaining(sources));
+		expect(metadata.sourceFiles).toEqual(expect.arrayContaining([...sources]));
 		expect(metadata.testFiles).toEqual(tests);
+	});
+
+	it.each(contributorFoundations)(
+		'publishes canonical contributor metadata, registry parity, and immutable Start Here links for $pageId',
+		({ path, pageId, sources, tests, links }) => {
+			const source = readFileSync(resolve(snapshotDirectory, path), 'utf8');
+			const { frontmatter } = parseFrontmatter(source);
+			const metadata = technicalPageMetadataSchema.parse(frontmatter);
+			const contributing = navigationSections.find((section) => section.pageId === 'contributing');
+
+			expect(frontmatter).toMatchObject({
+				contentType: 'technical',
+				description: expect.any(String),
+				mleCommit: commit,
+				maturity: 'in-development',
+				audiences: ['contributor'],
+				pageId,
+				translationStatus: 'canonical',
+			});
+			expect((frontmatter.description as string).trim()).not.toBe('');
+			expect(metadata.sourceFiles).toEqual(expect.arrayContaining([...sources]));
+			expect(metadata.testFiles).toEqual(tests);
+			expect(contributing?.plannedGroups.flatMap((group) => group.children).map((child) => child.pageId)).toContain(pageId);
+			for (const link of links) expect(source).toContain(link);
+			expect(source).not.toMatch(/\/latest\//i);
+		},
+	);
+
+	it('keeps the complete physical contributor page-ID set aligned with the complete Contributing registry set', () => {
+		const contributing = navigationSections.find((section) => section.pageId === 'contributing');
+		const registryPageIds = contributing?.plannedGroups
+			.flatMap((group) => group.children)
+			.map((child) => child.pageId)
+			.sort();
+
+		expect(physicalContributorPageIds()).toEqual(contributorPageIds);
+		expect(registryPageIds).toEqual(contributorPageIds);
+	});
+
+	it('models the Contributing hub with exactly five available children and no planned groups', () => {
+		const model = buildSectionIndexModel({
+			sectionId: 'contributing',
+			version: versions[0],
+			locale: 'en',
+			pages: [
+				{
+					pageId: 'contributing',
+					locale: 'en',
+					versionId: 'c1abea3de165',
+					slug: 'contributing',
+					translationStatus: 'canonical',
+				},
+				...physicalContributorPageIds().map((pageId) => ({
+					pageId,
+					locale: 'en' as const,
+					versionId: 'c1abea3de165',
+					slug: `contributing/${pageId}`,
+					translationStatus: 'canonical' as const,
+				})),
+			],
+		});
+
+		expect(model.available.map((child) => child.pageId).sort()).toEqual(contributorPageIds);
+		expect(model.plannedGroups).toEqual([]);
+	});
+
+	it('keeps contributor testing expectations separate from the Start Here focused invocation', () => {
+		const source = readFileSync(resolve(snapshotDirectory, 'contributing/contributor-testing.mdx'), 'utf8');
+
+		expect(source).toContain('/MLEDocs/versions/c1abea3de165/start-here/tests/');
+		expect(source).not.toContain('mle_run_test -n Core -t Debug -- --gtest_filter=AnimationTest.*');
+	});
+
+	it('localizes internal documentation links while preserving protected translation literals', () => {
+		const source = readFileSync(resolve(snapshotDirectory, 'contributing/translations.mdx'), 'utf8');
+
+		expect(source).toContain('/MLEDocs/pt-br/versions/c1abea3de165/...');
+		expect(source).toContain('code, configuration, command, and source-evidence literals');
+		expect(source).not.toContain('paths, URLs, MLE identifiers, log output, page IDs, and commit identities exactly');
+	});
+
+	it('routes tool-resource reachability through the repository tour rather than claiming it here', () => {
+		const source = readFileSync(resolve(snapshotDirectory, 'contributing/resources-shaders.mdx'), 'utf8');
+
+		expect(source).toContain('/MLEDocs/versions/c1abea3de165/start-here/repository-tour/');
+		expect(source).not.toContain("A tool's `res/` tree");
+	});
+
+	it('marks mle_gen_docs obsolete and excluded from the MLEDocs workflow', () => {
+		const source = readFileSync(resolve(snapshotDirectory, 'contributing/documentation.mdx'), 'utf8');
+
+		expect(source).toContain('`mle_gen_docs` is obsolete');
+		expect(source).toContain('excluded from the MLEDocs workflow');
 	});
 
 	it.each(expected)('keeps $path free of stale or unsupported guidance', ({ path }) => {

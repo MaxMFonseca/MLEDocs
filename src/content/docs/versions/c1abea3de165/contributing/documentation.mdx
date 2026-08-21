@@ -1,0 +1,49 @@
+---
+title: Document a contributor change
+description: Add evidence-backed, immutable MLE documentation while following MLEDocs metadata, validation, and legacy-Doxygen policy.
+contentType: technical
+pageId: documentation
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [contributor]
+subsystems: [project]
+sourceFiles: [README.md, scripts/envsetup.sh, docs/Doxyfile.in, src/mle/mainpage.dox]
+testFiles: []
+lastVerified: '2026-08-21'
+translationStatus: canonical
+---
+
+This page separates MLE evidence from MLEDocs policy. MLE source establishes facts about this snapshot; MLEDocs owns the documentation version model, metadata schema, translation behavior, validation, and publication rules. Use [the repository tour](/MLEDocs/versions/c1abea3de165/start-here/repository-tour/) for the source-tree distinction before assigning documentation ownership.
+
+## Evidence for MLE facts
+
+Every MLE fact on an immutable snapshot page must be checked against `c1abea3de165032fe064300340807b7a6af388f8`. Link source evidence to the narrowest useful MLE path with that full 40-character SHA, never a branch or a moving alias. Use implementation and relevant tests for behavior, CMake and scripts for build and execution behavior, and the README only as orientation corroborated by the pinned tree.
+
+The source snapshot still contains [`docs/Doxyfile.in`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/docs/Doxyfile.in), [`src/mle/mainpage.dox`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/mainpage.dox), and the `mle_gen_docs` helper in [`scripts/envsetup.sh`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/scripts/envsetup.sh). They describe a legacy Doxygen path. `mle_gen_docs` is obsolete and excluded from the MLEDocs workflow. MLEDocs excludes that generated output and prose as documentation authority; do not import it as fresh site content.
+
+## MLEDocs page contract
+
+For a technical page, MLEDocs requires a stable `pageId`, the full `mleCommit`, an explicit `maturity`, `audiences`, `subsystems`, source and test file lists, `lastVerified`, and a translation status. English pages are canonical. Page routes must stay under the selected commit, such as `/MLEDocs/versions/c1abea3de165/...`; internal links on this snapshot use those immutable, base-aware routes rather than a moving latest alias.
+
+Write only claims that the selected source can support, state limitations beside the behavior they limit, and mark inferred or unverified work plainly. Do not use MLE source files to justify MLEDocs policy: the content schema, version manifest, validators, and project guide are this repository's control plane.
+
+## Validate before review
+
+Run the focused test for the changed contract, then the project gates:
+
+```bash
+pnpm run test:unit -- tests/unit/getting-started-content.test.ts
+pnpm run check
+pnpm run validate:content
+pnpm run build
+pnpm run validate:links
+```
+
+Review the rendered immutable route as well as the source. Content validation checks metadata, same-commit translation consistency, navigation sections, and links; the build and link checks catch rendered-route failures under `/MLEDocs`.
+
+## Evidence
+
+- [MLE snapshot orientation](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/README.md)
+- [Legacy helper command](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/scripts/envsetup.sh)
+- [Legacy Doxygen input](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/docs/Doxyfile.in)
+- [Legacy Doxygen main page](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/mainpage.dox)

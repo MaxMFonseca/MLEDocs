@@ -1,0 +1,37 @@
+---
+title: Work with resources and shaders
+description: Keep engine resources, test fixtures, shader directories, and generated SPIR-V outputs aligned with the selected MLE target.
+contentType: technical
+pageId: resources-shaders
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [contributor]
+subsystems: [renderer, tests, project]
+sourceFiles: [scripts/envsetup.sh, res/shaders/ui/bg.frag, tests/Core/res/shaders/test.vert, tests/Client/res/shaders/ui/bg.frag]
+testFiles: []
+lastVerified: '2026-08-21'
+translationStatus: canonical
+---
+
+Resources are selected by the launch context. The sourced helper starts `MLE_SHADER_DIRS` with the engine directory `${_MLE_ROOT}/res/shaders` unless the shell already supplied a value. When it launches a named test target, `mle_run_test` creates resource links below that target's build directory: `mle` points to engine `res/<kind>`, while `i` points to `tests/<name>/res/<kind>`. The six kinds include `shaders`, so engine content and test fixtures remain distinct at runtime.
+
+The engine shader tree includes [`res/shaders/ui/bg.frag`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/res/shaders/ui/bg.frag). Core fixtures have their own [`tests/Core/res/shaders/test.vert`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Core/res/shaders/test.vert), and Client has a separate [`tests/Client/res/shaders/ui/bg.frag`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/res/shaders/ui/bg.frag). Use [the repository tour](/MLEDocs/versions/c1abea3de165/start-here/repository-tour/) for tool reachability and source-layout boundaries. Do not make format-level or loader-contract claims from these paths alone; those belong to the later resource and renderer workstreams.
+
+## Shader source and generated output
+
+The helper finds `*.vert`, `*.frag`, `*.comp`, `*.geom`, `*.tesc`, and `*.tese` recursively in the colon-separated shader directories. For each source it invokes `glslangValidator -V` and writes the compiled output adjacent to it as `<shader>.spv`. This output is generated build state, not another source shader to edit.
+
+`mle_compile_shaders_all` skips an output only when it exists and is not older than its source. Regenerate after adding or changing a recognized shader source, after deleting its adjacent output, after adding a shader directory, or when deliberately forcing all outputs with `-f` or `--force`. `mle_build` runs this helper before CMake; use [the build guide](/MLEDocs/versions/c1abea3de165/start-here/build/) for the compiler and `nproc` prerequisites.
+
+## Add a shader directory deliberately
+
+Use `mle_add_shader_dirs <directory>...` for an existing directory. It resolves each accepted argument to a physical absolute path, appends a unique entry to `MLE_SHADER_DIRS`, and exports the variable. Missing directories are reported and skipped. The initial default assignment is not exported, so source the helper from the repository root and inspect the current value when a shader is unexpectedly absent.
+
+For a Client change, launch Client through [its immutable guide](/MLEDocs/versions/c1abea3de165/start-here/client/) so its generated engine and Client resource links are rebuilt before the interactive check. State which resource tree and manual scene were inspected; an interactive result demonstrates that path only and does not replace Core assertions.
+
+## Evidence
+
+- [Resource-link and shader helper implementation](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/scripts/envsetup.sh)
+- [Engine UI shader example](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/res/shaders/ui/bg.frag)
+- [Core shader fixture](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Core/res/shaders/test.vert)
+- [Client shader fixture](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/res/shaders/ui/bg.frag)

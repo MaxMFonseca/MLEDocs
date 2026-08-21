@@ -1,0 +1,37 @@
+---
+title: Prepare a contributor environment
+description: Keep a pinned MLE working tree, generated state, and Linux-tested helper workflow ready for reviewable changes.
+contentType: technical
+pageId: contributor-environment
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [contributor]
+subsystems: [project]
+sourceFiles: [README.md, CMakeLists.txt, scripts/envsetup.sh, src/mle/Entry.inl]
+testFiles: []
+lastVerified: '2026-08-21'
+translationStatus: canonical
+---
+
+Keep the working tree on the documented commit while investigating or changing this snapshot. The exact checkout, recursive submodules, LuaJIT build, and sourced helper session are prerequisites of the supported path; use [the setup procedure](/MLEDocs/versions/c1abea3de165/start-here/setup/) rather than maintaining a second contributor-specific sequence. The root CMake file builds the `MLE` static library and includes tests by default; its [pinned configuration](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/CMakeLists.txt) is the build authority for this snapshot.
+
+## Verified boundary versus local preference
+
+The verified path is Linux-oriented: the README identifies Linux as the tested development platform, while Windows is intended but untested. The helper is a sourced Bash script and its build and shader commands use Unix tooling such as `nproc`. A C++23-capable compiler, CMake, Vulkan, ICU, OpenAL, Git, GNU Make, `glslangValidator`, and Bash are source-supported requirements; the [requirements page](/MLEDocs/versions/c1abea3de165/start-here/requirements/) records their evidence and platform limits.
+
+An editor or IDE is not a source requirement. `mle_config` asks CMake for `compile_commands.json` and creates a symlink with that name in its invocation directory; that can support tooling, but it does not prescribe an editor. The helper also has an `mle_nvim_dap` convenience function, which only exports debug-adapter paths for a selected target. Treat editor settings and extensions as local choices, and keep them separate from the build facts established by [`scripts/envsetup.sh`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/scripts/envsetup.sh).
+
+## Working-tree state to keep deliberate
+
+Use the pinned commit when reproducing a report or reviewing evidence. Recursive submodules are part of the helper setup, and `external/LuaJIT` is built by `mle_setup`; a final successful directory change does not prove an earlier submodule or `make` command succeeded. Confirm those outputs before attributing a later configuration failure to the engine.
+
+Generated state belongs to the selected build configuration. `mle_config` writes under `build/<build_type>` and exposes its compilation database through the invocation-directory link; `mle_build` can write adjacent shader outputs; and `mle_run_test` recreates a selected target's resource-link tree. Reconfigure or recreate that state when changing configuration, resources, or target context instead of treating it as tracked source. The [build guide](/MLEDocs/versions/c1abea3de165/start-here/build/) and [test guide](/MLEDocs/versions/c1abea3de165/start-here/tests/) describe those exact boundaries.
+
+`src/mle/Entry.inl` is a reusable application entry-point implementation, not a contributor command or a root-default executable. Read it as source context when tracing an application startup path, and use the [repository tour](/MLEDocs/versions/c1abea3de165/start-here/repository-tour/) to distinguish engine, test, resource, and tool directories before widening a change.
+
+## Evidence
+
+- [README requirements and supported workflow](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/README.md)
+- [Root CMake configuration](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/CMakeLists.txt)
+- [Sourced helper and generated-state behavior](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/scripts/envsetup.sh)
+- [Generic application entry point](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/Entry.inl)

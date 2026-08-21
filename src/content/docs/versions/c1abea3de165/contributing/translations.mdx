@@ -1,0 +1,32 @@
+---
+title: Maintain translations
+description: Keep English canonical pages and Brazilian Portuguese translations aligned by snapshot, verification date, and protected literals.
+contentType: technical
+pageId: translations
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [contributor]
+subsystems: [project]
+sourceFiles: [README.md]
+testFiles: []
+lastVerified: '2026-08-21'
+translationStatus: canonical
+---
+
+Translation rules are MLEDocs policy, not MLE source behavior. `README.md` is retained as snapshot orientation metadata only; it does not define translation or version policy. English is authored first and is the canonical page for a selected MLE snapshot. Brazilian Portuguese uses the `pt-BR` language tag and the `pt-br` route segment. Keep both routes under the same immutable commit, for example `/MLEDocs/versions/c1abea3de165/...` and `/MLEDocs/pt-br/versions/c1abea3de165/...`; do not link an archived snapshot through a moving alias.
+
+## Physical translations and fallback
+
+A physical Portuguese page is `current` when it reflects the English page's `lastVerified` date, and records that date in `translationSourceLastVerified`. Mark it `stale` when that source revision differs. English uses `canonical` and has no translation-source date.
+
+When a Portuguese page is absent, MLEDocs generates a visible `fallback` record that serves the English page from the same commit. That is not a translation and it must never cross to another commit. The same-commit rule applies even when a newer English page happens to have the desired content.
+
+## Preserve technical literals
+
+Translate meaning and reader-facing prose naturally for Brazilian Portuguese, but preserve code, configuration, command, and source-evidence literals exactly. This includes MLE identifiers, literal command lines, and source URLs or log output cited as evidence. Localized internal documentation links are navigation, not protected literals: point an authored translation to `/MLEDocs/pt-br/versions/c1abea3de165/...` for the same commit, and use the same-commit English fallback when that translation is absent. Review terminology, navigation labels, source links, and any fallback notice along with the article body. A literal that changes meaning is a documentation defect, not localization polish.
+
+Before marking a translation current, compare it with the canonical English revision, confirm its metadata dates, and run the content and link validators. The [documentation workflow](/MLEDocs/versions/c1abea3de165/contributing/documentation/) explains the evidence and validation boundary; [the repository tour](/MLEDocs/versions/c1abea3de165/start-here/repository-tour/) remains the immutable starting point for source-tree context.
+
+## MLEDocs control-plane references
+
+This repository's content schema enforces the allowed statuses and translation-source date rules. Its version manifest identifies the selected commit and locales, and its fallback builder creates only missing same-commit records. Those implementation rules, rather than any MLE source file, are authoritative for translation and version policy.

@@ -1,0 +1,40 @@
+---
+title: Test a contributor change
+description: Select Core automated evidence or Client interactive evidence and report the result with its resource and target context.
+contentType: technical
+pageId: contributor-testing
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [contributor]
+subsystems: [tests, project]
+sourceFiles: [tests/CMakeLists.txt, tests/Core/CMakeLists.txt, tests/Client/CMakeLists.txt]
+testFiles: [tests/Core/src/Main.cpp, tests/Client/src/Main.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+---
+
+Choose evidence that matches the change. The root test directory adds child test directories; the Core CMake definition builds GoogleTest executables named `Core` and `AudioLifecycle`, while the Client definition builds a separate `Client` executable linked with `MLE`. This is a distinction in the pinned build graph, not a claim that every interactive observation is an automated assertion.
+
+## Automated Core evidence
+
+`Core` initializes Core, Client, and Renderer, runs `RUN_ALL_TESTS()`, then performs Renderer and Core shutdown. Its CMake definition links GoogleTest and uses `gtest_discover_tests` with the `unit` label. `AudioLifecycle` is another GoogleTest executable under the Core build directory. Use [the automated-test procedure](/MLEDocs/versions/c1abea3de165/start-here/tests/) for executable locations, resource setup, the direct `AudioLifecycle` boundary, and focused-filter invocation.
+
+The helper recreates `build/<build_type>/tests/<name>/res` before it launches a selected target. It creates `mle` and `i` links for engine and test resource kinds, and suppresses link errors, so record the actual GoogleTest output and inspect resource links when a failure could depend on fixtures. Do not present a successful helper return alone as a passing Core result.
+
+## Interactive Client evidence
+
+`Client` has no GoogleTest linkage or discovery in its CMake file. Its entry point initializes Core, Client, and Renderer, pushes `mle::user::InitLayer`, and enters the Client loop. Use [the Client guide](/MLEDocs/versions/c1abea3de165/start-here/client/) to prepare its resources and identify the manual scene or behavior inspected. `mle_ber -n Client -t Debug` is a build-and-launch path; it is not an automated pass signal.
+
+When a change is best assessed in Client, state the build type, launched target, resource state, interaction performed, and observed result. Keep that report separate from automated test results. This makes a reviewable record without overstating a manual demonstration as a test contract.
+
+## Match the scope before reporting
+
+Run the narrowest Core filter that exercises the changed behavior where one exists, then broaden as the change's dependencies require. For a Client-only behavior, report the interactive evidence and add automated coverage only when the behavior can be asserted there. The source does not establish a root `ctest` workflow, so do not substitute an unverified CTest claim for an executable result.
+
+## Evidence
+
+- [Test-directory discovery](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/CMakeLists.txt)
+- [Core and AudioLifecycle targets](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Core/CMakeLists.txt)
+- [Client target](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/CMakeLists.txt)
+- [Core GoogleTest runner](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Core/src/Main.cpp)
+- [Client interactive entry point](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/src/Main.cpp)
