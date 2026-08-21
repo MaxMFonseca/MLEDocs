@@ -751,3 +751,188 @@ for (const width of responsiveWidths) {
     }
   }
 }
+
+const gettingStartedAccessibilityCases = [
+  {
+    name: 'requirements desktop Light',
+    path: `/versions/${versionId}/start-here/requirements/`,
+    width: 1280,
+    height: 900,
+    theme: 'light',
+    title: 'Requirements and platform support',
+    maturity: 'In development',
+    locale: 'en',
+    evidenceLabel: 'Source evidence',
+  },
+  {
+    name: 'build phone Dark',
+    path: `/versions/${versionId}/start-here/build/`,
+    width: 360,
+    height: 844,
+    theme: 'dark',
+    title: 'Configure and build MLE',
+    maturity: 'In development',
+    locale: 'en',
+    evidenceLabel: 'Source evidence',
+    checkCode: true,
+  },
+  {
+    name: 'helper commands phone Light',
+    path: `/versions/${versionId}/reference/helper-commands/`,
+    width: 390,
+    height: 844,
+    theme: 'light',
+    title: 'Helper command contracts',
+    maturity: 'In development',
+    locale: 'en',
+    evidenceLabel: 'Source evidence',
+  },
+  {
+    name: 'Portuguese requirements fallback phone Dark',
+    path: `/pt-br/versions/${versionId}/start-here/requirements/`,
+    width: 360,
+    height: 844,
+    theme: 'dark',
+    title: 'Requirements and platform support',
+    maturity: 'Em desenvolvimento',
+    locale: 'pt-br',
+    evidenceLabel: 'Evidências no código-fonte',
+  },
+] as const;
+
+for (const auditCase of gettingStartedAccessibilityCases) {
+  test(`getting started accessibility: ${auditCase.name} has exact reflow, named controls, and no axe violations`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: auditCase.width, height: auditCase.height });
+    await page.addInitScript(
+      (theme) => localStorage.setItem('starlight-theme', theme),
+      auditCase.theme,
+    );
+    await page.goto(pageUrl(auditCase.path));
+
+    await expect(page.locator('html')).toHaveAttribute('data-theme', auditCase.theme);
+    await expectLoadedFontsAndNoOverflow(page);
+    expect(
+      await page.evaluate(() => ({
+        clientWidth: document.documentElement.clientWidth,
+        innerWidth: window.innerWidth,
+      })),
+    ).toEqual({ clientWidth: auditCase.width, innerWidth: auditCase.width });
+
+    const heading = page.getByRole('heading', { level: 1 });
+    await expect(heading).toHaveCount(1);
+    await expect(heading).toHaveText(auditCase.title);
+    await expect(page.locator('[data-mle-maturity="in-development"]')).toContainText(
+      auditCase.maturity,
+    );
+
+    const portuguese = auditCase.locale === 'pt-br';
+    await expect(page.locator('header site-search button[data-open-modal]')).toHaveAccessibleName(
+      portuguese ? 'Pesquisar' : 'Search',
+    );
+    const menu = page.getByRole('button', { name: 'Menu' });
+    if (await menu.isVisible()) await menu.click();
+    await expect(
+      page.getByRole('combobox', {
+        name: portuguese ? 'Selecionar tema' : 'Select theme',
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('combobox', {
+        name: portuguese ? 'Selecionar língua' : 'Select language',
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('combobox', {
+        name: portuguese ? 'Versão da documentação' : 'Documentation version',
+      }),
+    ).toBeVisible();
+    if (await menu.isVisible()) await menu.click();
+
+    const fallback = page.locator('[data-mle-translation-status="fallback"]');
+    if (portuguese) {
+      await expect(fallback).toHaveCount(1);
+      await expect(fallback).toContainText(
+        `Esta página está disponível em inglês para a mesma versão do MLE. Commit fixado: ${versionId}.`,
+      );
+      await expect(page.locator('main')).toHaveAttribute('lang', 'en');
+    } else {
+      await expect(fallback).toHaveCount(0);
+    }
+
+    if ('checkCode' in auditCase && auditCase.checkCode) {
+      const codeBlocks = page.locator('main pre');
+      const codeLayout = await codeBlocks.evaluateAll((blocks) =>
+        blocks.map((block) => ({
+          contained: block.scrollWidth <= block.clientWidth,
+          overflowX: getComputedStyle(block).overflowX,
+          role: block.getAttribute('role'),
+          scrollLeft: block.scrollLeft,
+          tabIndex: block.getAttribute('tabindex'),
+        })),
+      );
+      expect(codeLayout.length).toBeGreaterThan(0);
+      expect(
+        codeLayout.every(
+          ({ contained, overflowX }) => contained || overflowX === 'auto' || overflowX === 'scroll',
+        ),
+      ).toBe(true);
+      expect(
+        codeLayout.filter(
+          ({ contained, role, tabIndex }) =>
+            contained
+              ? role !== null || (tabIndex !== null && tabIndex !== '0')
+              : (role !== null && role !== 'region') || tabIndex !== '0',
+        ),
+      ).toEqual([]);
+
+      const overflowingIndex = codeLayout.findIndex(({ contained }) => !contained);
+      expect(overflowingIndex).toBeGreaterThanOrEqual(0);
+      const overflowingCode = codeBlocks.nth(overflowingIndex);
+      await overflowingCode.focus();
+      await page.keyboard.press('Shift+Tab');
+      await page.keyboard.press('Tab');
+      await expectTwoPartFocus(overflowingCode, false);
+      await page.keyboard.press('ArrowRight');
+      await expect.poll(() => overflowingCode.evaluate((block) => block.scrollLeft)).toBeGreaterThan(0);
+
+      const containedIndex = codeLayout.findIndex(({ contained }) => contained);
+      expect(containedIndex).toBeGreaterThanOrEqual(0);
+      const containedCode = codeBlocks.nth(containedIndex);
+      expect(await containedCode.textContent()).not.toBe('');
+      expect(codeLayout[containedIndex]).toMatchObject({
+        contained: true,
+        overflowX: 'auto',
+        role: null,
+        scrollLeft: 0,
+      });
+    }
+
+    const evidence = page.locator('[data-mle-source-evidence]');
+    const summary = evidence.locator('summary');
+    await expect(summary).toHaveAccessibleName(auditCase.evidenceLabel);
+    await summary.focus();
+    await page.keyboard.press('Shift+Tab');
+    await page.keyboard.press('Tab');
+    await expectTwoPartFocus(summary, false);
+    await page.keyboard.press('Enter');
+    await expect(evidence).toHaveAttribute('open', '');
+    const evidenceLayout = await evidence.evaluate((element) => ({
+      right: element.getBoundingClientRect().right,
+      viewportWidth: document.documentElement.clientWidth,
+      pathOverflow: [...element.querySelectorAll('a')].some(
+        (link) => link.scrollWidth > link.clientWidth,
+      ),
+      pathsWrap: [...element.querySelectorAll('a')].every(
+        (link) => getComputedStyle(link).overflowWrap !== 'normal',
+      ),
+    }));
+    expect(evidenceLayout.right).toBeLessThanOrEqual(evidenceLayout.viewportWidth);
+    expect(evidenceLayout.pathOverflow).toBe(false);
+    expect(evidenceLayout.pathsWrap).toBe(true);
+
+    const accessibility = await new AxeBuilder({ page }).analyze();
+    expect(accessibility.violations).toEqual([]);
+  });
+}

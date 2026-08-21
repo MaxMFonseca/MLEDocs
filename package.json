@@ -13,7 +13,7 @@
     "preview": "astro preview",
     "check": "astro check",
     "test:unit": "vitest run",
-    "test:e2e": "playwright test tests/e2e/navigation.spec.ts --project=chromium --project=webkit",
+    "test:e2e": "playwright test tests/e2e/navigation.spec.ts tests/e2e/getting-started.spec.ts --project=chromium --project=webkit",
     "test:search": "playwright test tests/e2e/search.spec.ts --project=chromium --project=webkit",
     "test:a11y": "playwright test tests/e2e/accessibility.spec.ts --project=chromium --project=webkit",
     "test:visual": "playwright test tests/visual/foundation.spec.ts --project=chromium",

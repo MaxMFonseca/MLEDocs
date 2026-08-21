@@ -287,3 +287,52 @@ test('breadcrumb on Portuguese same-commit fallback', async ({ page }) => {
 		caret: 'hide',
 	});
 });
+
+test('getting started visual requirements desktop Light', async ({ page }) => {
+	await page.setViewportSize({ width: 1280, height: 900 });
+	await setTheme(page, 'light');
+	await page.goto(`versions/${versionId}/start-here/requirements/`);
+	await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+	await settlePage(page);
+
+	await expect(page).toHaveScreenshot('requirements-desktop-light.png', {
+		animations: 'disabled',
+		caret: 'hide',
+		fullPage: true,
+	});
+});
+
+test('getting started visual build guide phone Dark', async ({ page }) => {
+	await page.setViewportSize({ width: 390, height: 844 });
+	await setTheme(page, 'dark');
+	await page.goto(`versions/${versionId}/start-here/build/`);
+	await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+	await settlePage(page);
+
+	await expect(page).toHaveScreenshot('build-guide-phone-dark.png', {
+		animations: 'disabled',
+		caret: 'hide',
+		fullPage: true,
+	});
+});
+
+test('getting started visual source evidence desktop Dark', async ({ page }) => {
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await setTheme(page, 'dark');
+	await page.goto(`versions/${versionId}/start-here/requirements/`);
+	await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+	const evidence = page.locator('[data-mle-source-evidence]');
+	const summary = evidence.locator('summary');
+	await expect(summary).toHaveAccessibleName('Source evidence');
+	await summary.focus();
+	await page.keyboard.press('Enter');
+	await expect(evidence).toHaveAttribute('open', '');
+	await expect(summary).toBeFocused();
+	await settlePage(page);
+
+	await expect(page).toHaveScreenshot('source-evidence-desktop-dark.png', {
+		animations: 'disabled',
+		caret: 'hide',
+		fullPage: true,
+	});
+});

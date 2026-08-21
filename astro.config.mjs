@@ -19,6 +19,21 @@ const pagefindUiDirectory = dirname(starlightRequire.resolve('@pagefind/default-
 const pagefindUiModule = join(pagefindUiDirectory, 'npm_dist/mjs/ui-core.mjs');
 const pagefindUiStyles = join(pagefindUiDirectory, 'css/ui.css');
 
+const keyboardScrollableCode = {
+  name: 'Keyboard-scrollable code',
+  hooks: {
+    postprocessRenderedBlock: ({ renderData }) => {
+      const pending = [renderData.blockAst];
+      while (pending.length > 0) {
+        const node = pending.pop();
+        if (!node || node.type !== 'element') continue;
+        if (node.tagName === 'pre') node.properties.tabindex = 0;
+        for (const child of node.children) pending.push(child);
+      }
+    },
+  },
+};
+
 export default defineConfig({
   site: 'https://maxmfonseca.github.io',
   base: '/MLEDocs',
@@ -34,6 +49,7 @@ export default defineConfig({
   integrations: [
     starlight({
       title: 'MLE',
+      expressiveCode: { plugins: [keyboardScrollableCode] },
       defaultLocale: 'root',
       locales: {
         root: { label: 'English', lang: 'en' },
