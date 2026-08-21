@@ -1,10 +1,46 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 const siteOrigin = process.env.MLE_DOCS_E2E_ORIGIN ?? 'http://127.0.0.1:4321';
+const versionId = 'c1abea3de165';
 
 function pageUrl(path: string): string {
   return new URL(`/MLEDocs${path}`, siteOrigin).toString();
+}
+
+async function expectLoadedFontsAndNoOverflow(page: Page): Promise<void> {
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  const layout = await page.evaluate(() => ({
+    overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    loadedFamilies: [...document.fonts]
+      .filter((font) => font.status === 'loaded')
+      .map((font) => font.family.replace(/^(['"])(.*)\1$/, '$2')),
+  }));
+
+  expect(layout.overflow).toBeLessThanOrEqual(1);
+  expect(layout.loadedFamilies).toEqual(
+    expect.arrayContaining(['Sora', 'Source Sans 3', 'IBM Plex Mono']),
+  );
+}
+
+async function expectTwoPartFocus(
+  control: Locator,
+  focusControl = true,
+  indicator = control,
+): Promise<void> {
+  if (focusControl) await control.focus();
+  await expect(control).toBeFocused();
+  const focus = await indicator.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      outlineStyle: style.outlineStyle,
+      outlineWidth: Number.parseFloat(style.outlineWidth),
+      boxShadow: style.boxShadow,
+    };
+  });
+  expect(focus.outlineStyle).not.toBe('none');
+  expect(focus.outlineWidth).toBeGreaterThanOrEqual(2);
+  expect(focus.boxShadow).not.toBe('none');
 }
 
 test('applies the MLE palette instead of the Starlight defaults', async ({ page }) => {
@@ -468,3 +504,149 @@ test('version-aware breadcrumbs remain semantic and axe-clean on exact and fallb
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   }
 });
+
+const responsiveWidths = [360, 390, 768, 1280, 1600] as const;
+const responsiveLocales = [
+  {
+    name: 'English',
+    prefix: '',
+    sectionLabel: 'Engine Systems',
+    breadcrumbLabel: 'Breadcrumb',
+    searchLabel: 'Search',
+    scopeLabel: 'Results context',
+    activeScopeLabel: 'Current commit and language',
+    themeLabel: 'Select theme',
+    languageLabel: 'Select language',
+    versionLabel: 'Documentation version',
+    plannedLabel: 'Page planned',
+  },
+  {
+    name: 'Brazilian Portuguese',
+    prefix: '/pt-br',
+    sectionLabel: 'Sistemas do motor',
+    breadcrumbLabel: 'Caminho de navegação',
+    searchLabel: 'Pesquisar',
+    scopeLabel: 'Contexto dos resultados',
+    activeScopeLabel: 'Commit e idioma atuais',
+    themeLabel: 'Selecionar tema',
+    languageLabel: 'Selecionar língua',
+    versionLabel: 'Versão da documentação',
+    plannedLabel: 'Página planejada',
+  },
+] as const;
+
+for (const width of responsiveWidths) {
+  for (const theme of ['dark', 'light'] as const) {
+    for (const locale of responsiveLocales) {
+      test(`${locale.name} ${theme} navigation matrix is accessible at ${width}px`, async ({
+        page,
+      }) => {
+        const height = width <= 390 ? 844 : width === 768 ? 900 : 1000;
+        await page.setViewportSize({ width, height });
+        await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
+
+        await page.goto(pageUrl(`${locale.prefix}/versions/${versionId}/`));
+        const themePicker = page.locator('header starlight-theme-select select');
+        await themePicker.selectOption(theme, { force: true });
+        await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+        await expect(page.locator('[data-mle-homepage]')).toBeVisible();
+        await expectLoadedFontsAndNoOverflow(page);
+
+        const searchOpener = page.locator('header site-search button[data-open-modal]');
+        await expect(searchOpener).toHaveAccessibleName(locale.searchLabel);
+        await expect(page.locator('[data-mle-version-picker]')).toHaveAccessibleName(
+          locale.versionLabel,
+        );
+        await expectTwoPartFocus(
+          page
+            .locator('[data-mle-section-directory]')
+            .getByRole('link', { name: locale.sectionLabel, exact: true }),
+        );
+        expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+
+        await page.goto(
+          pageUrl(`${locale.prefix}/versions/${versionId}/systems/`),
+        );
+        await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+        await expectLoadedFontsAndNoOverflow(page);
+
+        const breadcrumb = page.getByRole('navigation', { name: locale.breadcrumbLabel });
+        await expect(breadcrumb.locator('ol')).toBeVisible();
+        await expect(
+          breadcrumb.getByText(locale.sectionLabel, { exact: true }),
+        ).toHaveAttribute('aria-current', 'page');
+
+        const plannedStatus = page
+          .locator('[data-mle-navigation-availability="planned"]')
+          .first();
+        await expect(plannedStatus).toHaveAttribute(
+          'data-mle-navigation-availability',
+          'planned',
+        );
+        await expect(plannedStatus).toContainText(locale.plannedLabel);
+        await expect(plannedStatus.locator('a')).toHaveCount(0);
+
+        const visibleThemePicker = page.getByRole('combobox', {
+          name: locale.themeLabel,
+        });
+        const visibleLanguagePicker = page.getByRole('combobox', {
+          name: locale.languageLabel,
+        });
+        const menu = page.getByRole('button', { name: 'Menu' });
+        if (await menu.isVisible()) {
+          const relationship = await menu.getAttribute('aria-controls');
+          expect(relationship).toBe('starlight__sidebar');
+          await expect(page.locator(`#${relationship}`)).toHaveCount(1);
+          await menu.click();
+          await expect(menu.locator('xpath=..')).toHaveAttribute('aria-expanded', 'true');
+          await expect(page.locator('#starlight__sidebar')).toBeVisible();
+          await expect(visibleThemePicker).toBeVisible();
+          await expect(visibleLanguagePicker).toBeVisible();
+          await expect(visibleThemePicker).toHaveAccessibleName(locale.themeLabel);
+          await expect(visibleLanguagePicker).toHaveAccessibleName(locale.languageLabel);
+          await menu.click();
+          await expect(menu.locator('xpath=..')).toHaveAttribute('aria-expanded', 'false');
+        } else {
+          await expect(page.locator('#starlight__sidebar')).toBeVisible();
+          await expect(visibleThemePicker).toBeVisible();
+          await expect(visibleLanguagePicker).toBeVisible();
+          await expect(visibleThemePicker).toHaveAccessibleName(locale.themeLabel);
+          await expect(visibleLanguagePicker).toHaveAccessibleName(locale.languageLabel);
+        }
+
+        await expect(page.locator('#starlight__search .pagefind-ui__search-input')).toHaveCount(1, {
+          timeout: 15_000,
+        });
+        await page.keyboard.press('Control+k');
+        const dialog = page.getByRole('dialog', { name: locale.searchLabel });
+        await expect(dialog).toBeVisible();
+        const scope = dialog.getByRole('group', { name: locale.scopeLabel });
+        await expect(scope).toBeVisible();
+        const activeScope = scope.getByRole('radio', { name: locale.activeScopeLabel });
+        await expect(activeScope).toBeChecked();
+        const searchInput = dialog.locator('.pagefind-ui__search-input');
+        await expect(searchInput).toHaveAccessibleName(/\S/);
+        await expect(searchInput).toBeFocused();
+        await page.keyboard.press('Shift+Tab');
+        await expectTwoPartFocus(
+          activeScope,
+          false,
+          activeScope.locator('xpath=ancestor::label'),
+        );
+        await page.keyboard.press('Tab');
+        await expectTwoPartFocus(searchInput, false);
+
+        const motion = await searchInput.evaluate((element) => ({
+          animationDuration: getComputedStyle(element).animationDuration,
+          transitionDuration: getComputedStyle(element).transitionDuration,
+          scrollBehavior: getComputedStyle(document.documentElement).scrollBehavior,
+        }));
+        expect(motion.animationDuration).toBe('0s');
+        expect(motion.transitionDuration).toBe('0s');
+        expect(motion.scrollBehavior).toBe('auto');
+        await expectLoadedFontsAndNoOverflow(page);
+        expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+      });
+    }
+  }
+}

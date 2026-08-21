@@ -510,8 +510,9 @@ if (project.trailingSlash === 'never') dataAttributes['data-strip-trailing-slash
 			accent-color: var(--mle-accent-bright);
 		}
 
-		.search-scope input:focus-visible {
-			outline: 2px solid var(--mle-focus-inner);
+		.search-scope label:focus-within {
+			border-radius: var(--mle-radius-sm);
+			outline: 2px solid var(--mle-accent-bright);
 			outline-offset: 2px;
 			box-shadow: 0 0 0 5px var(--mle-focus-outer);
 		}

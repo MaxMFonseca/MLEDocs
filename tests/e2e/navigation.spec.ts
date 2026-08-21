@@ -114,8 +114,22 @@ const sectionCases = [
 ] as const;
 
 for (const localeCase of [
-  { name: 'English', prefix: '', label: (section: (typeof sectionCases)[number]) => section.en },
-  { name: 'Brazilian Portuguese', prefix: '/pt-br', label: (section: (typeof sectionCases)[number]) => section.pt },
+  {
+    name: 'English',
+    prefix: '',
+    localeLabel: 'English',
+    breadcrumbLabel: 'Breadcrumb',
+    searchLabel: 'Search',
+    label: (section: (typeof sectionCases)[number]) => section.en,
+  },
+  {
+    name: 'Brazilian Portuguese',
+    prefix: '/pt-br',
+    localeLabel: 'Português (Brasil)',
+    breadcrumbLabel: 'Caminho de navegação',
+    searchLabel: 'Pesquisar',
+    label: (section: (typeof sectionCases)[number]) => section.pt,
+  },
 ]) {
   test(`homepage exposes seven immutable section destinations in ${localeCase.name}`, async ({ page }) => {
     await page.goto(pageUrl(`${localeCase.prefix}/versions/${versionId}/`));
@@ -146,10 +160,65 @@ for (const localeCase of [
         'href',
         `/MLEDocs${path}`,
       );
+      await expect(page.locator('[data-mle-version-picker] option:checked')).toHaveAttribute(
+        'value',
+        `/MLEDocs${path}`,
+      );
+      await expect(
+        page
+          .locator('#starlight__sidebar')
+          .getByRole('link', { name: localeCase.label(section), exact: true }),
+      ).toHaveAttribute('href', `/MLEDocs${path}`);
+
+      const breadcrumb = page.getByRole('navigation', { name: localeCase.breadcrumbLabel });
+      await expect(breadcrumb.locator('[data-mle-breadcrumb-label]')).toHaveText([
+        localeCase.localeLabel,
+        versionId,
+        localeCase.label(section),
+      ]);
+      await expect(
+        breadcrumb.getByText(localeCase.label(section), { exact: true }),
+      ).toHaveAttribute('aria-current', 'page');
       if (localeCase.prefix === '/pt-br') {
         await expect(page.locator('[data-mle-translation-status="current"]')).toBeVisible();
       }
       await expect(page.locator('[data-mle-section-planned] a')).toHaveCount(0);
+
+      const reload = await page.reload();
+      expect(reload?.ok(), `reload ${path}`).toBe(true);
+      await expect(page).toHaveURL(pageUrl(path));
+      await expect(page.locator('[data-mle-section-index]')).toHaveAttribute(
+        'data-mle-section-index',
+        section.pageId,
+      );
+    }
+  });
+
+  test(`${localeCase.name} search agrees with all seven immutable section identities`, async ({ page }) => {
+    await page.goto(pageUrl(`${localeCase.prefix}/versions/${versionId}/`));
+    await expect(page.locator('#starlight__search .pagefind-ui__search-input')).toHaveCount(1, {
+      timeout: 15_000,
+    });
+    await page.keyboard.press('Control+k');
+    const dialog = page.getByRole('dialog', { name: localeCase.searchLabel });
+    await expect(dialog).toBeVisible();
+    const input = dialog.locator('.pagefind-ui__search-input');
+
+    for (const section of sectionCases) {
+      const href = `/MLEDocs${localeCase.prefix}/versions/${versionId}/${section.segment}/`;
+      await input.fill(localeCase.label(section));
+      const resultLink = dialog.locator(`.pagefind-ui__result-link[href="${href}"]`);
+      await expect(resultLink, `${localeCase.name} search result for ${section.pageId}`).toBeVisible({
+        timeout: 15_000,
+      });
+      const result = resultLink.locator(
+        'xpath=ancestor::li[contains(concat(" ", normalize-space(@class), " "), " pagefind-ui__result ")][1]',
+      );
+      await expect(result).toHaveAttribute('data-mle-search-version', versionId);
+      await expect(result).toHaveAttribute(
+        'data-mle-search-locale',
+        localeCase.prefix === '/pt-br' ? 'pt-br' : 'en',
+      );
     }
   });
 }
@@ -167,13 +236,80 @@ for (const journey of [
     sectionPath: `/versions/${versionId}/systems/`,
     childPath: `/versions/${versionId}/systems/renderer/`,
   },
+  {
+    section: 'Comece aqui',
+    child: 'Estado do projeto',
+    sectionPath: `/pt-br/versions/${versionId}/start-here/`,
+    childPath: `/pt-br/versions/${versionId}/start-here/project-status/`,
+  },
+  {
+    section: 'Sistemas do motor',
+    child: 'Renderer',
+    sectionPath: `/pt-br/versions/${versionId}/systems/`,
+    childPath: `/pt-br/versions/${versionId}/systems/renderer/`,
+  },
 ]) {
   test(`${journey.section} reaches its authored child within two homepage decisions`, async ({ page }) => {
-    await page.goto(pageUrl(`/versions/${versionId}/`));
+    const localePrefix = journey.sectionPath.startsWith('/pt-br/') ? '/pt-br' : '';
+    await page.goto(pageUrl(`${localePrefix}/versions/${versionId}/`));
     await page.locator('[data-mle-section-directory]').getByRole('link', { name: journey.section }).click();
     await expect(page).toHaveURL(pageUrl(journey.sectionPath));
     await page.locator('[data-mle-section-available]').getByRole('link', { name: journey.child }).click();
     await expect(page).toHaveURL(pageUrl(journey.childPath));
+    await expect(page.locator('[data-mle-page-permanent-link]')).toHaveAttribute(
+      'href',
+      `/MLEDocs${journey.childPath}`,
+    );
+  });
+}
+
+test('language switching preserves all seven section page IDs within the selected commit', async ({ page }) => {
+  for (const section of sectionCases) {
+    await page.goto(pageUrl(`/versions/${versionId}/${section.segment}/`));
+    await page
+      .locator('header starlight-lang-select select')
+      .selectOption(`/MLEDocs/pt-br/versions/${versionId}/${section.segment}/`);
+    await expect(page).toHaveURL(pageUrl(`/pt-br/versions/${versionId}/${section.segment}/`));
+    await expect(page.locator('[data-mle-section-index]')).toHaveAttribute(
+      'data-mle-section-index',
+      section.pageId,
+    );
+    await expect(page.locator('[data-mle-page-permanent-link]')).toHaveAttribute(
+      'href',
+      `/MLEDocs/pt-br/versions/${versionId}/${section.segment}/`,
+    );
+  }
+});
+
+for (const localeCase of [
+  { name: 'English', prefix: '' },
+  { name: 'Brazilian Portuguese', prefix: '/pt-br' },
+]) {
+  test(`all seven ${localeCase.name} latest hub aliases canonicalize to permanent routes`, async ({
+    page,
+    request,
+  }) => {
+    for (const section of sectionCases) {
+      const alias = `${localeCase.prefix}/latest/${section.segment}/`;
+      const permanent = `${localeCase.prefix}/versions/${versionId}/${section.segment}/`;
+      const permanentHref = `/MLEDocs${permanent}`;
+      const response = await request.get(pageUrl(alias), { maxRedirects: 0 });
+      expect(response.ok(), alias).toBe(true);
+      expect(await response.text(), alias).toContain(
+        `<link rel="canonical" href="${permanentHref}">`,
+      );
+
+      await page.goto(pageUrl(alias));
+      await expect(page).toHaveURL(pageUrl(permanent));
+      await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+        'href',
+        `https://maxmfonseca.github.io${permanentHref}`,
+      );
+      await expect(page.locator('[data-mle-section-index]')).toHaveAttribute(
+        'data-mle-section-index',
+        section.pageId,
+      );
+    }
   });
 }
 

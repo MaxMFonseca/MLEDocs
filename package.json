@@ -22,7 +22,7 @@
     "validate:content": "node scripts/validate-content.mjs",
     "validate:links": "node scripts/validate-links.mjs dist",
     "validate:performance": "node scripts/validate-performance.mjs dist",
-    "test": "pnpm run check && pnpm run test:unit && pnpm run validate:content && pnpm run build && pnpm run validate:links && pnpm run validate:performance && pnpm run test:e2e && pnpm run test:a11y && pnpm run test:visual"
+    "test": "pnpm run check && pnpm run test:unit && pnpm run validate:content && pnpm run build && pnpm run validate:links && pnpm run validate:performance && pnpm run test:search && pnpm run test:e2e && pnpm run test:a11y && pnpm run test:visual"
   },
   "dependencies": {
     "@astrojs/starlight": "0.41.5",
