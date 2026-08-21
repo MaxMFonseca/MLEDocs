@@ -4,6 +4,11 @@ import { buildPageIndex } from '../lib/content/page-index.ts';
 import { docsPath } from '../lib/links/base.ts';
 import type { Locale, TranslationStatus } from './taxonomy.ts';
 import type { VersionEntry } from './versions.ts';
+import {
+	handbookGroups,
+	type HandbookGroup,
+	type HandbookPage,
+} from './handbook.ts';
 
 export const navigationPageIds = [
 	'start',
@@ -62,7 +67,48 @@ const group = (
 	children: readonly NavigationChild[],
 ): NavigationChildGroup => ({ id, labels: { en, 'pt-br': ptBr }, children });
 
-export const navigationSections = [
+const handbookPortugueseLabels: Readonly<Record<string, string>> = {
+	architecture: 'Arquitetura', 'lifecycle-and-ownership': 'Ciclo de vida e propriedade', 'errors-and-diagnostics': 'Erros e diagnóstico', 'threading-and-synchronization': 'Threads e sincronização', 'frame-and-resource-flow': 'Fluxo de quadros e recursos', 'cpp-lua-boundary': 'Limite entre C++ e Lua', 'ui-composition': 'Composição de UI', 'audio-and-client-flow': 'Fluxo de áudio e Client',
+	core: 'Runtime Core', 'runtime-configuration': 'Configuração de runtime', 'core-threading-and-performance': 'Threads e desempenho', math: 'Matemática', 'geometry-and-intersections': 'Geometria e interseções', 'lua-json-and-numerics': 'Lua, JSON e numéricos', utilities: 'Utilitários', 'events-and-concurrency': 'Eventos e concorrência', 'data-color-and-packing': 'Dados, cores e empacotamento', 'core-math-utility-types': 'Tipos de Core, matemática e utilitários',
+	'renderer-overview': 'Renderer', 'frame-vulkan-and-queues': 'Quadro, Vulkan e filas', 'renderer-resources-and-synchronization': 'Recursos e sincronização', 'shaders-and-pipelines': 'Shaders e pipelines', 'targets-text-and-composition': 'Destinos, texto e composição', models: 'Modelos', 'loading-meshes-and-materials': 'Carregamento de malhas e materiais', 'animation-skeletons-and-cameras': 'Animação, esqueletos e câmeras', 'create-a-shader-and-pipeline': 'Criar um shader e pipeline', 'upload-and-render-a-model': 'Enviar e renderizar um modelo', 'control-camera-and-animation': 'Controlar câmera e animação', 'renderer-and-resource-contracts': 'Contratos de renderer e recursos',
+	lua: 'Runtime Lua', 'runtime-calls-and-bindings': 'Chamadas e bindings de runtime', ui: 'UI', 'entities-hierarchy-and-layout': 'Entidades, hierarquia e layout', 'rendering-and-visuals': 'Renderização e visuais', 'text-input-and-focus': 'Entrada de texto e foco', 'ui-events-and-callbacks': 'Eventos e callbacks', 'scrolling-and-popups': 'Rolagem e pop-ups', 'animation-and-effects': 'Animação e efeitos', 'reusable-components': 'Componentes reutilizáveis', 'build-a-ui-screen': 'Criar uma tela de UI', 'create-a-reusable-ui-component': 'Criar um componente de UI reutilizável', 'build-a-form-and-handle-input': 'Criar um formulário e tratar entrada', 'add-scrolling-and-popups': 'Adicionar rolagem e pop-ups', 'animate-and-style-ui': 'Animar e estilizar UI', 'use-sprites-images-and-nine-slice': 'Usar sprites, imagens e nove fatias', 'lua-api': 'API Lua', 'ui-element-keys': 'Chaves de elemento de UI', 'ui-components': 'Componentes de UI', 'ui-events-and-callbacks-reference': 'Eventos e callbacks de UI', 'ui-layout-values': 'Valores de layout de UI', 'ui-test': 'Teste de UI',
+	audio: 'Áudio', 'audio-lifecycle-and-command-flow': 'Ciclo de vida e fluxo de comandos', 'playback-and-streaming': 'Reprodução e streaming', 'buses-voices-and-limitations': 'Buses, vozes e limitações', 'use-audio-playback': 'Usar reprodução de áudio', 'audio-contracts': 'Contratos de áudio', 'audio-test': 'Teste de áudio', 'client-system': 'Client', window: 'Janela e entrada', server: 'Servidor experimental', 'create-a-client-layer': 'Criar uma camada do Client', 'handle-input-focus-and-text': 'Tratar entrada, foco e texto', 'window-and-input-contracts': 'Contratos de janela e entrada', 'interactive-client': 'Client interativo', 'core-test-suite': 'Suite de testes Core', 'model-test': 'Teste de modelos', 'test-fixtures': 'Fixtures de teste', mlecubes: 'MLECubes', 'tests-and-interactive-pages': 'Testes e páginas interativas',
+};
+
+const handbookGroupPortugueseLabels: Readonly<Record<string, string>> = {
+	'concepts-foundations': 'Modelo do motor', 'core-foundations': 'Runtime Core', 'math-foundations': 'Matemática', 'utilities-foundations': 'Utilitários', 'foundation-reference': 'Referência de Core, matemática e utilitários', 'renderer-system': 'Renderer', 'models-system': 'Modelos e animação', 'renderer-guides': 'Guias de renderer e modelos', 'renderer-reference': 'Referência de renderer', 'lua-system': 'Runtime Lua', 'ui-system': 'UI', 'ui-guides': 'Guias de UI', 'ui-reference': 'Referência de Lua e UI', 'ui-tools': 'Ferramentas de UI', 'audio-system': 'Áudio', 'audio-guides': 'Guias de áudio', 'audio-reference': 'Referência de áudio', 'audio-tools': 'Ferramentas de áudio', 'client-system': 'Client', 'window-system': 'Janela e entrada', 'server-system': 'Servidor experimental', 'client-guides': 'Guias de Client e entrada', 'window-reference': 'Referência de janela e entrada', 'platform-tools': 'Ferramentas de Client e testes', 'contributing-tests': 'Testes e páginas interativas',
+};
+
+const handbookChild = (page: HandbookPage): NavigationChild => ({
+	pageId: page.pageId,
+	labels: { en: page.title, 'pt-br': handbookPortugueseLabels[page.pageId] ?? page.title },
+});
+
+const handbookGroup = (source: HandbookGroup, pages: readonly HandbookPage[]): NavigationChildGroup => ({
+	id: source.id,
+	labels: { en: source.label, 'pt-br': handbookGroupPortugueseLabels[source.id] ?? source.label },
+	children: [...pages].sort((left, right) => left.order - right.order || left.pageId.localeCompare(right.pageId)).map(handbookChild),
+});
+
+const sortedHandbookGroups = (groups: readonly HandbookGroup[]) =>
+	[...groups].sort((left, right) => left.order - right.order || left.id.localeCompare(right.id));
+
+export function buildHandbookNavigationGroups(
+	subsystem: string,
+	groups: readonly HandbookGroup[] = handbookGroups,
+	_locale: Locale = 'en',
+): readonly NavigationChildGroup[] {
+	return sortedHandbookGroups(groups)
+		.map((source) => handbookGroup(source, source.pages.filter((page) => page.subsystem === subsystem)))
+		.filter(({ children }) => children.length > 0);
+}
+
+const handbookNavigationGroupsForSection = (sectionId: NavigationPageId): readonly NavigationChildGroup[] =>
+	sortedHandbookGroups(handbookGroups)
+		.filter((source) => source.sectionId === sectionId)
+		.map((source) => handbookGroup(source, source.pages));
+
+const navigationSectionsBase = [
 	{
 		pageId: 'start',
 		segment: 'start-here',
@@ -272,6 +318,26 @@ export const navigationSections = [
 	},
 ] as const satisfies readonly NavigationSection[];
 
+export const navigationSections: readonly NavigationSection[] = navigationSectionsBase.map((section) => {
+	if (section.pageId === 'start') return section;
+	if (section.pageId === 'contributing') {
+		return {
+			...section,
+			plannedGroups: [...section.plannedGroups, ...handbookNavigationGroupsForSection(section.pageId)],
+		};
+	}
+	if (section.pageId === 'reference') {
+		return {
+			...section,
+			plannedGroups: [
+				...section.plannedGroups.filter((plannedGroup) => plannedGroup.id === 'build-commands'),
+				...handbookNavigationGroupsForSection(section.pageId),
+			],
+		};
+	}
+	return { ...section, plannedGroups: handbookNavigationGroupsForSection(section.pageId) };
+});
+
 export function validateNavigationSections(
 	sections: readonly Pick<NavigationSection, 'pageId' | 'segment' | 'order'>[],
 ): readonly string[] {
@@ -422,7 +488,7 @@ export interface SidebarSection {
 type ResolvedSidebarEntry = StarlightRouteData['sidebar'][number];
 type ResolvedSidebarLink = Extract<ResolvedSidebarEntry, { type: 'link' }>;
 
-const registryOrderedSectionIds = ['start', 'contributing'] as const;
+const registryOrderedSectionIds = navigationSections.map(({ pageId }) => pageId);
 
 function registryPageIdForLink(
 	entry: ResolvedSidebarEntry,
@@ -442,11 +508,14 @@ function registryPageIdForLink(
 
 	const remainder = segments.slice(versionMarker + 3);
 	if (remainder.length === 0) return section.pageId;
-	if (remainder.length !== 1) return undefined;
 	const childPageIds = section.plannedGroups.flatMap((navigationGroup) =>
 		navigationGroup.children.map((navigationChild) => navigationChild.pageId),
 	);
-	return childPageIds.includes(remainder[0] ?? '') ? remainder[0] : undefined;
+	const handbookPage = handbookGroups
+		.flatMap((handbookGroup) => handbookGroup.pages)
+		.find((page) => page.sectionId === section.pageId && page.slug === [section.segment, ...remainder].join('/'));
+	if (handbookPage && childPageIds.includes(handbookPage.pageId)) return handbookPage.pageId;
+	return remainder.length === 1 && childPageIds.includes(remainder[0] ?? '') ? remainder[0] : undefined;
 }
 
 function orderSectionEntriesByRegistry(

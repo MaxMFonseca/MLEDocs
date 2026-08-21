@@ -358,7 +358,7 @@ describe('getting-started foundations', () => {
 			.sort();
 
 		expect(physicalContributorPageIds()).toEqual(contributorPageIds);
-		expect(registryPageIds).toEqual(contributorPageIds);
+		expect(registryPageIds).toEqual([...contributorPageIds, 'tests-and-interactive-pages'].sort());
 	});
 
 	it('models the Contributing hub with exactly five available children and no planned groups', () => {
@@ -385,7 +385,13 @@ describe('getting-started foundations', () => {
 		});
 
 		expect(model.available.map((child) => child.pageId).sort()).toEqual(contributorPageIds);
-		expect(model.plannedGroups).toEqual([]);
+		expect(model.plannedGroups).toEqual([
+			{
+				id: 'contributing-tests',
+				label: 'Tests and interactive pages',
+				children: [{ pageId: 'tests-and-interactive-pages', label: 'Tests and interactive pages', availability: 'planned' }],
+			},
+		]);
 	});
 
 	it('keeps contributor testing expectations separate from the Start Here focused invocation', () => {

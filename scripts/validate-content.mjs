@@ -10,6 +10,7 @@ import {
 } from '../src/lib/content/schema.ts';
 import { versions } from '../src/data/versions.ts';
 import { navigationSections } from '../src/data/navigation.ts';
+import { handbookPages } from '../src/data/handbook.ts';
 import { validateVersions } from '../src/lib/versions/manifest.ts';
 import { readVerifiedFile, walkBounded } from './validator-filesystem.mjs';
 
@@ -449,6 +450,7 @@ const metadataLine = (source, issue) => {
 export const validateContent = async (contentDirectory = resolve('src/content/docs'), options = {}) => {
 	const manifest = options.manifest ?? versions;
 	const sectionRegistry = options.sectionRegistry ?? navigationSections;
+	const handbookRegistry = options.handbookRegistry ?? handbookPages;
 	const root = resolve(contentDirectory);
 	const diagnostics = [];
 	let rootReal;
@@ -643,6 +645,53 @@ export const validateContent = async (contentDirectory = resolve('src/content/do
 		}
 		if (page.metadata.translationStatus === 'stale' && page.metadata.translationSourceLastVerified === english.metadata.lastVerified) {
 			diagnostics.push({ path: page.path, ruleId: 'content/translation-stale', message: 'stale translation source date must differ from the English revision' });
+		}
+	}
+
+	const handbookPagesById = new Map(handbookRegistry.map((page) => [page.pageId, page]));
+	for (const page of pages.filter(
+		(candidate) => candidate.locale === 'en' && candidate.metadata.translationStatus === 'canonical',
+	)) {
+		const handbookPage = handbookPagesById.get(page.metadata.pageId);
+		if (!handbookPage) continue;
+		if (page.authoredRoute !== handbookPage.slug) {
+			diagnostics.push({
+				path: page.path,
+				ruleId: 'content/handbook-route',
+				message: `Page ${handbookPage.pageId} must use handbook route ${handbookPage.slug}.`,
+			});
+		}
+		if (handbookPage.kind === 'reference' && (!handbookPage.ownerPageId || !handbookPagesById.has(handbookPage.ownerPageId))) {
+			diagnostics.push({
+				path: page.path,
+				ruleId: 'content/handbook-owner',
+				message: `Reference page ${handbookPage.pageId} declares unknown owner ${handbookPage.ownerPageId ?? '(none)'}.`,
+			});
+		}
+		if (handbookPage.publication === 'planned') {
+			diagnostics.push({
+				path: page.path,
+				ruleId: 'content/handbook-unreleased',
+				message: `Physical handbook page ${handbookPage.pageId} is still marked planned.`,
+			});
+		}
+	}
+
+	for (const version of manifest.filter((entry) => entry.locales.includes('en'))) {
+		for (const handbookPage of handbookRegistry.filter(({ publication }) => publication === 'published')) {
+			const physicalPage = pages.find(
+				(page) =>
+					page.versionId === version.id &&
+					page.locale === 'en' &&
+					page.metadata.translationStatus === 'canonical' &&
+					page.metadata.pageId === handbookPage.pageId,
+			);
+			if (physicalPage) continue;
+			diagnostics.push({
+				path: version.id,
+				ruleId: 'content/handbook-missing',
+				message: `Missing canonical English handbook page ${handbookPage.pageId} at ${handbookPage.slug}.`,
+			});
 		}
 	}
 

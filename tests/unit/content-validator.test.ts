@@ -7,7 +7,7 @@ import { constants } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 import { createRequire } from 'node:module';
 import { afterEach, describe, expect, it } from 'vitest';
-import { validateContent } from '../../scripts/validate-content.mjs';
+import { validateContent as validateProductionContent } from '../../scripts/validate-content.mjs';
 import { validateBuiltLinks } from '../../scripts/validate-links.mjs';
 import { validatePerformance } from '../../scripts/validate-performance.mjs';
 import {
@@ -48,6 +48,14 @@ const manifest = [
 
 const syntheticSectionRegistry = [{ pageId: 'systems', segment: 'section' }] as const;
 
+const validateContent = (
+	contentDirectory: string,
+	options: { readonly handbookRegistry?: readonly unknown[]; readonly [key: string]: unknown } = {},
+) => validateProductionContent(contentDirectory, {
+	...options,
+	handbookRegistry: options.handbookRegistry ?? [],
+});
+
 const makeTemporaryDirectory = (): string => {
 	const directory = mkdtempSync(resolve(tmpdir(), 'mle-docs-validator-'));
 	temporaryDirectories.push(directory);
@@ -79,6 +87,32 @@ translationStatus: ${locale === 'pt-br' ? 'current' : 'canonical'}
 ${locale === 'pt-br' ? "translationSourceLastVerified: '2026-08-20'\n" : ''}---
 
 Section directory.`;
+
+const technicalPage = ({
+	pageId,
+	commit = currentCommit,
+}: {
+	pageId: string;
+	commit?: string;
+}): string => `---
+title: ${pageId} page
+description: A technical handbook page for validator coverage.
+contentType: technical
+pageId: ${pageId}
+mleCommit: ${commit}
+maturity: in-development
+audiences:
+  - contributor
+subsystems:
+  - renderer
+sourceFiles:
+  - src/mle/renderer/Renderer.cpp
+testFiles: []
+lastVerified: '2026-08-20'
+translationStatus: canonical
+---
+
+Technical handbook content.`;
 
 const html = (body: string, head = ''): string =>
 	`<!doctype html><html><head>${head}</head><body>${body}</body></html>`;
@@ -215,6 +249,76 @@ describe('validator filesystem safety', () => {
 });
 
 describe('content validation', () => {
+	it('keeps the real handbook registry enabled when callers supply a manifest', async () => {
+		const content = makeTemporaryDirectory();
+
+		expect(await validateProductionContent(content, {
+			manifest: [manifest[0]],
+			sectionRegistry: [],
+		})).toContainEqual({
+			path: 'c1abea3de165',
+			ruleId: 'content/handbook-missing',
+			message: 'Missing canonical English handbook page renderer-overview at systems/renderer.',
+		});
+	});
+
+	it('requires published English handbook pages and reports handbook routes, owners, and unreleased pages', async () => {
+		const content = makeTemporaryDirectory();
+		const handbookRegistry = [
+			{
+				pageId: 'renderer', slug: 'systems/renderer', title: 'Renderer', sectionId: 'systems', groupId: 'renderer', order: 1,
+				kind: 'system', emphasis: 'overview', publication: 'published', subsystem: 'renderer',
+			},
+			{
+				pageId: 'renderer-reference', slug: 'reference/renderer', title: 'Renderer reference', sectionId: 'reference', groupId: 'renderer-reference', order: 1,
+				kind: 'reference', emphasis: 'lookup', publication: 'planned', subsystem: 'renderer', ownerPageId: 'missing-owner',
+			},
+		] as const;
+		write(content, 'versions/c1abea3de165/systems/wrong.mdx', technicalPage({ pageId: 'renderer' }));
+		write(content, 'versions/c1abea3de165/reference/renderer.mdx', technicalPage({ pageId: 'renderer-reference' }));
+
+		expect(await validateContent(content, {
+			manifest: [manifest[0]],
+			sectionRegistry: [],
+			handbookRegistry,
+		})).toEqual(expect.arrayContaining([
+			{
+				path: 'versions/c1abea3de165/systems/wrong.mdx',
+				ruleId: 'content/handbook-route',
+				message: 'Page renderer must use handbook route systems/renderer.',
+			},
+			{
+				path: 'versions/c1abea3de165/reference/renderer.mdx',
+				ruleId: 'content/handbook-owner',
+				message: 'Reference page renderer-reference declares unknown owner missing-owner.',
+			},
+			{
+				path: 'versions/c1abea3de165/reference/renderer.mdx',
+				ruleId: 'content/handbook-unreleased',
+				message: 'Physical handbook page renderer-reference is still marked planned.',
+			},
+		]));
+	});
+
+	it('reports every missing published canonical English handbook page for each English manifest version', async () => {
+		const content = makeTemporaryDirectory();
+		const handbookRegistry = [{
+			pageId: 'renderer', slug: 'systems/renderer', title: 'Renderer', sectionId: 'systems', groupId: 'renderer', order: 1,
+			kind: 'system', emphasis: 'overview', publication: 'published', subsystem: 'renderer',
+		}] as const;
+
+		expect(await validateContent(content, {
+			manifest: [manifest[0]],
+			sectionRegistry: [],
+			handbookRegistry,
+		})).toEqual([
+			{
+				path: 'c1abea3de165',
+				ruleId: 'content/handbook-missing',
+				message: 'Missing canonical English handbook page renderer at systems/renderer.',
+			},
+		]);
+	});
 	it('compiles supported references, spreads, and direct URL expressions as real MDX', async () => {
 		const { compile } = await import(pathToFileURL(mdxCompilerPath).href);
 		const compilerValidForms = [

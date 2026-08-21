@@ -2,6 +2,7 @@ import { describe, expect, expectTypeOf, it } from 'vitest';
 import type { StarlightRouteData } from '@astrojs/starlight/route-data';
 import {
 	buildSidebarPagination,
+	buildHandbookNavigationGroups,
 	buildSectionIndexModel,
 	buildVersionedSidebar,
 	filterVersionedSidebarByLocale,
@@ -11,6 +12,7 @@ import {
 	type NavigationSection,
 	validateNavigationSections,
 } from '../../src/data/navigation';
+import { handbookGroups, handbookPages } from '../../src/data/handbook';
 import type { VersionEntry } from '../../src/data/versions';
 import type { PageRecord } from '../../src/lib/content/page-index';
 
@@ -92,7 +94,7 @@ const resolvedLink = (label: string, href: string, isCurrent = false): ResolvedS
 	attrs: {},
 });
 
-const registryPageIds = (sectionId: 'start' | 'contributing'): readonly string[] => {
+const registryPageIds = (sectionId: NavigationSection['pageId']): readonly string[] => {
 	const section = getNavigationSection(sectionId);
 	return [
 		section.pageId,
@@ -102,25 +104,24 @@ const registryPageIds = (sectionId: 'start' | 'contributing'): readonly string[]
 	];
 };
 
-const registryHrefs = (sectionId: 'start' | 'contributing'): readonly string[] => {
+const registryHrefs = (sectionId: NavigationSection['pageId']): readonly string[] => {
 	const section = getNavigationSection(sectionId);
-	return registryPageIds(sectionId).map((pageId) =>
-		pageId === section.pageId
-			? `/MLEDocs/versions/${currentVersion.id}/${section.segment}/`
-			: `/MLEDocs/versions/${currentVersion.id}/${section.segment}/${pageId}/`,
-	);
+	return registryPageIds(sectionId).map((pageId) => {
+		if (pageId === section.pageId) return `/MLEDocs/versions/${currentVersion.id}/${section.segment}/`;
+		const handbookPage = handbookPages.find((page) => page.pageId === pageId);
+		const slug = handbookPage?.slug ?? `${section.segment}/${pageId}`;
+		return `/MLEDocs/versions/${currentVersion.id}/${slug}/`;
+	});
 };
 
 const alphabetizedResolvedSection = (
-	sectionId: 'start' | 'contributing',
+	sectionId: NavigationSection['pageId'],
 	currentPageId?: string,
 ): ResolvedSidebar[number] => {
 	const section = getNavigationSection(sectionId);
 	const links = registryPageIds(sectionId)
-		.map((pageId) => {
-			const href = pageId === section.pageId
-				? `/MLEDocs/versions/${currentVersion.id}/${section.segment}/`
-				: `/MLEDocs/versions/${currentVersion.id}/${section.segment}/${pageId}/`;
+		.map((pageId, index) => {
+			const href = registryHrefs(sectionId)[index]!;
 			return resolvedLink(pageId, href, pageId === currentPageId);
 		})
 		.sort((left, right) => left.label.localeCompare(right.label));
@@ -195,23 +196,38 @@ describe('navigation section registry', () => {
 		]);
 	});
 
-	it('records every approved roadmap child under a stable page ID', () => {
-		const childIds = Object.fromEntries(
+	it('derives every handbook navigation child from the single ordered registry', () => {
+		const registeredBySection = Object.fromEntries(
 			navigationSections.map((section) => [
 				section.pageId,
 				section.plannedGroups.flatMap((group) => group.children.map((child) => child.pageId)),
 			]),
 		);
 
-		expect(childIds).toEqual({
-			start: ['project-status', 'requirements', 'setup', 'build', 'tests', 'client', 'repository-tour', 'troubleshooting'],
-			concepts: ['architecture', 'lifecycle', 'ownership-lifetimes', 'results-errors', 'threading-synchronization'],
-			systems: ['core', 'math', 'utilities', 'renderer-overview', 'models-animation', 'lua-ui', 'audio', 'window-input', 'experimental-server'],
-			guides: ['build-workflow', 'first-frame', 'lua-ui-guide', 'audio-guide', 'assets-shaders', 'debugging'],
-			reference: ['build-options', 'helper-commands', 'core-math-utility-types', 'renderer-reference', 'lua-binding-inventory', 'ui-keys', 'audio-commands'],
-			tools: ['core-suite', 'interactive-client', 'resource-demonstrations', 'mlecubes'],
-			contributing: ['contributor-environment', 'contributor-testing', 'resources-shaders', 'documentation', 'translations'],
-		});
+		for (const page of handbookPages) {
+			expect(registeredBySection[page.sectionId]).toContain(page.pageId);
+		}
+		expect(new Set(Object.values(registeredBySection).flat()).size).toBe(
+			Object.values(registeredBySection).flat().length,
+		);
+	});
+
+	it('keeps handbook overview pages first and isolates UI deep pages in their registry group', () => {
+		const uiGroups = buildHandbookNavigationGroups('ui', handbookGroups, 'en');
+		expect(uiGroups.find(({ id }) => id === 'ui-system')?.children[0]?.pageId).toBe('ui');
+		expect(uiGroups.flatMap((group) => group.children)
+			.filter(({ pageId }) => handbookPages.find((page) => page.pageId === pageId)?.emphasis === 'deep')
+			.every(({ pageId }) => handbookPages.find((page) => page.pageId === pageId)?.subsystem === 'ui')).toBe(true);
+	});
+
+	it('resolves handbook navigation independently of input array order', () => {
+		const expected = buildHandbookNavigationGroups('ui', handbookGroups, 'pt-br');
+		const reversed = buildHandbookNavigationGroups(
+			'ui',
+			[...handbookGroups].reverse().map((group) => ({ ...group, pages: [...group.pages].reverse() })),
+			'pt-br',
+		);
+		expect(reversed).toEqual(expected);
 	});
 
 	it('looks up sections by stable page ID without translating identity', () => {
@@ -222,6 +238,34 @@ describe('navigation section registry', () => {
 });
 
 describe('versioned snapshot sidebar', () => {
+	it('orders every handbook section by registry identity and keeps pagination adjacent to the ordered links', () => {
+		for (const sectionId of ['concepts', 'systems', 'guides', 'reference', 'tools'] as const) {
+			const pageIds = registryPageIds(sectionId);
+			const currentPageId = pageIds.at(-1);
+			const sidebar: ResolvedSidebar = [{
+				type: 'group',
+				label: 'c1abea3de165 · 2026-08-18 · current',
+				entries: [alphabetizedResolvedSection(sectionId, currentPageId)],
+				collapsed: false,
+				badge: undefined,
+			}];
+			const ordered = orderVersionedSidebarByRegistry(sidebar, [currentVersion], 'en');
+			const versionGroup = ordered[0];
+			if (versionGroup?.type !== 'group') throw new Error('expected version group');
+			const sectionGroup = versionGroup.entries[0];
+			if (sectionGroup?.type !== 'group') throw new Error('expected section group');
+			const hrefs = sectionGroup.entries
+				.filter((entry) => entry.type === 'link')
+				.map((entry) => entry.href);
+
+			expect(hrefs).toEqual(registryHrefs(sectionId));
+			expect(buildSidebarPagination(ordered)).toEqual({
+				prev: expect.objectContaining({ href: registryHrefs(sectionId).at(-2) }),
+				next: undefined,
+			});
+		}
+	});
+
 	it('orders Start Here and Contributing links by registry identity and derives matching pagination', () => {
 		const unrelatedSection = {
 			type: 'group',
