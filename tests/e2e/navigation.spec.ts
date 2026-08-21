@@ -531,28 +531,71 @@ test('does not classify nested versions segments as canonical version routes', a
   await expect(page.locator('[data-mle-not-found="missing-page"]')).toHaveCount(0);
 });
 
-for (const { name, alias, permanent } of [
-  {
-    name: 'English',
-    alias: '/',
-    permanent: `/versions/${versionId}/`,
-  },
-  {
-    name: 'Brazilian Portuguese',
-    alias: '/pt-br/',
-    permanent: `/pt-br/versions/${versionId}/`,
-  },
-]) {
-  test(`${name} root alias resolves to the immutable current snapshot`, async ({ page }) => {
-    await page.goto(pageUrl(alias));
+test('repository root is a stable landing page for both documentation languages', async ({ page }) => {
+  const response = await page.goto(pageUrl('/'));
 
-    await expect(page).toHaveURL(pageUrl(permanent));
-    await expect(page.locator('[data-mle-homepage]')).toHaveAttribute(
-      'data-mle-homepage-version',
-      versionId,
-    );
-  });
-}
+  expect(response?.status()).toBe(200);
+  await expect(page).toHaveURL(pageUrl('/'));
+  await expect(page.locator('[data-mle-landing]')).toHaveAttribute(
+    'data-mle-landing-version',
+    versionId,
+  );
+  await expect(page.getByRole('heading', { level: 1, name: 'MLE documentation' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Read in English' })).toHaveAttribute(
+    'href',
+    `/MLEDocs/versions/${versionId}/`,
+  );
+  await expect(page.getByRole('link', { name: 'Ler em português' })).toHaveAttribute(
+    'href',
+    `/MLEDocs/pt-br/versions/${versionId}/`,
+  );
+  await expect(page.locator('[data-mle-landing-section]')).toHaveCount(7);
+  await expect(page.locator('[data-mle-not-found]')).toHaveCount(0);
+});
+
+test('Brazilian Portuguese root alias resolves to the immutable current snapshot', async ({ page }) => {
+  await page.goto(pageUrl('/pt-br/'));
+
+  await expect(page).toHaveURL(pageUrl(`/pt-br/versions/${versionId}/`));
+  await expect(page.locator('[data-mle-homepage]')).toHaveAttribute(
+    'data-mle-homepage-version',
+    versionId,
+  );
+});
+
+test('page outline stays compact at normal desktop widths and slim on wide screens', async ({
+  page,
+}) => {
+  const articlePath = `/versions/${versionId}/systems/renderer/`;
+
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(pageUrl(articlePath));
+  const compactOutline = page.locator('[data-mle-compact-toc]');
+  await expect(compactOutline).toBeVisible();
+  await expect(page.locator('[data-mle-wide-toc]')).toBeHidden();
+  const compactBox = await compactOutline.boundingBox();
+  expect(compactBox?.height).toBeLessThanOrEqual(56);
+
+  const compactToggle = compactOutline.locator('summary');
+  await expect(compactToggle).toContainText('On this page');
+  await compactToggle.focus();
+  await page.keyboard.press('Enter');
+  await expect(compactOutline.locator('details')).toHaveAttribute('open', '');
+  await page.keyboard.press('Escape');
+  await expect(compactOutline.locator('details')).not.toHaveAttribute('open', '');
+  await expect(compactToggle).toBeFocused();
+
+  await page.setViewportSize({ width: 1600, height: 900 });
+  await expect(page.locator('[data-mle-compact-toc]')).toBeHidden();
+  const wideOutline = page.locator('[data-mle-wide-toc]');
+  await expect(wideOutline).toBeVisible();
+  const [outlineBox, mainBox] = await Promise.all([
+    wideOutline.boundingBox(),
+    page.locator('.main-pane').boundingBox(),
+  ]);
+  expect(outlineBox?.width).toBeLessThanOrEqual(224);
+  expect(mainBox?.width).toBeGreaterThanOrEqual(760);
+});
 
 test('homepage primary path opens project status without changing the selected commit', async ({
   page,

@@ -43,6 +43,25 @@ async function expectTwoPartFocus(
   expect(focus.boxShadow).not.toBe('none');
 }
 
+for (const landingCase of [
+  { name: 'desktop dark', width: 1440, height: 900, theme: 'dark' },
+  { name: 'phone light', width: 390, height: 844, theme: 'light' },
+] as const) {
+  test(`landing page is accessible with local fonts and no overflow on ${landingCase.name}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: landingCase.width, height: landingCase.height });
+    await page.addInitScript((theme) => localStorage.setItem('starlight-theme', theme), landingCase.theme);
+    await page.goto(pageUrl('/'));
+
+    await expect(page.locator('html')).toHaveAttribute('data-theme', landingCase.theme);
+    await expectLoadedFontsAndNoOverflow(page);
+    await expectTwoPartFocus(page.getByRole('link', { name: 'Read in English' }));
+    const results = await new AxeBuilder({ page }).analyze();
+    expect(results.violations).toEqual([]);
+  });
+}
+
 test('applies the MLE palette instead of the Starlight defaults', async ({ page }) => {
   await page.goto(pageUrl('/versions/c1abea3de165/'));
   await page.locator('header starlight-theme-select select').selectOption('dark');

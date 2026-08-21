@@ -51,6 +51,34 @@ async function searchAndSettle(dialog: ReturnType<Page['getByRole']>, query: str
 		.toBe(true);
 }
 
+test('documentation landing desktop dark', async ({ page }) => {
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await setTheme(page, 'dark');
+	await page.goto('');
+	await expect(page.locator('[data-mle-landing]')).toBeVisible();
+	await settlePage(page);
+
+	await expect(page).toHaveScreenshot('landing-desktop-dark.png', {
+		animations: 'disabled',
+		caret: 'hide',
+		fullPage: true,
+	});
+});
+
+test('documentation landing phone light', async ({ page }) => {
+	await page.setViewportSize({ width: 390, height: 844 });
+	await setTheme(page, 'light');
+	await page.goto('');
+	await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+	await settlePage(page);
+
+	await expect(page).toHaveScreenshot('landing-phone-light.png', {
+		animations: 'disabled',
+		caret: 'hide',
+		fullPage: true,
+	});
+});
+
 test('homepage desktop dark editorial layout', async ({ page }) => {
 	await page.goto(`versions/${versionId}/`);
 	await page.locator('header starlight-theme-select select').selectOption('dark');
@@ -83,6 +111,19 @@ test('renderer article desktop layout', async ({ page }) => {
 	await settlePage(page);
 
 	await expect(page).toHaveScreenshot('renderer-article-desktop.png', {
+		animations: 'disabled',
+		caret: 'hide',
+		fullPage: true,
+	});
+});
+
+test('renderer article wide layout keeps a slim page outline', async ({ page }) => {
+	await page.setViewportSize({ width: 1600, height: 900 });
+	await page.goto(`versions/${versionId}/systems/renderer/`);
+	await settlePage(page);
+	await expect(page.locator('[data-mle-wide-toc]')).toBeVisible();
+
+	await expect(page).toHaveScreenshot('renderer-article-wide-outline.png', {
 		animations: 'disabled',
 		caret: 'hide',
 		fullPage: true,

@@ -50,6 +50,8 @@ export default defineConfig({
         PageTitle: './src/components/overrides/PageTitle.astro',
         Search: './src/components/overrides/Search.astro',
         Sidebar: './src/components/overrides/Sidebar.astro',
+        PageSidebar: './src/components/overrides/PageSidebar.astro',
+        TwoColumnContent: './src/components/overrides/TwoColumnContent.astro',
         Hero: './src/components/overrides/NotFound.astro',
         FallbackContentNotice: './src/components/status/TranslationNotice.astro',
       },

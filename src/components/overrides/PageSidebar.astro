@@ -1,0 +1,69 @@
+---
+import MobileTableOfContents from '@astrojs/starlight/components/MobileTableOfContents.astro';
+import TableOfContents from '@astrojs/starlight/components/TableOfContents.astro';
+---
+
+{
+	Astro.locals.starlightRoute.toc && (
+		<>
+			<div class="compact-outline" data-mle-compact-toc>
+				<MobileTableOfContents />
+			</div>
+			<div class="wide-outline" data-mle-wide-toc>
+				<TableOfContents />
+			</div>
+		</>
+	)
+}
+
+<style>
+	@layer starlight.core {
+		.compact-outline {
+			position: fixed;
+			z-index: var(--sl-z-index-toc);
+			top: var(--sl-nav-height);
+			inset-inline: var(--sl-content-inline-start, 0) 0;
+			height: var(--sl-mobile-toc-height);
+		}
+
+		.wide-outline {
+			display: none;
+		}
+
+		@media (min-width: 95rem) {
+			.compact-outline {
+				display: none;
+			}
+
+			.wide-outline {
+				display: block;
+				position: sticky;
+				top: var(--sl-nav-height);
+				max-height: calc(100vh - var(--sl-nav-height));
+				padding: var(--mle-space-4);
+				overflow-y: auto;
+				scrollbar-width: thin;
+			}
+
+			.wide-outline :global(h2) {
+				margin: 0 0 var(--mle-space-3);
+				font-size: var(--sl-text-base);
+				color: var(--sl-color-white);
+			}
+
+			.wide-outline :global(a) {
+				display: block;
+				padding-block: 0.2rem;
+				font-size: var(--sl-text-xs);
+				line-height: 1.4;
+				color: var(--sl-color-gray-3);
+				text-decoration: none;
+				overflow-wrap: anywhere;
+			}
+
+			.wide-outline :global(a:hover) {
+				color: var(--sl-color-white);
+			}
+		}
+	}
+</style>
