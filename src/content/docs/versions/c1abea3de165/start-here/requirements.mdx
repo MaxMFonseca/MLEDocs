@@ -1,0 +1,56 @@
+---
+title: Requirements and platform support
+description: Verified platform, toolchain, SDK, library, and shell requirements for building this MLE snapshot.
+contentType: technical
+pageId: requirements
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [project]
+sourceFiles: [README.md, CMakeLists.txt, scripts/envsetup.sh]
+testFiles: []
+lastVerified: '2026-08-21'
+translationStatus: canonical
+---
+
+Linux is the currently tested development platform for this snapshot. Windows is intended, but its builds are unverified. The provided helper workflow is Bash-based and relies on Linux/Unix tooling, while the root CMake configuration also uses GCC/Clang-shaped compiler and linker flags. Treat a Windows port as work to validate locally, not as a documented support claim.
+
+## Required build environment
+
+| Requirement | Why it is needed |
+| --- | --- |
+| Git with recursive submodule access | `mle_setup` initializes the project's submodules. |
+| CMake 3.16 or newer | The root project declares CMake 3.16 as its minimum version. |
+| C++23-capable compiler | The `MLE` target requires `cxx_std_23`. CMake prefers `clang` and `clang++` only when compiler variables have not already been set. |
+| Vulkan SDK and Vulkan-capable driver | CMake requires the Vulkan package. |
+| ICU development libraries | CMake requires the `uc` and `i18n` ICU components. |
+| OpenAL development libraries | CMake requires OpenAL. |
+| GNU Make | The setup helper builds the LuaJIT submodule with `make`. |
+| Bash | `scripts/envsetup.sh` must be sourced to define its helper functions. |
+
+The project also links `stdc++exp` unconditionally. Its availability is a GNU libstdc++-oriented boundary with no alternate implementation established by this snapshot.
+
+## Shader and helper prerequisites
+
+The helper build path invokes `mle_compile_shaders_all` before it calls CMake. It therefore requires `glslangValidator` on `PATH` and `nproc --all` for parallelism. Existing SPIR-V files can satisfy an unchanged checkout, but a shader source change requires compiling its corresponding output with `glslangValidator` or an equivalent verified process.
+
+The source does not provide package-manager commands for these requirements. Use the installation method appropriate to the target environment, then confirm that CMake can discover Vulkan, ICU, and OpenAL and that the helper tools are available in the shell that will build MLE.
+
+## Configuration defaults and optional tools
+
+`MLE_BUILD_TESTS` is enabled by default. Set `-DMLE_BUILD_TESTS=OFF` at configuration time to omit the root-connected `Core`, `AudioLifecycle`, and `Client` targets. `MLE_MAX_LOG_LEVEL` and `MLE_DEFAULT_LOG_LEVEL_STDOUT` have no root defaults; when provided, they become public compile definitions on `MLE`.
+
+The root configuration has an off-by-default legacy documentation option, but it is not part of this documentation workflow and is not needed to build MLE. It is deliberately omitted from the supported path here.
+
+## Preflight checklist
+
+Before configuring, confirm the following:
+
+- You are in the repository root and `README.md` is present.
+- Git can initialize recursive submodules.
+- CMake is version 3.16 or newer and the selected compiler supports C++23.
+- Vulkan, ICU (`uc` and `i18n`), OpenAL, and the `stdc++exp` link dependency are discoverable to CMake.
+- For the helper path, Bash, GNU Make, `nproc`, and `glslangValidator` are available.
+- If targeting Windows, you have independently validated the compiler, dependency discovery, and shader path for this unverified platform.
+
+Continue with [repository setup](/MLEDocs/versions/c1abea3de165/start-here/setup/) and the [build procedure](/MLEDocs/versions/c1abea3de165/start-here/build/).

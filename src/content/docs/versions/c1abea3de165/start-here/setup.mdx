@@ -1,0 +1,47 @@
+---
+title: Set up a working tree
+description: Prepare an MLE checkout, its submodules, LuaJIT build, and sourced shell helpers for this snapshot.
+contentType: technical
+pageId: setup
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [project]
+sourceFiles: [README.md, scripts/envsetup.sh]
+testFiles: []
+lastVerified: '2026-08-21'
+translationStatus: canonical
+---
+
+Start with a checkout of the pinned MLE source and initialize its recursive submodules. The helper script is designed for the repository root: when sourced, it records the current directory as `_MLE_ROOT` and initializes, but does not export, `MLE_SHADER_DIRS` to `${_MLE_ROOT}/res/shaders` unless that variable was already set.
+
+```bash
+git clone https://github.com/MaxMFonseca/MLE.git
+cd MLE
+git checkout --detach c1abea3de165032fe064300340807b7a6af388f8
+
+source scripts/envsetup.sh
+mle_setup
+```
+
+Run these commands from the repository root. Sourcing the script outside a directory containing `README.md` returns status 1. Running the script directly is rejected because functions defined by a child process would not persist in the current shell.
+
+## What `mle_setup` changes
+
+`mle_setup` changes to `_MLE_ROOT`, runs `git submodule update --init --recursive`, enters `external/LuaJIT`, runs `make`, then changes back to `_MLE_ROOT`. It has no parameters. After a successful setup, the source tree has initialized submodules and a LuaJIT build produced by that `make` invocation.
+
+The function only guards its first and final directory changes. A failed submodule command, failed change into `external/LuaJIT`, or failed `make` can be followed by a successful final `cd`; do not rely on the final shell status alone to prove that setup completed. Inspect the command output and confirm the intended submodule and LuaJIT state before configuring.
+
+## Shell lifetime and readiness
+
+The helper commands are shell functions, not installed executables. They remain available only in the shell session that sourced `scripts/envsetup.sh`; source it again for a new terminal. The script prints `MLE environment loaded.` and its command list after loading. That message establishes that the functions were defined, not that submodules, LuaJIT, or the full build are ready.
+
+The initial source assignment does not export `MLE_SHADER_DIRS`; `mle_add_shader_dirs` exports it when it adds a directory. The value still persists in the current shell. In particular, the script assigns its default before it checks for `README.md`: sourcing from the wrong directory can preserve a bad nonempty value, and a later source from the repository root will retain that value instead of replacing it. That can leave shader discovery with no real shader directory and a misleading `No shaders found.` result.
+
+To recover that state, return to the repository root, run `unset MLE_SHADER_DIRS`, then source `scripts/envsetup.sh` again. Alternatively, from the repository root explicitly set `MLE_SHADER_DIRS="$PWD/res/shaders"` before sourcing when that is the intended shader directory. Preserve an existing value only when its directories were deliberately added for the current shell.
+
+## Safe recovery
+
+If setup is interrupted or a prerequisite is missing, return to the repository root, correct the dependency or access problem, and rerun `git submodule update --init --recursive` and `make` in `external/LuaJIT` as appropriate. Then source the script again before using its functions. Do not use a clean-build operation to repair a source or dependency problem: it removes build output but does not initialize submodules or install prerequisites.
+
+Proceed to [build MLE](/MLEDocs/versions/c1abea3de165/start-here/build/). If configuration fails, review the [requirements and platform boundary](/MLEDocs/versions/c1abea3de165/start-here/requirements/) before retrying.

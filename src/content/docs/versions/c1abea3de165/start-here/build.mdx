@@ -1,0 +1,68 @@
+---
+title: Configure and build MLE
+description: Configure the pinned MLE source, compile shaders, and build the engine and enabled test targets.
+contentType: technical
+pageId: build
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [project]
+sourceFiles: [CMakeLists.txt, scripts/envsetup.sh]
+testFiles: []
+lastVerified: '2026-08-21'
+translationStatus: canonical
+---
+
+Configure an out-of-source build, then build the configured directory. The root project creates the static `MLE` library and, with the default `MLE_BUILD_TESTS=ON`, also reaches the `Core`, `AudioLifecycle`, and `Client` target definitions. The documented helper path additionally compiles shaders and prepares its compilation-database link.
+
+## Helper workflow
+
+After completing [repository setup](/MLEDocs/versions/c1abea3de165/start-here/setup/) in a shell where `scripts/envsetup.sh` has been sourced, configure and build a Debug directory with:
+
+```bash
+mle_config -t Debug
+mle_build -t Debug
+```
+
+`mle_config` defaults to `Debug`. Its `-t` option chooses the build type; `-m` and `-s` add nonempty `MLE_MAX_LOG_LEVEL` and `MLE_DEFAULT_LOG_LEVEL_STDOUT` values, and arguments after `--` are forwarded to CMake. It configures `_MLE_ROOT/build/<build_type>` with `CMAKE_EXPORT_COMPILE_COMMANDS=1` and `CMAKE_BUILD_TYPE=<build_type>`.
+
+After configuration, the helper removes `compile_commands.json` and creates a `compile_commands.json` symlink to the chosen build directory in the directory where `mle_config` was invoked. Invoke it from `_MLE_ROOT` when a root-level link is desired. Because later link commands run after CMake, inspect CMake output rather than treating the function's final status as definitive evidence that configuration succeeded.
+
+`mle_build` also defaults to `Debug`. It first runs `mle_compile_shaders_all`, then runs `cmake --build "${_MLE_ROOT}/build/<build_type>" -j "$(nproc --all)"`. A successful shader pass prints `Shader compilation succeeded.`; shader failure prints `Shader compilation failed.` and stops before the CMake build. The helper requires configured build output, `MLE_SHADER_DIRS`, `glslangValidator`, and `nproc`.
+
+`mle_ber` delegates to the build-and-run helper. It passes its arguments to `mle_build` and, only if that returns successfully, to `mle_run_test`. For the interactive target, the supported form is:
+
+```bash
+mle_ber -n Client -t Debug
+```
+
+This builds the selected configuration, then prepares Client resource links and launches `Client`. A build failure prevents the launch. However, `mle_run_test` performs later log-link cleanup and a final `echo`, so a successful final function status does not prove that Client exited successfully. Inspect the process output and the selected target's logs when evaluating a Client run. It is an interactive demonstration rather than an automated test result.
+
+## Plain CMake workflow
+
+The equivalent core configuration is useful for build-system integration. Run these commands from the repository root: `-S .`, `external/LuaJIT`, and `build/Debug` are all relative to that directory.
+
+```bash
+git submodule update --init --recursive
+make -C external/LuaJIT
+
+cmake -S . -B build/Debug \
+  -DCMAKE_BUILD_TYPE=Debug \
+  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+cmake --build build/Debug -j
+```
+
+Plain CMake does not invoke the helper's shader compilation. Before building after shader-source changes, compile the changed shader sources with `glslangValidator` through the sourced helper or an equivalent process that produces the adjacent `.spv` files.
+
+## Expected Linux build artifacts
+
+On the tested Linux path, a successful default configuration produces `build/<build_type>/libMLE.a`, `build/<build_type>/tests/Core/{Core,AudioLifecycle}`, and `build/<build_type>/tests/Client/Client`. Configuration generates `build/<build_type>/compile_commands.json`; `mle_config` additionally creates a `compile_commands.json` link in its invocation directory. Shader compilation writes adjacent `.spv` files beside shader sources. These output locations are not verified for Windows, which remains an intended but untested platform at this snapshot.
+
+## Incremental builds and cleanup
+
+Reuse `build/<build_type>` for incremental builds. Reconfigure when CMake options or the build type change. `MLE_BUILD_TESTS` is enabled unless configuration receives `-DMLE_BUILD_TESTS=OFF`; disabling it removes the root path that adds the test and interactive targets.
+
+`mle_clean` is destructive. It removes `${_MLE_ROOT}/build` recursively, then removes `compile_commands.json` and `latest.log` relative to the directory where it is invoked. Run it only when discarding all build configurations is intended, and invoke it from the repository root if those root-level links should also be removed. It does not repair source prerequisites, submodules, or tool discovery.
+
+For troubleshooting, revisit [requirements](/MLEDocs/versions/c1abea3de165/start-here/requirements/) for dependency and platform checks, then [setup](/MLEDocs/versions/c1abea3de165/start-here/setup/) for submodule and sourced-shell state.
