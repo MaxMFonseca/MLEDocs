@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { getNavigationSection } from '../../src/data/navigation';
 
 const siteOrigin = process.env.MLE_DOCS_E2E_ORIGIN ?? 'http://127.0.0.1:4321';
 const versionId = 'c1abea3de165';
@@ -41,6 +42,31 @@ const pageTitles: Readonly<Record<(typeof pages)[number][0], string>> = {
   'build-options': 'Build options and targets',
   'helper-commands': 'Helper command contracts',
 };
+
+const requiredEvidencePaths: Readonly<
+  Partial<Record<(typeof pages)[number][0], readonly string[]>>
+> = {
+  requirements: ['external/CMakeLists.txt', 'tests/Core/CMakeLists.txt'],
+  'contributor-testing': ['scripts/envsetup.sh'],
+};
+
+const orderedSections = ['start', 'contributing'] as const;
+
+function registryRouteSequence(
+  sectionId: (typeof orderedSections)[number],
+  localePrefix: '' | '/pt-br',
+): readonly string[] {
+  const section = getNavigationSection(sectionId);
+  const pageIds = [
+    section.pageId,
+    ...section.plannedGroups.flatMap((group) => group.children.map((child) => child.pageId)),
+  ];
+  return pageIds.map((pageId) =>
+    pageId === section.pageId
+      ? `/MLEDocs${localePrefix}/versions/${versionId}/${section.segment}/`
+      : `/MLEDocs${localePrefix}/versions/${versionId}/${section.segment}/${pageId}/`,
+  );
+}
 
 async function openSearch(page: Page) {
   await expect(page.locator('#starlight__search .pagefind-ui__search-input')).toHaveCount(1, {
@@ -104,6 +130,13 @@ for (const [pageId, slug] of pages) {
         links.every((link) => link.getAttribute('href')?.includes(`/blob/${commit}/`)),
       fullCommit),
     ).toBe(true);
+    for (const evidencePath of requiredEvidencePaths[pageId] ?? []) {
+      await expect(
+        page.locator(
+          `[data-mle-source-evidence] a[href="https://github.com/MaxMFonseca/MLE/blob/${fullCommit}/${evidencePath}"]`,
+        ),
+      ).toHaveCount(1);
+    }
     await expect(page.locator(`#starlight__sidebar a[href="${href}"]`)).not.toHaveCount(0);
   });
 
@@ -165,6 +198,35 @@ test('section hubs expose every finished page while unrelated reference groups r
     'Audio commandsPage planned',
   ]);
 });
+
+for (const sectionId of orderedSections) {
+  test(`${sectionId} sidebar and adjacent pagination follow exact registry identity order`, async ({
+    page,
+  }) => {
+    const section = getNavigationSection(sectionId);
+    for (const localePrefix of ['', '/pt-br'] as const) {
+      const expectedHrefs = registryRouteSequence(sectionId, localePrefix);
+      const sectionPrefix = `/MLEDocs${localePrefix}/versions/${versionId}/${section.segment}/`;
+
+      for (const [index, href] of expectedHrefs.entries()) {
+        await page.goto(new URL(href, siteOrigin).toString());
+        const sidebarHrefs = await page
+          .locator(`#starlight__sidebar a[href^="${sectionPrefix}"]`)
+          .evaluateAll((links) => links.map((link) => link.getAttribute('href')));
+        expect(sidebarHrefs, `${localePrefix || '/en'} ${sectionId} sidebar at ${href}`).toEqual(
+          expectedHrefs,
+        );
+
+        if (index > 0) {
+          await expect(page.locator('a[rel="prev"]')).toHaveAttribute('href', expectedHrefs[index - 1]);
+        }
+        if (index < expectedHrefs.length - 1) {
+          await expect(page.locator('a[rel="next"]')).toHaveAttribute('href', expectedHrefs[index + 1]);
+        }
+      }
+    }
+  });
+}
 
 for (const [pageId, slug] of pages.filter(([candidate]) =>
   ['requirements', 'build', 'troubleshooting', 'documentation', 'helper-commands'].includes(

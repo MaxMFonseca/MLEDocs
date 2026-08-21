@@ -1,6 +1,10 @@
 ---
 import DefaultSidebar from '@astrojs/starlight/components/Sidebar.astro';
-import { filterVersionedSidebarByLocale } from '../../data/navigation';
+import {
+	buildSidebarPagination,
+	filterVersionedSidebarByLocale,
+	orderVersionedSidebarByRegistry,
+} from '../../data/navigation';
 import type { Locale } from '../../data/taxonomy';
 import { versions } from '../../data/versions';
 
@@ -8,9 +12,11 @@ const route = Astro.locals.starlightRoute;
 const locale: Locale = route.locale === 'pt-br' ? 'pt-br' : 'en';
 
 // Pinned Starlight 0.41.5 exposes Sidebar as a supported component override and gives each page a
-// cloned, locale-resolved route model. Its default Sidebar reads this same local, so replace only
-// the resolved version groups before delegating all rendering and mobile behavior upstream.
-route.sidebar = [...filterVersionedSidebarByLocale(route.sidebar, versions, locale)];
+// cloned, locale-resolved route model. Its default Sidebar and later Footer read this same local,
+// so align the released registry sections and their pagination before delegating rendering.
+const visibleSidebar = filterVersionedSidebarByLocale(route.sidebar, versions, locale);
+route.sidebar = [...orderVersionedSidebarByRegistry(visibleSidebar, versions, locale)];
+route.pagination = buildSidebarPagination(route.sidebar);
 ---
 
 <DefaultSidebar />

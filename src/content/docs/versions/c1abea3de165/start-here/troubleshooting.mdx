@@ -87,6 +87,16 @@ An empty `MLE_SHADER_DIRS` search or directories that contain no matching shader
 
 **Recovery:** Reconfigure the intended `build/<build_type>` directory with the desired options. If you deliberately discard all generated configurations, use the exact cleanup boundary described above and accept the loss of `${_MLE_ROOT}/build`.
 
+## Built target exists but `mle_run_test` cannot launch it
+
+**Symptom:** the build reports a successful `Core` or `Client` target, but `mle_run_test` cannot find or launch the executable.
+
+**Likely cause:** a multi-config or customized generator placed the executable outside the tested single-config/default-output layout. The helper uses a hard-coded executable layout at `build/<build_type>/tests/<name>/<name>` and does not discover generator-selected output paths.
+
+**Check:** Read the build output or generator metadata to find the executable that was actually produced, then compare it with the helper's expected path for the selected `-t` and `-n` values.
+
+**Recovery:** Launch the verified executable directly and prepare any required resources deliberately, or configure a tested single-config/default-output build whose artifacts match the helper layout. Do not treat cleanup or repeated helper invocation as evidence that a different generator will move its output.
+
 ## Windows behavior is not established
 
 **Symptom:** the Bash helper, compiler flags, dependency discovery, shader path, or output layout behaves differently on Windows.

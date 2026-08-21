@@ -19,7 +19,7 @@ The engine shader tree includes [`res/shaders/ui/bg.frag`](https://github.com/Ma
 
 ## Shader source and generated output
 
-The helper finds `*.vert`, `*.frag`, `*.comp`, `*.geom`, `*.tesc`, and `*.tese` recursively in the colon-separated shader directories. For each source it invokes `glslangValidator -V` and writes the compiled output adjacent to it as `<shader>.spv`. This output is generated build state, not another source shader to edit.
+The helper finds `*.vert`, `*.frag`, `*.comp`, `*.geom`, `*.tesc`, and `*.tese` recursively in the colon-separated shader directories and sends each discovered source through its parallel job boundary. A job invokes `glslangValidator -V` only when the adjacent `<shader>.spv` output is missing or older than the source, or when a force rebuild was requested. The output is generated build state, not another source shader to edit.
 
 `mle_compile_shaders_all` skips an output only when it exists and is not older than its source. Regenerate after adding or changing a recognized shader source, after deleting its adjacent output, after adding a shader directory, or when deliberately forcing all outputs with `-f` or `--force`. `mle_build` runs this helper before CMake; use [the build guide](/MLEDocs/versions/c1abea3de165/start-here/build/) for the compiler and `nproc` prerequisites.
 

@@ -28,7 +28,7 @@ mle_build -t Debug
 
 After configuration, the helper removes `compile_commands.json` and creates a `compile_commands.json` symlink to the chosen build directory in the directory where `mle_config` was invoked. Invoke it from `_MLE_ROOT` when a root-level link is desired. Because later link commands run after CMake, inspect CMake output rather than treating the function's final status as definitive evidence that configuration succeeded.
 
-`mle_build` also defaults to `Debug`. It first runs `mle_compile_shaders_all`, then runs `cmake --build "${_MLE_ROOT}/build/<build_type>" -j "$(nproc --all)"`. A successful shader pass prints `Shader compilation succeeded.`; shader failure prints `Shader compilation failed.` and stops before the CMake build. The helper requires configured build output, `MLE_SHADER_DIRS`, `glslangValidator`, and `nproc`.
+`mle_build` also defaults to `Debug`. It first runs `mle_compile_shaders_all`, then runs `cmake --build "${_MLE_ROOT}/build/<build_type>" -j "$(nproc --all)"`. A successful shader pass prints `Shader compilation succeeded.`; shader failure prints `Shader compilation failed.` and stops before the CMake build. The shader helper always attempts `nproc --all`, discovers sources with `find`, and sends every discovered source through `xargs`; `glslangValidator` is invoked only for a missing, stale, or force-rebuilt output. Missing or empty directories and a fully current output set can pass without invoking the compiler.
 
 `mle_ber` delegates to the build-and-run helper. It passes its arguments to `mle_build` and, only if that returns successfully, to `mle_run_test`. For the interactive target, the supported form is:
 
@@ -53,11 +53,13 @@ cmake -S . -B build/Debug \
 cmake --build build/Debug -j
 ```
 
-Plain CMake does not invoke the helper's shader compilation. Before building after shader-source changes, compile the changed shader sources with `glslangValidator` through the sourced helper or an equivalent process that produces the adjacent `.spv` files.
+Plain CMake does not invoke the helper's shader compilation. Before building after a shader change that leaves an adjacent output missing or stale, compile that source with `glslangValidator` through the sourced helper or an equivalent verified process.
 
 ## Expected Linux build artifacts
 
-On the tested Linux path, a successful default configuration produces `build/<build_type>/libMLE.a`, `build/<build_type>/tests/Core/{Core,AudioLifecycle}`, and `build/<build_type>/tests/Client/Client`. Configuration generates `build/<build_type>/compile_commands.json`; `mle_config` additionally creates a `compile_commands.json` link in its invocation directory. Shader compilation writes adjacent `.spv` files beside shader sources. These output locations are not verified for Windows, which remains an intended but untested platform at this snapshot.
+On the tested Linux path, a successful default configuration produces `build/<build_type>/libMLE.a`, `build/<build_type>/tests/Core/{Core,AudioLifecycle}`, and `build/<build_type>/tests/Client/Client`. These are the tested single-config/default-output layout, not generator-independent locations: multi-config or customized generators can place artifacts elsewhere. The sourced helper retains a hard-coded executable layout under `build/<build_type>/tests/<name>/<name>`, so a helper launch can fail even when a selected generator built the target successfully in another location.
+
+Configuration generates `build/<build_type>/compile_commands.json`; `mle_config` additionally creates a `compile_commands.json` link in its invocation directory. Shader compilation writes adjacent `.spv` files beside shader sources. These output locations are not verified for Windows, which remains an intended but untested platform at this snapshot.
 
 ## Incremental builds and cleanup
 

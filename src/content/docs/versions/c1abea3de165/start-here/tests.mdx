@@ -13,13 +13,15 @@ lastVerified: '2026-08-21'
 translationStatus: canonical
 ---
 
-With the default `MLE_BUILD_TESTS=ON` configuration, the root project reaches the `Core`, `AudioLifecycle`, and `Client` target definitions. Only `Core` and `AudioLifecycle` are automated GoogleTest executables. `Client` is an interactive demonstration; use its [separate guide](/MLEDocs/versions/c1abea3de165/start-here/client/) for manual observations.
+With the default `MLE_BUILD_TESTS=ON` configuration, the root project reaches the `Core`, `AudioLifecycle`, and `Client` target definitions. The Core CMake file declares GoogleTest at `v1.15.2` and calls `FetchContent_MakeAvailable(googletest)`, so configuration can require a GitHub fetch and fail offline unless GoogleTest is already cached or otherwise provided to FetchContent. `MLE_BUILD_TESTS=OFF` avoids this configure path, but it also prevents the root project from defining these test and Client targets.
+
+Only `Core` and `AudioLifecycle` are automated GoogleTest executables. `Client` is an interactive demonstration; use its [separate guide](/MLEDocs/versions/c1abea3de165/start-here/client/) for manual observations.
 
 ## Automated verification
 
 `Core` initializes Core, Client, and Renderer, calls `RUN_ALL_TESTS()`, then shuts Renderer and Core down and returns the GoogleTest result. CMake discovers `Core` and `AudioLifecycle` as GoogleTest tests with the `unit` label. `AudioLifecycle` is built below the Core test directory and exercises audio lifecycle behavior through GoogleTest.
 
-After [setup](/MLEDocs/versions/c1abea3de165/start-here/setup/) and a default [build](/MLEDocs/versions/c1abea3de165/start-here/build/), the Linux output paths are:
+After [setup](/MLEDocs/versions/c1abea3de165/start-here/setup/) and a default [build](/MLEDocs/versions/c1abea3de165/start-here/build/), the Linux output paths below describe the tested single-config/default-output layout; multi-config or customized generators can place artifacts elsewhere. Because `mle_run_test` uses a hard-coded executable layout at `build/<build_type>/tests/<name>/<name>`, it can fail to launch a target that was built successfully at another generator-selected location.
 
 | Target | Executable path | Evidence |
 | --- | --- | --- |
@@ -30,6 +32,8 @@ After [setup](/MLEDocs/versions/c1abea3de165/start-here/setup/) and a default [b
 The Core CMake file calls `gtest_discover_tests`, but the inspected first-party CMake files do not establish a root `enable_testing()` or `include(CTest)` path. Therefore this snapshot does not document a verified `ctest` command; run the executable or the sourced helper instead.
 
 ## Run Core with resources
+
+> **Upstream safety limitation — trusted segments only.** Pass `-t` and `-n` only trusted single path segments: no `/` or `\` path separators, and neither `.` nor `..`. The helper interpolates both values without validation into a recursive deletion path and later directory and executable paths. A separator or dot segment can normalize the deletion and delete outside the intended generated target tree; its unguarded intermediate `mkdir` and `cd` calls can leave later commands in the wrong working directory, and subsequent commands can mask the failure status. Validate both arguments upstream before broader use. Until then, never pass untrusted values to this helper.
 
 From a shell where `scripts/envsetup.sh` was sourced at the repository root, launch the default automated target with:
 
@@ -51,7 +55,7 @@ An automated pass is established by the executable's GoogleTest result and outpu
 
 ## Target boundary
 
-The helper's `-n` value supplies both a test directory and executable name. It can launch `Core` and `Client`, whose directory-derived names match that layout. It cannot reach `AudioLifecycle` through a documented helper form: the executable is under `tests/Core`, while `-n AudioLifecycle` would seek `tests/AudioLifecycle/AudioLifecycle`. Run `build/<build_type>/tests/Core/AudioLifecycle` directly when that executable is present.
+The helper's `-n` value supplies both a test directory and executable name. It can launch `Core` and `Client` only when their directory-derived names and generated locations match that layout. It cannot reach `AudioLifecycle` through a documented helper form: the executable is under `tests/Core`, while `-n AudioLifecycle` would seek `tests/AudioLifecycle/AudioLifecycle`. Run `build/<build_type>/tests/Core/AudioLifecycle` directly when that executable is present.
 
 ## Interactive demonstration
 

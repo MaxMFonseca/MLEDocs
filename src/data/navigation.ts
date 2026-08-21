@@ -420,6 +420,115 @@ export interface SidebarSection {
 }
 
 type ResolvedSidebarEntry = StarlightRouteData['sidebar'][number];
+type ResolvedSidebarLink = Extract<ResolvedSidebarEntry, { type: 'link' }>;
+
+const registryOrderedSectionIds = ['start', 'contributing'] as const;
+
+function registryPageIdForLink(
+	entry: ResolvedSidebarEntry,
+	version: VersionEntry,
+	section: NavigationSection,
+): string | undefined {
+	if (entry.type !== 'link') return undefined;
+	const pathname = new URL(entry.href, 'https://mledocs.invalid').pathname;
+	const segments = pathname.split('/').filter(Boolean);
+	const versionMarker = segments.findIndex(
+		(segment, index) =>
+			segment === 'versions' &&
+			segments[index + 1] === version.id &&
+			segments[index + 2] === section.segment,
+	);
+	if (versionMarker < 0) return undefined;
+
+	const remainder = segments.slice(versionMarker + 3);
+	if (remainder.length === 0) return section.pageId;
+	if (remainder.length !== 1) return undefined;
+	const childPageIds = section.plannedGroups.flatMap((navigationGroup) =>
+		navigationGroup.children.map((navigationChild) => navigationChild.pageId),
+	);
+	return childPageIds.includes(remainder[0] ?? '') ? remainder[0] : undefined;
+}
+
+function orderSectionEntriesByRegistry(
+	entries: readonly ResolvedSidebarEntry[],
+	version: VersionEntry,
+	section: NavigationSection,
+): ResolvedSidebarEntry[] {
+	const pageIds = [
+		section.pageId,
+		...section.plannedGroups.flatMap((navigationGroup) =>
+			navigationGroup.children.map((navigationChild) => navigationChild.pageId),
+		),
+	];
+	const rank = new Map(pageIds.map((pageId, index) => [pageId, index]));
+	const orderedKnownEntries = entries
+		.map((entry, index) => ({
+			entry,
+			index,
+			pageId: registryPageIdForLink(entry, version, section),
+		}))
+		.filter(
+			(candidate): candidate is typeof candidate & { pageId: string } =>
+				candidate.pageId !== undefined,
+		)
+		.sort((left, right) =>
+			(rank.get(left.pageId) ?? Number.MAX_SAFE_INTEGER) -
+				(rank.get(right.pageId) ?? Number.MAX_SAFE_INTEGER) || left.index - right.index,
+		)
+		.map(({ entry }) => entry);
+	let orderedIndex = 0;
+
+	return entries.map((entry) =>
+		registryPageIdForLink(entry, version, section)
+			? (orderedKnownEntries[orderedIndex++] ?? entry)
+			: entry,
+	);
+}
+
+export function orderVersionedSidebarByRegistry(
+	sidebar: readonly ResolvedSidebarEntry[],
+	entries: readonly VersionEntry[],
+	locale: Locale,
+): readonly ResolvedSidebarEntry[] {
+	return sidebar.map((sidebarEntry) => {
+		if (sidebarEntry.type !== 'group') return sidebarEntry;
+		const version = entries.find((entry) => sidebarEntry.label.startsWith(`${entry.id} · `));
+		if (!version) return sidebarEntry;
+
+		return {
+			...sidebarEntry,
+			entries: sidebarEntry.entries.map((sectionEntry) => {
+				if (sectionEntry.type !== 'group') return sectionEntry;
+				const section = registryOrderedSectionIds
+					.map((pageId) => getNavigationSection(pageId))
+					.find((candidate) => candidate.labels[locale] === sectionEntry.label);
+				if (!section) return sectionEntry;
+
+				return {
+					...sectionEntry,
+					entries: orderSectionEntriesByRegistry(sectionEntry.entries, version, section),
+				};
+			}),
+		};
+	});
+}
+
+function flattenResolvedSidebar(sidebar: readonly ResolvedSidebarEntry[]): ResolvedSidebarLink[] {
+	return sidebar.flatMap((entry) =>
+		entry.type === 'group' ? flattenResolvedSidebar(entry.entries) : [entry],
+	);
+}
+
+export function buildSidebarPagination(
+	sidebar: readonly ResolvedSidebarEntry[],
+): StarlightRouteData['pagination'] {
+	const links = flattenResolvedSidebar(sidebar);
+	const currentIndex = links.findIndex((entry) => entry.isCurrent);
+	return {
+		prev: currentIndex > 0 ? links[currentIndex - 1] : undefined,
+		next: currentIndex >= 0 ? links[currentIndex + 1] : undefined,
+	};
+}
 
 export function filterVersionedSidebarByLocale(
 	sidebar: readonly ResolvedSidebarEntry[],

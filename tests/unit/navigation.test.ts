@@ -1,11 +1,13 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import type { StarlightRouteData } from '@astrojs/starlight/route-data';
 import {
+	buildSidebarPagination,
 	buildSectionIndexModel,
 	buildVersionedSidebar,
 	filterVersionedSidebarByLocale,
 	getNavigationSection,
 	navigationSections,
+	orderVersionedSidebarByRegistry,
 	type NavigationSection,
 	validateNavigationSections,
 } from '../../src/data/navigation';
@@ -80,6 +82,57 @@ const independentResolvedGroup = {
 	collapsed: false,
 	badge: undefined,
 } as const satisfies ResolvedSidebar[number];
+
+const resolvedLink = (label: string, href: string, isCurrent = false): ResolvedSidebar[number] => ({
+	type: 'link',
+	label,
+	href,
+	isCurrent,
+	badge: undefined,
+	attrs: {},
+});
+
+const registryPageIds = (sectionId: 'start' | 'contributing'): readonly string[] => {
+	const section = getNavigationSection(sectionId);
+	return [
+		section.pageId,
+		...section.plannedGroups.flatMap((navigationGroup) =>
+			navigationGroup.children.map((navigationChild) => navigationChild.pageId),
+		),
+	];
+};
+
+const registryHrefs = (sectionId: 'start' | 'contributing'): readonly string[] => {
+	const section = getNavigationSection(sectionId);
+	return registryPageIds(sectionId).map((pageId) =>
+		pageId === section.pageId
+			? `/MLEDocs/versions/${currentVersion.id}/${section.segment}/`
+			: `/MLEDocs/versions/${currentVersion.id}/${section.segment}/${pageId}/`,
+	);
+};
+
+const alphabetizedResolvedSection = (
+	sectionId: 'start' | 'contributing',
+	currentPageId?: string,
+): ResolvedSidebar[number] => {
+	const section = getNavigationSection(sectionId);
+	const links = registryPageIds(sectionId)
+		.map((pageId) => {
+			const href = pageId === section.pageId
+				? `/MLEDocs/versions/${currentVersion.id}/${section.segment}/`
+				: `/MLEDocs/versions/${currentVersion.id}/${section.segment}/${pageId}/`;
+			return resolvedLink(pageId, href, pageId === currentPageId);
+		})
+		.sort((left, right) => left.label.localeCompare(right.label));
+
+	return {
+		type: 'group',
+		label: section.labels.en,
+		entries: links,
+		collapsed: false,
+		badge: undefined,
+	};
+};
 
 describe('navigation section registry', () => {
 	it('limits public section segments to the seven approved route values', () => {
@@ -169,6 +222,64 @@ describe('navigation section registry', () => {
 });
 
 describe('versioned snapshot sidebar', () => {
+	it('orders Start Here and Contributing links by registry identity and derives matching pagination', () => {
+		const unrelatedSection = {
+			type: 'group',
+			label: 'Concepts',
+			entries: [resolvedLink('Architecture', `/MLEDocs/versions/${currentVersion.id}/concepts/architecture/`)],
+			collapsed: false,
+			badge: undefined,
+		} as const satisfies ResolvedSidebar[number];
+		const resolvedSidebar: ResolvedSidebar = [
+			{
+				type: 'group',
+				label: 'c1abea3de165 · 2026-08-18 · current',
+				entries: [
+					alphabetizedResolvedSection('start', 'tests'),
+					unrelatedSection,
+					alphabetizedResolvedSection('contributing'),
+				],
+				collapsed: false,
+				badge: undefined,
+			},
+			independentResolvedGroup,
+		];
+
+		const ordered = orderVersionedSidebarByRegistry(resolvedSidebar, [currentVersion], 'en');
+		const versionGroup = ordered.find(
+			(entry) => entry.label === 'c1abea3de165 · 2026-08-18 · current',
+		);
+		expect(versionGroup?.type).toBe('group');
+		if (versionGroup?.type !== 'group') throw new Error('expected current version group');
+		const linkHrefs = (label: string): readonly string[] => {
+			const sectionGroup = versionGroup.entries.find(
+				(entry) => entry.type === 'group' && entry.label === label,
+			);
+			if (sectionGroup?.type !== 'group') throw new Error(`expected ${label} section group`);
+			return sectionGroup.entries
+				.filter((entry) => entry.type === 'link')
+				.map((entry) => entry.href);
+		};
+
+		expect(linkHrefs(getNavigationSection('start').labels.en)).toEqual(registryHrefs('start'));
+		expect(linkHrefs(getNavigationSection('contributing').labels.en)).toEqual(
+			registryHrefs('contributing'),
+		);
+		expect(versionGroup.entries.find((entry) => entry.label === 'Concepts')).toEqual(
+			unrelatedSection,
+		);
+		expect(ordered.find((entry) => entry.label === 'Independent navigation')).toEqual(
+			independentResolvedGroup,
+		);
+
+		const expectedStartHrefs = registryHrefs('start');
+		const currentIndex = registryPageIds('start').indexOf('tests');
+		expect(buildSidebarPagination(ordered)).toEqual({
+			prev: expect.objectContaining({ href: expectedStartHrefs[currentIndex - 1] }),
+			next: expect.objectContaining({ href: expectedStartHrefs[currentIndex + 1] }),
+		});
+	});
+
 	it('removes an English-only version tree from the resolved Portuguese sidebar', () => {
 		const resolvedSidebar = [
 			resolvedVersionGroup('c1abea3de165 · 2026-08-18 · atual'),

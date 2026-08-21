@@ -11,6 +11,7 @@ interface Props {
 }
 
 const { repositoryUrl, commit, locale, sourceFiles, testFiles } = Astro.props;
+const evidenceLanguage = locale === 'pt-br' ? 'pt-BR' : undefined;
 const labels =
 	locale === 'pt-br'
 		? {
@@ -25,7 +26,7 @@ const labels =
 		};
 ---
 
-<details class="source-evidence" data-mle-source-evidence>
+<details class="source-evidence" data-mle-source-evidence lang={evidenceLanguage}>
 	<summary>{labels.summary}</summary>
 	<div class="evidence-content">
 		<section aria-labelledby="source-evidence-sources">

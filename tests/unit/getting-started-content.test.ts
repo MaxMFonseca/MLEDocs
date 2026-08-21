@@ -10,7 +10,18 @@ const snapshotDirectory = resolve('src/content/docs/versions/c1abea3de165');
 const commit = 'c1abea3de165032fe064300340807b7a6af388f8';
 
 const expected = [
-	{ path: 'start-here/requirements.mdx', pageId: 'requirements', sources: ['README.md', 'CMakeLists.txt'], tests: [] },
+	{
+		path: 'start-here/requirements.mdx',
+		pageId: 'requirements',
+		sources: [
+			'README.md',
+			'CMakeLists.txt',
+			'external/CMakeLists.txt',
+			'tests/Core/CMakeLists.txt',
+			'scripts/envsetup.sh',
+		],
+		tests: [],
+	},
 	{ path: 'start-here/setup.mdx', pageId: 'setup', sources: ['README.md', 'scripts/envsetup.sh'], tests: [] },
 	{ path: 'start-here/build.mdx', pageId: 'build', sources: ['CMakeLists.txt', 'scripts/envsetup.sh'], tests: [] },
 	{
@@ -72,7 +83,12 @@ const contributorFoundations = [
 	{
 		path: 'contributing/contributor-testing.mdx',
 		pageId: 'contributor-testing',
-		sources: ['tests/CMakeLists.txt', 'tests/Core/CMakeLists.txt', 'tests/Client/CMakeLists.txt'],
+		sources: [
+			'tests/CMakeLists.txt',
+			'tests/Core/CMakeLists.txt',
+			'tests/Client/CMakeLists.txt',
+			'scripts/envsetup.sh',
+		],
 		tests: ['tests/Core/src/Main.cpp', 'tests/Client/src/Main.cpp'],
 		links: [
 			'/MLEDocs/versions/c1abea3de165/start-here/tests/',
@@ -215,18 +231,21 @@ describe('getting-started foundations', () => {
 		expect(config).toContain('final `ln` status becomes the function result');
 
 		const build = commandRow('mle_build');
-		expect(build).toContain('When shader files are found, `glslangValidator` and usable shader directories are operational requirements');
-		expect(build).toContain('`No shaders found.` can return `0`');
+		expect(build).toContain('`glslangValidator` is required only when an eligible shader is actually compiled');
+		expect(build).toContain('missing, stale, or force-rebuilt output');
 
 		const compileShaders = commandRow('mle_compile_shaders_all');
 		expect(compileShaders).toContain('A sourced helper/root context and syntactically valid options are baseline preconditions');
-		expect(compileShaders).toContain('Shader directories and eligible files may be absent or empty; `No shaders found.` returns `0`');
-		expect(compileShaders).toContain('Only after eligible shaders are found and parallel jobs launch do usable `nproc` output and `glslangValidator` become operational requirements');
+		expect(compileShaders).toContain('Shader directories and eligible files may be missing or empty; `No shaders found.` returns `0`');
+		expect(compileShaders).toContain('unconditionally attempts `nproc --all` before discovery');
+		expect(compileShaders).toContain('`find`');
+		expect(compileShaders).toContain('`xargs`');
+		expect(compileShaders).toContain('Fully current outputs can complete without invoking `glslangValidator`');
 		expect(compileShaders).toContain('Missing directories are reported and skipped');
 		expect(compileShaders).toContain('`Some shaders failed.` and returns `1`');
 
 		const runTest = commandRow('mle_run_test');
-		expect(runTest).toContain('does not validate that the selected target exists');
+		expect(runTest).toContain('validates neither path safety nor target existence');
 		expect(runTest).toContain('Deletes and recreates `build/<build_type>/tests/<name>/res`');
 		expect(runTest).toContain('`mle` and `i` links');
 		expect(runTest).toContain('suppressed with `2>/dev/null`');
@@ -238,6 +257,52 @@ describe('getting-started foundations', () => {
 		const obsolete = source.slice(source.indexOf('## `mle_gen_docs`'), source.indexOf('## Command contracts'));
 		expect(obsolete).toContain('**Obsolete workflow — excluded from MLEDocs.**');
 		expect(obsolete).toContain('not authority for this documentation site');
+	});
+
+	it.each([
+		'start-here/requirements.mdx',
+		'reference/helper-commands.mdx',
+	])('limits the glslangValidator requirement to actual shader compilation in %s', (path) => {
+		const source = readFileSync(resolve(snapshotDirectory, path), 'utf8');
+
+		expect(source).toContain('missing, stale, or force-rebuilt eligible shader');
+		expect(source).toMatch(/missing or empty directories/i);
+		expect(source).toContain('fully current outputs');
+		expect(source).toContain('without invoking `glslangValidator`');
+		expect(source).toContain('unconditionally attempts `nproc --all`');
+		expect(source).toContain('`find`');
+		expect(source).toContain('`xargs`');
+	});
+
+	it.each([
+		'start-here/requirements.mdx',
+		'start-here/tests.mdx',
+	])('documents the default GoogleTest FetchContent network and cache boundary in %s', (path) => {
+		const source = readFileSync(resolve(snapshotDirectory, path), 'utf8');
+
+		expect(source).toContain('`MLE_BUILD_TESTS=ON`');
+		expect(source).toContain('`FetchContent_MakeAvailable(googletest)`');
+		expect(source).toContain('`v1.15.2`');
+		expect(source).toContain('GitHub fetch');
+		expect(source).toContain('fail offline');
+		expect(source).toContain('already cached or otherwise provided');
+		expect(source).toContain('`MLE_BUILD_TESTS=OFF` avoids this configure path');
+	});
+
+	it.each([
+		'start-here/tests.mdx',
+		'reference/helper-commands.mdx',
+	])('publishes the upstream mle_run_test path-safety limitation independently in %s', (path) => {
+		const source = readFileSync(resolve(snapshotDirectory, path), 'utf8');
+
+		expect(source).toContain('trusted single path segments');
+		expect(source).toContain('`-t` and `-n`');
+		expect(source).toContain('no `/` or `\\` path separators');
+		expect(source).toContain('neither `.` nor `..`');
+		expect(source).toContain('delete outside the intended generated target tree');
+		expect(source).toContain('wrong working directory');
+		expect(source).toContain('mask the failure status');
+		expect(source).toMatch(/validate both arguments upstream/i);
 	});
 
 	it.each(expected)('publishes verified canonical metadata for $path', ({ path, pageId, sources, tests }) => {
@@ -255,7 +320,7 @@ describe('getting-started foundations', () => {
 			translationStatus: 'canonical',
 		});
 		expect((frontmatter.description as string).trim()).not.toBe('');
-		expect(metadata.sourceFiles).toEqual(expect.arrayContaining([...sources]));
+		expect(metadata.sourceFiles).toEqual([...sources]);
 		expect(metadata.testFiles).toEqual(tests);
 	});
 
@@ -277,7 +342,7 @@ describe('getting-started foundations', () => {
 				translationStatus: 'canonical',
 			});
 			expect((frontmatter.description as string).trim()).not.toBe('');
-			expect(metadata.sourceFiles).toEqual(expect.arrayContaining([...sources]));
+			expect(metadata.sourceFiles).toEqual([...sources]);
 			expect(metadata.testFiles).toEqual(tests);
 			expect(contributing?.plannedGroups.flatMap((group) => group.children).map((child) => child.pageId)).toContain(pageId);
 			for (const link of links) expect(source).toContain(link);
@@ -379,6 +444,19 @@ describe('getting-started foundations', () => {
 		expect(source).toContain('does not prove that Client exited successfully');
 	});
 
+	it.each(['start-here/build.mdx', 'start-here/tests.mdx'])(
+		'limits documented executable paths to the tested generator layout in %s',
+		(path) => {
+			const source = readFileSync(resolve(snapshotDirectory, path), 'utf8');
+
+			expect(source).toContain('tested single-config/default-output layout');
+			expect(source).toContain('multi-config or customized generators');
+			expect(source).toContain('place artifacts elsewhere');
+			expect(source).toContain('hard-coded executable layout');
+			expect(source).toContain('can fail');
+		},
+	);
+
 	it('distinguishes the automated Core suite from the interactive Client demonstration', () => {
 		const tests = readFileSync(resolve(snapshotDirectory, 'start-here/tests.mdx'), 'utf8');
 
@@ -447,5 +525,19 @@ describe('getting-started foundations', () => {
 		expect(troubleshooting).toContain('returns 0');
 		expect(troubleshooting).toContain('`Some shaders failed.`');
 		expect(troubleshooting).not.toMatch(/(?:rm|Remove-Item)\s+-[A-Za-z]*r[A-Za-z]*f?\s+(?:\$\{?\w+\}?|\$\w+|~|\*)/i);
+	});
+
+	it('troubleshoots helper launch failures caused by a different generator layout', () => {
+		const troubleshooting = readFileSync(resolve(snapshotDirectory, 'start-here/troubleshooting.mdx'), 'utf8');
+		const heading = '## Built target exists but `mle_run_test` cannot launch it';
+		const entry = troubleshooting.slice(troubleshooting.indexOf(heading), troubleshooting.indexOf('\n## ', troubleshooting.indexOf(heading) + heading.length));
+
+		expect(troubleshooting).toContain(heading);
+		expect(entry).toContain('**Symptom:**');
+		expect(entry).toContain('**Likely cause:**');
+		expect(entry).toContain('**Check:**');
+		expect(entry).toContain('**Recovery:**');
+		expect(entry).toContain('multi-config or customized generator');
+		expect(entry).toContain('hard-coded executable layout');
 	});
 });

@@ -911,6 +911,7 @@ for (const auditCase of gettingStartedAccessibilityCases) {
 
     const evidence = page.locator('[data-mle-source-evidence]');
     const summary = evidence.locator('summary');
+    expect(await evidence.getAttribute('lang')).toBe(portuguese ? 'pt-BR' : null);
     await expect(summary).toHaveAccessibleName(auditCase.evidenceLabel);
     await summary.focus();
     await page.keyboard.press('Shift+Tab');
