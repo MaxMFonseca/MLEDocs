@@ -22,7 +22,7 @@ const expected = [
 	{
 		path: 'start-here/client.mdx',
 		pageId: 'client',
-		sources: [
+			sources: [
 			'README.md',
 			'tests/Client/CMakeLists.txt',
 			'tests/Client/src/Main.cpp',
@@ -112,6 +112,61 @@ const contributorFoundations = [
 
 const contributorPageIds = contributorFoundations.map(({ pageId }) => pageId).sort();
 
+const referenceContracts = [
+	{
+		path: 'reference/build-options.mdx',
+		pageId: 'build-options',
+		sources: [
+			'CMakeLists.txt',
+			'external/CMakeLists.txt',
+			'tests/CMakeLists.txt',
+			'tests/Core/CMakeLists.txt',
+			'tests/Client/CMakeLists.txt',
+			'tools/CMakeLists.txt',
+			'tools/MLECubes/CMakeLists.txt',
+			'scripts/envsetup.sh',
+		],
+		tests: [],
+		evidenceUrls: [
+			`https://github.com/MaxMFonseca/MLE/blob/${commit}/CMakeLists.txt`,
+			`https://github.com/MaxMFonseca/MLE/blob/${commit}/external/CMakeLists.txt`,
+			`https://github.com/MaxMFonseca/MLE/blob/${commit}/tests/CMakeLists.txt`,
+			`https://github.com/MaxMFonseca/MLE/blob/${commit}/tests/Core/CMakeLists.txt`,
+			`https://github.com/MaxMFonseca/MLE/blob/${commit}/tests/Client/CMakeLists.txt`,
+			`https://github.com/MaxMFonseca/MLE/blob/${commit}/tools/CMakeLists.txt`,
+			`https://github.com/MaxMFonseca/MLE/blob/${commit}/tools/MLECubes/CMakeLists.txt`,
+			`https://github.com/MaxMFonseca/MLE/blob/${commit}/scripts/envsetup.sh`,
+		],
+		options: [
+			'MLE_ENABLE_DOXYGEN',
+			'MLE_BUILD_TESTS',
+			'MLE_MAX_LOG_LEVEL',
+			'MLE_DEFAULT_LOG_LEVEL_STDOUT',
+			'SPIRV_REFLECT_STATIC_LIB',
+		],
+		targets: ['MLE', 'Core', 'AudioLifecycle', 'Client', 'MLECubes'],
+	},
+	{
+		path: 'reference/helper-commands.mdx',
+		pageId: 'helper-commands',
+		sources: ['scripts/envsetup.sh'],
+		tests: [],
+		evidenceUrls: [`https://github.com/MaxMFonseca/MLE/blob/${commit}/scripts/envsetup.sh`],
+		commands: [
+			'mle_setup',
+			'mle_config',
+			'mle_build',
+			'mle_run_test',
+			'mle_ber',
+			'mle_clean',
+			'mle_nvim_dap',
+			'mle_add_shader_dirs',
+			'mle_compile_shaders_all',
+			'mle_gen_docs',
+		],
+	},
+] as const;
+
 const physicalContributorPageIds = (): string[] =>
 	readdirSync(resolve(snapshotDirectory, 'contributing'))
 		.filter((name) => name.endsWith('.mdx') && name !== 'index.mdx')
@@ -122,6 +177,69 @@ const physicalContributorPageIds = (): string[] =>
 		.sort();
 
 describe('getting-started foundations', () => {
+	it.each(referenceContracts)(
+		'publishes pinned canonical reference metadata and independently enumerated contracts for $pageId',
+		(contract) => {
+			const source = readFileSync(resolve(snapshotDirectory, contract.path), 'utf8');
+			const { frontmatter } = parseFrontmatter(source);
+			const metadata = technicalPageMetadataSchema.parse(frontmatter);
+			const evidenceUrls = source.match(/https:\/\/github\.com\/MaxMFonseca\/MLE\/(?:blob|tree)\/[^)\s]+/g) ?? [];
+
+			expect(frontmatter).toMatchObject({
+				contentType: 'technical',
+				description: expect.any(String),
+				mleCommit: commit,
+				maturity: 'in-development',
+				audiences: ['integrator', 'contributor'],
+				pageId: contract.pageId,
+				translationStatus: 'canonical',
+			});
+			expect((frontmatter.description as string).trim()).not.toBe('');
+			expect(metadata.sourceFiles).toEqual([...contract.sources]);
+			expect(metadata.testFiles).toEqual(contract.tests);
+			expect(evidenceUrls).toEqual([...contract.evidenceUrls]);
+			for (const option of 'options' in contract ? contract.options : []) expect(source).toContain(`\`${option}\``);
+			for (const target of 'targets' in contract ? contract.targets : []) expect(source).toContain(`\`${target}\``);
+			for (const command of 'commands' in contract ? contract.commands : []) expect(source).toContain(`\`${command}\``);
+			expect(source).toContain('/MLEDocs/versions/c1abea3de165/');
+			expect(source).not.toMatch(/\/latest\//i);
+		},
+	);
+
+	it('keeps the destructive and obsolete helper boundaries in their command contracts', () => {
+		const source = readFileSync(resolve(snapshotDirectory, 'reference/helper-commands.mdx'), 'utf8');
+		const commandRow = (command: string) => source.split('\n').find((line) => line.startsWith(`| \`${command}\``)) ?? '';
+
+		const config = commandRow('mle_config');
+		expect(config).toContain('uses `.` as the destination directory for `compile_commands.json`');
+		expect(config).toContain('final `ln` status becomes the function result');
+
+		const build = commandRow('mle_build');
+		expect(build).toContain('When shader files are found, `glslangValidator` and usable shader directories are operational requirements');
+		expect(build).toContain('`No shaders found.` can return `0`');
+
+		const compileShaders = commandRow('mle_compile_shaders_all');
+		expect(compileShaders).toContain('A sourced helper/root context and syntactically valid options are baseline preconditions');
+		expect(compileShaders).toContain('Shader directories and eligible files may be absent or empty; `No shaders found.` returns `0`');
+		expect(compileShaders).toContain('Only after eligible shaders are found and parallel jobs launch do usable `nproc` output and `glslangValidator` become operational requirements');
+		expect(compileShaders).toContain('Missing directories are reported and skipped');
+		expect(compileShaders).toContain('`Some shaders failed.` and returns `1`');
+
+		const runTest = commandRow('mle_run_test');
+		expect(runTest).toContain('does not validate that the selected target exists');
+		expect(runTest).toContain('Deletes and recreates `build/<build_type>/tests/<name>/res`');
+		expect(runTest).toContain('`mle` and `i` links');
+		expect(runTest).toContain('suppressed with `2>/dev/null`');
+
+		const clean = commandRow('mle_clean');
+		expect(clean).toContain('Recursively removes `${_MLE_ROOT}/build`');
+		expect(clean).toContain('relative `compile_commands.json` and `latest.log`');
+
+		const obsolete = source.slice(source.indexOf('## `mle_gen_docs`'), source.indexOf('## Command contracts'));
+		expect(obsolete).toContain('**Obsolete workflow — excluded from MLEDocs.**');
+		expect(obsolete).toContain('not authority for this documentation site');
+	});
+
 	it.each(expected)('publishes verified canonical metadata for $path', ({ path, pageId, sources, tests }) => {
 		const source = readFileSync(resolve(snapshotDirectory, path), 'utf8');
 		const { frontmatter } = parseFrontmatter(source);

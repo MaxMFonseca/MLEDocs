@@ -1,0 +1,85 @@
+---
+title: Build options and targets
+description: Inspect the pinned CMake configuration, target reachability, compiler policy, and generated build paths without repeating the build procedure.
+contentType: technical
+pageId: build-options
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [project, tests, tools]
+sourceFiles: [CMakeLists.txt, external/CMakeLists.txt, tests/CMakeLists.txt, tests/Core/CMakeLists.txt, tests/Client/CMakeLists.txt, tools/CMakeLists.txt, tools/MLECubes/CMakeLists.txt, scripts/envsetup.sh]
+testFiles: []
+lastVerified: '2026-08-21'
+translationStatus: canonical
+---
+
+This is the configuration contract for MLE commit `c1abea3de165032fe064300340807b7a6af388f8`. It lists what the pinned CMake and sourced helper define; it does not establish support beyond the Linux-tested path described in [requirements](/MLEDocs/versions/c1abea3de165/start-here/requirements/). For commands and their shell-status boundaries, use the [helper-command reference](/MLEDocs/versions/c1abea3de165/reference/helper-commands/).
+
+## Configuration requirements
+
+| Input | Pinned configuration fact | Procedure |
+| --- | --- | --- |
+| CMake | Root configuration requires CMake `3.16` or newer. | [Configure and build](/MLEDocs/versions/c1abea3de165/start-here/build/) |
+| C and C++ compilers | If `CMAKE_C_COMPILER` or `CMAKE_CXX_COMPILER` is not already defined, configuration searches for `clang` or `clang++` respectively and caches a found path. This is a preference, not a platform-support claim. | [Requirements](/MLEDocs/versions/c1abea3de165/start-here/requirements/) |
+| Vulkan | `external/CMakeLists.txt` calls `find_package(Vulkan REQUIRED)`. | [Requirements](/MLEDocs/versions/c1abea3de165/start-here/requirements/) |
+| ICU | `external/CMakeLists.txt` calls `find_package(ICU REQUIRED COMPONENTS uc i18n)`. | [Requirements](/MLEDocs/versions/c1abea3de165/start-here/requirements/) |
+| OpenAL | `external/CMakeLists.txt` calls `find_package(OpenAL REQUIRED)`. | [Requirements](/MLEDocs/versions/c1abea3de165/start-here/requirements/) |
+| LuaJIT archive | `MLE` links `external/LuaJIT/src/libluajit.a`; the supplied setup helper builds it with `make`. | [Set up a working tree](/MLEDocs/versions/c1abea3de165/start-here/setup/) |
+
+## Cache and configuration variables
+
+| Name | Type and default | Effect | Consumers |
+| --- | --- | --- | --- |
+| `MLE_ENABLE_DOXYGEN` | CMake `option`; `OFF` | When `ON`, configuration requires a discoverable Doxygen package. The inspected root CMake does not define a Doxygen build target. | Root configuration. The legacy helper is intentionally excluded from this site's workflow; see [helper commands](/MLEDocs/versions/c1abea3de165/reference/helper-commands/#mle_gen_docs-obsolete-and-excluded). |
+| `MLE_BUILD_TESTS` | CMake `option`; `ON` | When `ON`, the root adds `tests/`. When `OFF`, root configuration does not reach `Core`, `AudioLifecycle`, or `Client`. | Root `CMakeLists.txt`; `tests/CMakeLists.txt`. |
+| `MLE_MAX_LOG_LEVEL` | CMake cache/configuration variable; no root default | A nonempty value adds public `MLE_MAX_LOG_LEVEL=<value>` to `MLE` compile definitions. | `MLE` and consumers of its public definitions; `mle_config -m` forwards a nonempty value. |
+| `MLE_DEFAULT_LOG_LEVEL_STDOUT` | CMake cache/configuration variable; no root default | A nonempty value adds public `MLE_DEFAULT_LOG_LEVEL_STDOUT=<value>` to `MLE` compile definitions. | `MLE` and consumers of its public definitions; `mle_config -s` forwards a nonempty value. |
+| `SPIRV_REFLECT_STATIC_LIB` | Cache `BOOL`; forced to `ON` | `external/CMakeLists.txt` sets it with `FORCE` before adding the vendored SPIRV-Reflect subproject. | The vendored subproject; this is fixed project configuration, not a user-facing build choice. |
+
+`mle_config` always supplies `-DCMAKE_EXPORT_COMPILE_COMMANDS=1` and `-DCMAKE_BUILD_TYPE=<build_type>` for `_MLE_ROOT/build/<build_type>`. Arguments after `--` are appended to its CMake command. Its `compile_commands.json` link is created in the directory from which the function was invoked, not after an internal `cd` to `_MLE_ROOT`; see [the configuration procedure](/MLEDocs/versions/c1abea3de165/start-here/build/).
+
+## First-party targets
+
+| Target | Kind | Source owner | Enable condition | Output / reachability |
+| --- | --- | --- | --- | --- |
+| `MLE` | Static library | Root `CMakeLists.txt` | Defined by root configuration. | The CMake source sets no output directory. The tested Linux helper procedure documents `build/<build_type>/libMLE.a`; a generator or toolchain can control the actual layout. |
+| `Core` | Executable | `tests/Core/CMakeLists.txt` | `MLE_BUILD_TESTS=ON`, which lets root reach `tests/` and its `Core` directory. | The CMake source sets no output directory. The tested Linux procedure documents `build/<build_type>/tests/Core/Core`; GoogleTest discovery assigns the `unit` label. |
+| `AudioLifecycle` | Executable | `tests/Core/CMakeLists.txt` | `MLE_BUILD_TESTS=ON`; definition is inside the `Core` test directory. | The CMake source sets no output directory. The tested Linux procedure documents `build/<build_type>/tests/Core/AudioLifecycle`; GoogleTest discovery assigns the `unit` label. Its layout is incompatible with the helper's one-name directory/executable convention. |
+| `Client` | Executable | `tests/Client/CMakeLists.txt` | `MLE_BUILD_TESTS=ON`, which lets root reach `tests/` and its `Client` directory. | The CMake source sets no output directory. The tested Linux procedure documents `build/<build_type>/tests/Client/Client`; it has no GoogleTest discovery in its CMake file. |
+| `MLECubes` | Executable | `tools/MLECubes/CMakeLists.txt` | `tools/CMakeLists.txt` can add its directory, but inspected root CMake does not add `tools/`. | No root-default target or output path is established by the inspected root configuration. |
+
+For the configured target paths and the `AudioLifecycle` helper boundary, use [run MLE tests](/MLEDocs/versions/c1abea3de165/start-here/tests/) and [run the Client demonstration](/MLEDocs/versions/c1abea3de165/start-here/client/).
+
+## Compiler, linker, and dependency policy
+
+| Area | Root-target policy |
+| --- | --- |
+| Language and includes | `MLE` publicly requires `cxx_std_23` and exposes `src/` as an include directory. |
+| Warnings and language restrictions | `MLE` publicly adds `-Wall`, `-Wextra`, `-Wpedantic`, `-Werror`, `-fno-rtti`, and `-Wno-c2y-extensions`; it privately adds `-fno-exceptions`. `Core`, `AudioLifecycle`, and `Client` each privately add `-Wall`, `-Wextra`, and `-Wpedantic`. |
+| Global definition | Root CMake adds `MLE_APPLICATION`. |
+| External link surface | The configured `MLE` target links the CMake-defined dependency surface, including `spdlog`, `SDL3::SDL3`, `glm`, `vulkan`, `ICU::uc`, `ICU::i18n`, OpenAL's `${OPENAL_LIBRARY}`, `spirv-reflect-static`, LuaJIT's archive, and `stdc++exp`. |
+| Public dependency definitions | The configuration adds the public definitions `SPDLOG_NO_EXCEPTIONS`, `GLM_ENABLE_EXPERIMENTAL`, `GLM_FORCE_DEPTH_ZERO_TO_ONE`, `GLM_FORCE_RADIANS`, `SOL_NO_EXCEPTIONS`, and `ENTT_NOEXCEPTION`. |
+
+These flags and links describe this source snapshot's CMake policy. They are not evidence that a different compiler, operating system, dependency package, or output layout is supported.
+
+## Generated, resource, and shader paths
+
+| Path or variable | Contract |
+| --- | --- |
+| `_MLE_ROOT` | Set to the current directory when `scripts/envsetup.sh` is sourced; sourcing is rejected unless that directory contains `README.md`. |
+| `_MLE_ROOT/build/<build_type>` | CMake build directory selected by `mle_config`; `mle_build` builds this same path. |
+| `compile_commands.json` | `mle_config` removes and creates this relative name in its invocation directory as a symlink to `<build_dir>/compile_commands.json`. |
+| `MLE_SHADER_DIRS` | On source, receives `${_MLE_ROOT}/res/shaders` only when the caller has not already supplied a value. The initial assignment is not exported. |
+| `<shader>.spv` | `mle_compile_shaders_all` writes an adjacent output for matching shader sources, unless a current output is skipped without `-f` or `--force`. |
+| `build/<build_type>/tests/<name>/res` | `mle_run_test` removes this selected target resource tree recursively, recreates it, and creates `mle` and `i` links for `lua`, `textures`, `shaders`, `fonts`, `sounds`, and `models`. |
+| `latest.log` | `mle_run_test` removes and recreates this relative name from `_MLE_ROOT` after execution; `mle_clean` removes it relative to its invocation directory. |
+
+See [resource and shader work](/MLEDocs/versions/c1abea3de165/contributing/resources-shaders/) for source-tree versus generated-output boundaries, and [troubleshooting](/MLEDocs/versions/c1abea3de165/start-here/troubleshooting/) for cleanup and no-shader-result limits.
+
+## Evidence
+
+- [Root CMake configuration](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/CMakeLists.txt)
+- [External dependency linkage](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/external/CMakeLists.txt)
+- [Test target discovery](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/CMakeLists.txt), [Core targets](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Core/CMakeLists.txt), and [Client target](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/CMakeLists.txt)
+- [Tool target definitions](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tools/CMakeLists.txt) and [MLECubes target](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tools/MLECubes/CMakeLists.txt)
+- [Sourced helper paths and forwarding](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/scripts/envsetup.sh)
