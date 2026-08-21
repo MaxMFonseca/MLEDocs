@@ -1,0 +1,113 @@
+---
+import type { Locale } from '../../data/taxonomy';
+import { buildPinnedSourceUrl } from '../../lib/content/source-evidence';
+
+interface Props {
+	repositoryUrl: string;
+	commit: string;
+	locale: Locale;
+	sourceFiles: readonly string[];
+	testFiles: readonly string[];
+}
+
+const { repositoryUrl, commit, locale, sourceFiles, testFiles } = Astro.props;
+const labels =
+	locale === 'pt-br'
+		? {
+			summary: Astro.locals.t('mle.source.label'),
+			sources: 'Arquivos-fonte',
+			tests: Astro.locals.t('mle.source.tests'),
+		}
+		: {
+			summary: 'Source evidence',
+			sources: 'Source files',
+			tests: 'Related tests',
+		};
+---
+
+<details class="source-evidence" data-mle-source-evidence>
+	<summary>{labels.summary}</summary>
+	<div class="evidence-content">
+		<section aria-labelledby="source-evidence-sources">
+			<h2 id="source-evidence-sources">{labels.sources}</h2>
+			<ul>
+				{
+					sourceFiles.map((path) => (
+						<li>
+							<a href={buildPinnedSourceUrl(repositoryUrl, commit, path)}>{path}</a>
+						</li>
+					))
+				}
+			</ul>
+		</section>
+		{
+			testFiles.length > 0 && (
+				<section aria-labelledby="source-evidence-tests">
+					<h2 id="source-evidence-tests">{labels.tests}</h2>
+					<ul>
+						{
+							testFiles.map((path) => (
+								<li>
+									<a href={buildPinnedSourceUrl(repositoryUrl, commit, path)}>{path}</a>
+								</li>
+							))
+						}
+					</ul>
+				</section>
+			)
+		}
+	</div>
+</details>
+
+<style>
+	.source-evidence {
+		margin-block-start: var(--mle-space-4);
+		padding: var(--mle-space-3) var(--mle-space-4);
+		border: 1px solid var(--mle-border);
+		border-inline-start: 0.25rem solid var(--mle-accent);
+		border-radius: var(--mle-radius-md);
+		background: var(--mle-surface-2);
+	}
+
+	summary {
+		cursor: pointer;
+		color: var(--mle-text);
+		font-weight: 650;
+	}
+
+	summary::marker {
+		color: var(--mle-accent-bright);
+	}
+
+	.evidence-content {
+		display: grid;
+		gap: var(--mle-space-4);
+		margin-block-start: var(--mle-space-4);
+	}
+
+	h2 {
+		margin: 0;
+		color: var(--mle-text);
+		font-size: 0.9375rem;
+		font-weight: 650;
+	}
+
+	ul {
+		display: grid;
+		gap: var(--mle-space-2);
+		margin: var(--mle-space-2) 0 0;
+		padding-inline-start: 1.25rem;
+	}
+
+	li::marker {
+		color: var(--mle-accent-bright);
+	}
+
+	a {
+		color: var(--mle-accent-bright);
+		font-family: var(--mle-font-code);
+		font-size: 0.875rem;
+		overflow-wrap: anywhere;
+		word-break: break-word;
+	}
+</style>

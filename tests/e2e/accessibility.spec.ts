@@ -468,6 +468,88 @@ test('fallback and maturity statuses remain explicit without their color or deco
   await expect(fallback).toContainText('Commit fixado: c1abea3de165');
 });
 
+test('renderer source evidence uses pinned links and keyboard disclosure without overflow', async ({
+	page,
+}) => {
+	await page.setViewportSize({ width: 360, height: 800 });
+	await page.goto(pageUrl('/versions/c1abea3de165/systems/renderer/'));
+
+	const evidence = page.locator('[data-mle-source-evidence]');
+	await expect(evidence).toBeVisible();
+
+	const summary = evidence.locator('summary');
+	await summary.focus();
+	await expect(summary).toBeFocused();
+	await page.keyboard.press('Space');
+	await expect(evidence).toHaveAttribute('open', '');
+	await expect(
+		evidence.getByRole('link', { name: 'src/mle/renderer/Renderer.h', exact: true }),
+	).toHaveAttribute(
+		'href',
+		'https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/renderer/Renderer.h',
+	);
+	await expect(
+		evidence.getByRole('link', { name: 'tests/Core/src/renderer/T.FrameRenderer.cpp', exact: true }),
+	).toHaveAttribute(
+		'href',
+		'https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Core/src/renderer/T.FrameRenderer.cpp',
+	);
+
+	const layout = await evidence.evaluate((element) => ({
+		overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+		pathOverflow: [...element.querySelectorAll('a')].some(
+			(link) => link.scrollWidth > link.clientWidth,
+		),
+		pathWrapping: [...element.querySelectorAll('a')].every(
+			(link) => getComputedStyle(link).overflowWrap !== 'normal',
+		),
+	}));
+	expect(layout.overflow).toBeLessThanOrEqual(1);
+	expect(layout.pathOverflow).toBe(false);
+	expect(layout.pathWrapping).toBe(true);
+
+	const accessibility = await new AxeBuilder({ page })
+		.include('[data-mle-source-evidence]')
+		.analyze();
+	expect(accessibility.violations).toEqual([]);
+});
+
+test('renderer source evidence reflows in both themes at phone and desktop widths', async ({
+	page,
+}) => {
+	for (const { prefix, summaryLabel } of [
+		{ prefix: '', summaryLabel: 'Source evidence' },
+		{ prefix: '/pt-br', summaryLabel: 'Evidências no código-fonte' },
+	]) {
+		for (const { width, theme } of [
+			{ width: 360, theme: 'dark' },
+			{ width: 360, theme: 'light' },
+			{ width: 1280, theme: 'dark' },
+			{ width: 1280, theme: 'light' },
+		]) {
+			await page.setViewportSize({ width, height: width === 360 ? 800 : 900 });
+			await page.goto(pageUrl(`${prefix}/versions/c1abea3de165/systems/renderer/`));
+			await page.locator('header starlight-theme-select select').selectOption(theme, { force: true });
+
+			const evidence = page.locator('[data-mle-source-evidence]');
+			await expect(evidence.locator('summary')).toHaveText(summaryLabel);
+			await evidence.locator('summary').click();
+			const layout = await evidence.evaluate((element) => ({
+				evidenceRight: element.getBoundingClientRect().right,
+				overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+				pathOverflow: [...element.querySelectorAll('a')].some(
+					(link) => link.scrollWidth > link.clientWidth,
+				),
+				viewportWidth: document.documentElement.clientWidth,
+			}));
+
+			expect(layout.overflow).toBeLessThanOrEqual(1);
+			expect(layout.evidenceRight).toBeLessThanOrEqual(layout.viewportWidth);
+			expect(layout.pathOverflow).toBe(false);
+		}
+	}
+});
+
 test('styles dynamically listed unknown-version links with the MLE accent', async ({ page }) => {
   await page.goto(pageUrl('/pt-br/versions/ffffffffffff/guia/'));
 
