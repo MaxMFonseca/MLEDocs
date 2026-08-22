@@ -48,6 +48,6 @@ An **internal** request means this entity's calculated content may change. The i
 
 The bounds phase resolves external requests first, recalculates the affected entity or whole tree, invokes `on_resized`, clears resize flags, and resets cached size providers.
 
-Dependencies and child layout are order-sensitive. Define referenced siblings before relying on them, and avoid mutating the hierarchy from a size provider. The exhaustive aliases and table shapes belong to the planned **UI element keys** and **UI layout values** references.
+Dependencies and child layout are order-sensitive. Define referenced siblings before relying on them, and avoid mutating the hierarchy from a size provider. See [UI element keys](../../../reference/ui-element-keys/) and [UI layout values](../../../reference/ui-layout-values/) for the exhaustive aliases and table shapes.
 
 Evidence: [`Relationship.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/ui/components/Relationship.cpp), [`Bounds.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/ui/components/Bounds.cpp), and [`Bounds system`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/ui/systems/Bounds.cpp).

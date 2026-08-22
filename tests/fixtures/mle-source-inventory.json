@@ -1,0 +1,1902 @@
+{
+  "mleCommit": "c1abea3de165032fe064300340807b7a6af388f8",
+  "scope": "git ls-files non-gitlink first-party paths; vendored external excluded except external/CMakeLists.txt",
+  "records": [
+    {
+      "path": ".clang-format",
+      "expectedDisposition": "internal/support-only"
+    },
+    {
+      "path": ".clang-tidy",
+      "expectedDisposition": "internal/support-only"
+    },
+    {
+      "path": ".clangd",
+      "expectedDisposition": "internal/support-only"
+    },
+    {
+      "path": ".gitignore",
+      "expectedDisposition": "internal/support-only"
+    },
+    {
+      "path": ".gitmodules",
+      "expectedDisposition": "internal/support-only"
+    },
+    {
+      "path": "CMakeLists.txt",
+      "expectedOwnerPageId": "requirements"
+    },
+    {
+      "path": "docs/Doxyfile.in",
+      "expectedDisposition": "excluded-obsolete-doxygen"
+    },
+    {
+      "path": "docs/footer.html",
+      "expectedDisposition": "excluded-obsolete-doxygen"
+    },
+    {
+      "path": "docs/media/gameplay.png",
+      "expectedOwnerPageId": "repository-tour"
+    },
+    {
+      "path": "docs/style.css",
+      "expectedDisposition": "excluded-obsolete-doxygen"
+    },
+    {
+      "path": "external/CMakeLists.txt",
+      "expectedOwnerPageId": "requirements"
+    },
+    {
+      "path": "README.md",
+      "expectedOwnerPageId": "requirements"
+    },
+    {
+      "path": "res/fonts/JetBrainsMonoNerdFont-Regular.ttf",
+      "expectedDisposition": "internal/support-only"
+    },
+    {
+      "path": "res/lua/globals.lua",
+      "expectedDisposition": "internal/support-only"
+    },
+    {
+      "path": "res/lua/tailwind_colors.lua",
+      "expectedDisposition": "internal/support-only"
+    },
+    {
+      "path": "res/lua/ui/comp/carousel_selector.lua",
+      "expectedOwnerPageId": "reusable-components"
+    },
+    {
+      "path": "res/lua/ui/comp/color_picker.lua",
+      "expectedOwnerPageId": "reusable-components"
+    },
+    {
+      "path": "res/lua/ui/comp/filterable_list.lua",
+      "expectedOwnerPageId": "reusable-components"
+    },
+    {
+      "path": "res/lua/ui/comp/multipanel.lua",
+      "expectedOwnerPageId": "reusable-components"
+    },
+    {
+      "path": "res/lua/ui/comp/progress_bar.lua",
+      "expectedOwnerPageId": "reusable-components"
+    },
+    {
+      "path": "res/lua/ui/comp/range_slider.lua",
+      "expectedOwnerPageId": "reusable-components"
+    },
+    {
+      "path": "res/lua/ui/comp/scroll_state.lua",
+      "expectedOwnerPageId": "scrolling-and-popups"
+    },
+    {
+      "path": "res/lua/ui/comp/scrollable_with_bar.lua",
+      "expectedOwnerPageId": "scrolling-and-popups"
+    },
+    {
+      "path": "res/lua/ui/comp/scrollable.lua",
+      "expectedOwnerPageId": "scrolling-and-popups"
+    },
+    {
+      "path": "res/lua/ui/comp/sprite_progress_bar.lua",
+      "expectedOwnerPageId": "reusable-components"
+    },
+    {
+      "path": "res/lua/ui/comp/text_dropdown_selector.lua",
+      "expectedOwnerPageId": "reusable-components"
+    },
+    {
+      "path": "res/lua/ui/perf_layer.lua",
+      "expectedOwnerPageId": "reusable-components"
+    },
+    {
+      "path": "res/lua/ui/terminal_layer.lua",
+      "expectedOwnerPageId": "reusable-components"
+    },
+    {
+      "path": "res/lua/utils.lua",
+      "expectedDisposition": "internal/support-only"
+    },
+    {
+      "path": "res/models/FemeChar4.glb",
+      "expectedOwnerPageId": "loading-meshes-and-materials"
+    },
+    {
+      "path": "res/models/Spider1.glb",
+      "expectedOwnerPageId": "loading-meshes-and-materials"
+    },
+    {
+      "path": "res/shaders/blend.frag",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/color_from_vert.frag",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/color_pc0.frag",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/fs_triangle.vert",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/model_pbr/albedo_color.frag",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/model_pbr/albedo_resolve.frag",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/model_pbr/albedo_texture.frag",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/model_pbr/cartoon_color.frag",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/model_pbr/cartoon_resolve.frag",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/model_pbr/cartoon_texture.frag",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/model_pbr/color_skinned.vert",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/model_pbr/color.frag",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/model_pbr/color.vert",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/model_pbr/gbuffer_color.frag",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/model_pbr/gbuffer_texture.frag",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/model_pbr/hologram_resolve.frag",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/model_pbr/normals_color.frag",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/model_pbr/normals_resolve.frag",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/model_pbr/normals_texture.frag",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/model_pbr/outline.frag",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/model_pbr/pbr_resolve.frag",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/model_pbr/projection_flat.frag",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/model_pbr/projection_flat.vert",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/model_pbr/texture_skinned.vert",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/model_pbr/texture.frag",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/model_pbr/texture.vert",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/model_pbr/tonemap.frag",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/model_pbr/wire_color.frag",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/model_pbr/wire_texture.frag",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/model_pbr/wireframe_resolve.frag",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/noise/simplex.comp",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/point.vert",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/present/color_correct.frag",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/scene/debug/polygon.frag",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/scene/debug/polygon.vert",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/scene/light.frag",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/scene/plane.frag",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/scene/plane.vert",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/scene/skybox.frag",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/scene/skybox.vert",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/scene/sun.vert",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/scene/vox_recolor.vert",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/scene/vox.frag",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/scene/vox.vert",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "res/shaders/ui/bg.frag",
+      "expectedOwnerPageId": "ui"
+    },
+    {
+      "path": "res/shaders/ui/bg.vert",
+      "expectedOwnerPageId": "ui"
+    },
+    {
+      "path": "res/shaders/ui/blur.comp",
+      "expectedOwnerPageId": "ui"
+    },
+    {
+      "path": "res/shaders/ui/border.frag",
+      "expectedOwnerPageId": "ui"
+    },
+    {
+      "path": "res/shaders/ui/nine_slice.frag",
+      "expectedOwnerPageId": "ui"
+    },
+    {
+      "path": "res/shaders/ui/nine_slice.vert",
+      "expectedOwnerPageId": "ui"
+    },
+    {
+      "path": "res/shaders/ui/quad.vert",
+      "expectedOwnerPageId": "ui"
+    },
+    {
+      "path": "res/shaders/ui/rect.frag",
+      "expectedOwnerPageId": "ui"
+    },
+    {
+      "path": "res/shaders/ui/rect.vert",
+      "expectedOwnerPageId": "ui"
+    },
+    {
+      "path": "res/shaders/ui/sprite.frag",
+      "expectedOwnerPageId": "ui"
+    },
+    {
+      "path": "res/shaders/ui/sprite.vert",
+      "expectedOwnerPageId": "ui"
+    },
+    {
+      "path": "res/shaders/ui/text.frag",
+      "expectedOwnerPageId": "ui"
+    },
+    {
+      "path": "res/shaders/ui/text.vert",
+      "expectedOwnerPageId": "ui"
+    },
+    {
+      "path": "res/sounds/menu_click.flac",
+      "expectedDisposition": "internal/support-only"
+    },
+    {
+      "path": "res/sounds/t.wav",
+      "expectedDisposition": "internal/support-only"
+    },
+    {
+      "path": "res/textures/hue_strip.png",
+      "expectedOwnerPageId": "targets-text-and-composition"
+    },
+    {
+      "path": "res/textures/mle.png",
+      "expectedOwnerPageId": "targets-text-and-composition"
+    },
+    {
+      "path": "scripts/envsetup.sh",
+      "expectedOwnerPageId": "requirements"
+    },
+    {
+      "path": "src/mle/audio/AudioEngine.cpp",
+      "expectedOwnerPageId": "audio"
+    },
+    {
+      "path": "src/mle/audio/AudioEngine.h",
+      "expectedOwnerPageId": "audio-lifecycle-and-command-flow"
+    },
+    {
+      "path": "src/mle/audio/AudioThreadStartup.h",
+      "expectedOwnerPageId": "audio-lifecycle-and-command-flow"
+    },
+    {
+      "path": "src/mle/audio/CommandMailbox.cpp",
+      "expectedOwnerPageId": "audio-lifecycle-and-command-flow"
+    },
+    {
+      "path": "src/mle/audio/CommandMailbox.h",
+      "expectedOwnerPageId": "audio-lifecycle-and-command-flow"
+    },
+    {
+      "path": "src/mle/audio/SourcePlaybackState.cpp",
+      "expectedOwnerPageId": "buses-voices-and-limitations"
+    },
+    {
+      "path": "src/mle/audio/SourcePlaybackState.h",
+      "expectedOwnerPageId": "buses-voices-and-limitations"
+    },
+    {
+      "path": "src/mle/audio/StreamGroup.cpp",
+      "expectedOwnerPageId": "playback-and-streaming"
+    },
+    {
+      "path": "src/mle/audio/StreamGroup.h",
+      "expectedOwnerPageId": "playback-and-streaming"
+    },
+    {
+      "path": "src/mle/audio/StreamState.cpp",
+      "expectedOwnerPageId": "playback-and-streaming"
+    },
+    {
+      "path": "src/mle/audio/StreamState.h",
+      "expectedOwnerPageId": "playback-and-streaming"
+    },
+    {
+      "path": "src/mle/audio/Types.h",
+      "expectedOwnerPageId": "audio-contracts"
+    },
+    {
+      "path": "src/mle/audio/Utils.cpp",
+      "expectedOwnerPageId": "playback-and-streaming"
+    },
+    {
+      "path": "src/mle/audio/Utils.h",
+      "expectedOwnerPageId": "playback-and-streaming"
+    },
+    {
+      "path": "src/mle/audio/VoiceAllocator.cpp",
+      "expectedOwnerPageId": "buses-voices-and-limitations"
+    },
+    {
+      "path": "src/mle/audio/VoiceAllocator.h",
+      "expectedOwnerPageId": "buses-voices-and-limitations"
+    },
+    {
+      "path": "src/mle/client/Client.cpp",
+      "expectedOwnerPageId": "client-system"
+    },
+    {
+      "path": "src/mle/client/Client.h",
+      "expectedOwnerPageId": "client-system"
+    },
+    {
+      "path": "src/mle/client/Layer.cpp",
+      "expectedOwnerPageId": "create-a-client-layer"
+    },
+    {
+      "path": "src/mle/client/Layer.h",
+      "expectedOwnerPageId": "create-a-client-layer"
+    },
+    {
+      "path": "src/mle/client/layers/PerfLayer.cpp",
+      "expectedOwnerPageId": "interactive-client"
+    },
+    {
+      "path": "src/mle/client/layers/PerfLayer.h",
+      "expectedOwnerPageId": "interactive-client"
+    },
+    {
+      "path": "src/mle/client/layers/TerminalLayer.cpp",
+      "expectedOwnerPageId": "interactive-client"
+    },
+    {
+      "path": "src/mle/client/layers/TerminalLayer.h",
+      "expectedOwnerPageId": "interactive-client"
+    },
+    {
+      "path": "src/mle/client/ShutdownSequence.h",
+      "expectedOwnerPageId": "audio-and-client-flow"
+    },
+    {
+      "path": "src/mle/core/Assert.h",
+      "expectedOwnerPageId": "core"
+    },
+    {
+      "path": "src/mle/core/Consts.h",
+      "expectedOwnerPageId": "core"
+    },
+    {
+      "path": "src/mle/core/Core.cpp",
+      "expectedOwnerPageId": "core"
+    },
+    {
+      "path": "src/mle/core/Core.h",
+      "expectedOwnerPageId": "core"
+    },
+    {
+      "path": "src/mle/core/Logger.cpp",
+      "expectedOwnerPageId": "core"
+    },
+    {
+      "path": "src/mle/core/Logger.h",
+      "expectedOwnerPageId": "core"
+    },
+    {
+      "path": "src/mle/core/PerfTracker.cpp",
+      "expectedOwnerPageId": "core-threading-and-performance"
+    },
+    {
+      "path": "src/mle/core/PerfTracker.h",
+      "expectedOwnerPageId": "core-threading-and-performance"
+    },
+    {
+      "path": "src/mle/core/Result.h",
+      "expectedOwnerPageId": "core"
+    },
+    {
+      "path": "src/mle/core/RuntimeConfig.cpp",
+      "expectedOwnerPageId": "runtime-configuration"
+    },
+    {
+      "path": "src/mle/core/RuntimeConfig.h",
+      "expectedOwnerPageId": "runtime-configuration"
+    },
+    {
+      "path": "src/mle/core/ThreadPool.cpp",
+      "expectedOwnerPageId": "core-threading-and-performance"
+    },
+    {
+      "path": "src/mle/core/ThreadPool.h",
+      "expectedOwnerPageId": "core-threading-and-performance"
+    },
+    {
+      "path": "src/mle/core/Types.h",
+      "expectedOwnerPageId": "core"
+    },
+    {
+      "path": "src/mle/core/Unwrap.h",
+      "expectedOwnerPageId": "core"
+    },
+    {
+      "path": "src/mle/Entry.inl",
+      "expectedOwnerPageId": "architecture"
+    },
+    {
+      "path": "src/mle/external/drLibsImpl.cpp",
+      "expectedDisposition": "internal/support-only"
+    },
+    {
+      "path": "src/mle/external/StbImpl.cpp",
+      "expectedDisposition": "internal/support-only"
+    },
+    {
+      "path": "src/mle/external/StbPerlinImpl.cpp",
+      "expectedDisposition": "internal/support-only"
+    },
+    {
+      "path": "src/mle/external/StbTrueTypeImpl.cpp",
+      "expectedDisposition": "internal/support-only"
+    },
+    {
+      "path": "src/mle/external/tinygltfImpl.cpp",
+      "expectedDisposition": "internal/support-only"
+    },
+    {
+      "path": "src/mle/external/VMAImpl.cpp",
+      "expectedDisposition": "internal/support-only"
+    },
+    {
+      "path": "src/mle/lua/Lua.cpp",
+      "expectedOwnerPageId": "runtime-calls-and-bindings"
+    },
+    {
+      "path": "src/mle/lua/Lua.h",
+      "expectedOwnerPageId": "lua"
+    },
+    {
+      "path": "src/mle/lua/Types.cpp",
+      "expectedOwnerPageId": "runtime-calls-and-bindings"
+    },
+    {
+      "path": "src/mle/lua/Types.h",
+      "expectedOwnerPageId": "cpp-lua-boundary"
+    },
+    {
+      "path": "src/mle/lua/Utils.cpp",
+      "expectedOwnerPageId": "cpp-lua-boundary"
+    },
+    {
+      "path": "src/mle/lua/Utils.h",
+      "expectedOwnerPageId": "cpp-lua-boundary"
+    },
+    {
+      "path": "src/mle/mainpage.dox",
+      "expectedDisposition": "excluded-obsolete-doxygen"
+    },
+    {
+      "path": "src/mle/math/Intersect2D.cpp",
+      "expectedOwnerPageId": "geometry-and-intersections"
+    },
+    {
+      "path": "src/mle/math/Intersect2D.h",
+      "expectedOwnerPageId": "geometry-and-intersections"
+    },
+    {
+      "path": "src/mle/math/Json.h",
+      "expectedOwnerPageId": "lua-json-and-numerics"
+    },
+    {
+      "path": "src/mle/math/LuaUTMathTypes.h",
+      "expectedOwnerPageId": "lua-json-and-numerics"
+    },
+    {
+      "path": "src/mle/math/Types.h",
+      "expectedOwnerPageId": "math"
+    },
+    {
+      "path": "src/mle/math/Types2D.cpp",
+      "expectedOwnerPageId": "geometry-and-intersections"
+    },
+    {
+      "path": "src/mle/math/Types2D.h",
+      "expectedOwnerPageId": "geometry-and-intersections"
+    },
+    {
+      "path": "src/mle/math/Types3D.cpp",
+      "expectedOwnerPageId": "geometry-and-intersections"
+    },
+    {
+      "path": "src/mle/math/Types3D.h",
+      "expectedOwnerPageId": "geometry-and-intersections"
+    },
+    {
+      "path": "src/mle/math/Utils.cpp",
+      "expectedOwnerPageId": "lua-json-and-numerics"
+    },
+    {
+      "path": "src/mle/math/Utils.h",
+      "expectedOwnerPageId": "lua-json-and-numerics"
+    },
+    {
+      "path": "src/mle/renderer/Animation.cpp",
+      "expectedOwnerPageId": "animation-skeletons-and-cameras"
+    },
+    {
+      "path": "src/mle/renderer/Animation.h",
+      "expectedOwnerPageId": "animation-skeletons-and-cameras"
+    },
+    {
+      "path": "src/mle/renderer/AnimationCache.cpp",
+      "expectedOwnerPageId": "animation-skeletons-and-cameras"
+    },
+    {
+      "path": "src/mle/renderer/AnimationCache.h",
+      "expectedOwnerPageId": "animation-skeletons-and-cameras"
+    },
+    {
+      "path": "src/mle/renderer/Buffer.cpp",
+      "expectedOwnerPageId": "renderer-resources-and-synchronization"
+    },
+    {
+      "path": "src/mle/renderer/Buffer.h",
+      "expectedOwnerPageId": "renderer-resources-and-synchronization"
+    },
+    {
+      "path": "src/mle/renderer/Camera.cpp",
+      "expectedOwnerPageId": "animation-skeletons-and-cameras"
+    },
+    {
+      "path": "src/mle/renderer/Camera.h",
+      "expectedOwnerPageId": "animation-skeletons-and-cameras"
+    },
+    {
+      "path": "src/mle/renderer/CommandManager.cpp",
+      "expectedOwnerPageId": "frame-vulkan-and-queues"
+    },
+    {
+      "path": "src/mle/renderer/CommandManager.h",
+      "expectedOwnerPageId": "frame-vulkan-and-queues"
+    },
+    {
+      "path": "src/mle/renderer/DescriptorPool.cpp",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "src/mle/renderer/DescriptorPool.h",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "src/mle/renderer/Font.cpp",
+      "expectedOwnerPageId": "targets-text-and-composition"
+    },
+    {
+      "path": "src/mle/renderer/Font.h",
+      "expectedOwnerPageId": "targets-text-and-composition"
+    },
+    {
+      "path": "src/mle/renderer/FontCache.cpp",
+      "expectedOwnerPageId": "targets-text-and-composition"
+    },
+    {
+      "path": "src/mle/renderer/FontCache.h",
+      "expectedOwnerPageId": "targets-text-and-composition"
+    },
+    {
+      "path": "src/mle/renderer/FrameRenderer.cpp",
+      "expectedOwnerPageId": "frame-vulkan-and-queues"
+    },
+    {
+      "path": "src/mle/renderer/FrameRenderer.h",
+      "expectedOwnerPageId": "frame-vulkan-and-queues"
+    },
+    {
+      "path": "src/mle/renderer/GLTF.cpp",
+      "expectedOwnerPageId": "loading-meshes-and-materials"
+    },
+    {
+      "path": "src/mle/renderer/GLTF.h",
+      "expectedOwnerPageId": "loading-meshes-and-materials"
+    },
+    {
+      "path": "src/mle/renderer/Image.cpp",
+      "expectedOwnerPageId": "renderer-resources-and-synchronization"
+    },
+    {
+      "path": "src/mle/renderer/Image.h",
+      "expectedOwnerPageId": "renderer-resources-and-synchronization"
+    },
+    {
+      "path": "src/mle/renderer/Mesh.cpp",
+      "expectedOwnerPageId": "loading-meshes-and-materials"
+    },
+    {
+      "path": "src/mle/renderer/Mesh.h",
+      "expectedOwnerPageId": "loading-meshes-and-materials"
+    },
+    {
+      "path": "src/mle/renderer/MeshCache.cpp",
+      "expectedOwnerPageId": "loading-meshes-and-materials"
+    },
+    {
+      "path": "src/mle/renderer/MeshCache.h",
+      "expectedOwnerPageId": "loading-meshes-and-materials"
+    },
+    {
+      "path": "src/mle/renderer/Pipeline.cpp",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "src/mle/renderer/Pipeline.h",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "src/mle/renderer/PipelineCache.cpp",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "src/mle/renderer/PipelineCache.h",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "src/mle/renderer/Primitive.cpp",
+      "expectedOwnerPageId": "targets-text-and-composition"
+    },
+    {
+      "path": "src/mle/renderer/Primitive.h",
+      "expectedOwnerPageId": "targets-text-and-composition"
+    },
+    {
+      "path": "src/mle/renderer/Renderer.cpp",
+      "expectedOwnerPageId": "renderer-overview"
+    },
+    {
+      "path": "src/mle/renderer/Renderer.h",
+      "expectedOwnerPageId": "renderer-overview"
+    },
+    {
+      "path": "src/mle/renderer/RenderingThread.cpp",
+      "expectedOwnerPageId": "targets-text-and-composition"
+    },
+    {
+      "path": "src/mle/renderer/RenderingThread.h",
+      "expectedOwnerPageId": "targets-text-and-composition"
+    },
+    {
+      "path": "src/mle/renderer/Shader.cpp",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "src/mle/renderer/Shader.h",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "src/mle/renderer/ShaderCache.cpp",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "src/mle/renderer/ShaderCache.h",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "src/mle/renderer/Skeleton.cpp",
+      "expectedOwnerPageId": "animation-skeletons-and-cameras"
+    },
+    {
+      "path": "src/mle/renderer/Skeleton.h",
+      "expectedOwnerPageId": "animation-skeletons-and-cameras"
+    },
+    {
+      "path": "src/mle/renderer/SkeletonCache.cpp",
+      "expectedOwnerPageId": "animation-skeletons-and-cameras"
+    },
+    {
+      "path": "src/mle/renderer/SkeletonCache.h",
+      "expectedOwnerPageId": "animation-skeletons-and-cameras"
+    },
+    {
+      "path": "src/mle/renderer/SkinBinding.cpp",
+      "expectedOwnerPageId": "animation-skeletons-and-cameras"
+    },
+    {
+      "path": "src/mle/renderer/SkinBinding.h",
+      "expectedOwnerPageId": "animation-skeletons-and-cameras"
+    },
+    {
+      "path": "src/mle/renderer/SyncManager.cpp",
+      "expectedOwnerPageId": "renderer-resources-and-synchronization"
+    },
+    {
+      "path": "src/mle/renderer/SyncManager.h",
+      "expectedOwnerPageId": "renderer-resources-and-synchronization"
+    },
+    {
+      "path": "src/mle/renderer/TextureAtlas.cpp",
+      "expectedOwnerPageId": "targets-text-and-composition"
+    },
+    {
+      "path": "src/mle/renderer/TextureAtlas.h",
+      "expectedOwnerPageId": "targets-text-and-composition"
+    },
+    {
+      "path": "src/mle/renderer/TextureCache.cpp",
+      "expectedOwnerPageId": "targets-text-and-composition"
+    },
+    {
+      "path": "src/mle/renderer/TextureCache.h",
+      "expectedOwnerPageId": "targets-text-and-composition"
+    },
+    {
+      "path": "src/mle/renderer/Types.h",
+      "expectedOwnerPageId": "renderer-overview"
+    },
+    {
+      "path": "src/mle/renderer/Utils.cpp",
+      "expectedOwnerPageId": "renderer-overview"
+    },
+    {
+      "path": "src/mle/renderer/Utils.h",
+      "expectedOwnerPageId": "renderer-overview"
+    },
+    {
+      "path": "src/mle/renderer/VkCtx.cpp",
+      "expectedOwnerPageId": "frame-vulkan-and-queues"
+    },
+    {
+      "path": "src/mle/renderer/VkCtx.h",
+      "expectedOwnerPageId": "frame-vulkan-and-queues"
+    },
+    {
+      "path": "src/mle/server/Server.h",
+      "expectedOwnerPageId": "server"
+    },
+    {
+      "path": "src/mle/server/ServerCommunicationProtocol.h",
+      "expectedOwnerPageId": "server"
+    },
+    {
+      "path": "src/mle/server/ServerConnection.h",
+      "expectedOwnerPageId": "server"
+    },
+    {
+      "path": "src/mle/server/Types.h",
+      "expectedOwnerPageId": "server"
+    },
+    {
+      "path": "src/mle/ui/components/Animation.cpp",
+      "expectedOwnerPageId": "animation-and-effects"
+    },
+    {
+      "path": "src/mle/ui/components/Animation.h",
+      "expectedOwnerPageId": "animation-and-effects"
+    },
+    {
+      "path": "src/mle/ui/components/Base.cpp",
+      "expectedOwnerPageId": "ui-events-and-callbacks"
+    },
+    {
+      "path": "src/mle/ui/components/Base.h",
+      "expectedOwnerPageId": "ui"
+    },
+    {
+      "path": "src/mle/ui/components/Bounds.cpp",
+      "expectedOwnerPageId": "entities-hierarchy-and-layout"
+    },
+    {
+      "path": "src/mle/ui/components/Bounds.h",
+      "expectedOwnerPageId": "entities-hierarchy-and-layout"
+    },
+    {
+      "path": "src/mle/ui/components/ContainerUtils.cpp",
+      "expectedOwnerPageId": "entities-hierarchy-and-layout"
+    },
+    {
+      "path": "src/mle/ui/components/ContainerUtils.h",
+      "expectedOwnerPageId": "entities-hierarchy-and-layout"
+    },
+    {
+      "path": "src/mle/ui/components/FreeContainer.cpp",
+      "expectedOwnerPageId": "scrolling-and-popups"
+    },
+    {
+      "path": "src/mle/ui/components/FreeContainer.h",
+      "expectedOwnerPageId": "scrolling-and-popups"
+    },
+    {
+      "path": "src/mle/ui/components/Hoverable.cpp",
+      "expectedOwnerPageId": "ui-events-and-callbacks"
+    },
+    {
+      "path": "src/mle/ui/components/Hoverable.h",
+      "expectedOwnerPageId": "ui-events-and-callbacks"
+    },
+    {
+      "path": "src/mle/ui/components/Image.h",
+      "expectedOwnerPageId": "rendering-and-visuals"
+    },
+    {
+      "path": "src/mle/ui/components/ListContainer.cpp",
+      "expectedOwnerPageId": "entities-hierarchy-and-layout"
+    },
+    {
+      "path": "src/mle/ui/components/ListContainer.h",
+      "expectedOwnerPageId": "entities-hierarchy-and-layout"
+    },
+    {
+      "path": "src/mle/ui/components/Relationship.cpp",
+      "expectedOwnerPageId": "entities-hierarchy-and-layout"
+    },
+    {
+      "path": "src/mle/ui/components/Relationship.h",
+      "expectedOwnerPageId": "entities-hierarchy-and-layout"
+    },
+    {
+      "path": "src/mle/ui/components/Renderable.cpp",
+      "expectedOwnerPageId": "rendering-and-visuals"
+    },
+    {
+      "path": "src/mle/ui/components/Renderable.h",
+      "expectedOwnerPageId": "rendering-and-visuals"
+    },
+    {
+      "path": "src/mle/ui/components/Shader.h",
+      "expectedOwnerPageId": "rendering-and-visuals"
+    },
+    {
+      "path": "src/mle/ui/Entt.cpp",
+      "expectedOwnerPageId": "ui-composition"
+    },
+    {
+      "path": "src/mle/ui/Entt.h",
+      "expectedOwnerPageId": "ui-composition"
+    },
+    {
+      "path": "src/mle/ui/LuaUTGUI.h",
+      "expectedOwnerPageId": "runtime-calls-and-bindings"
+    },
+    {
+      "path": "src/mle/ui/renderable/NineSlice.cpp",
+      "expectedOwnerPageId": "use-sprites-images-and-nine-slice"
+    },
+    {
+      "path": "src/mle/ui/renderable/NineSlice.h",
+      "expectedOwnerPageId": "use-sprites-images-and-nine-slice"
+    },
+    {
+      "path": "src/mle/ui/renderable/RenderableI.h",
+      "expectedOwnerPageId": "rendering-and-visuals"
+    },
+    {
+      "path": "src/mle/ui/renderable/RenderImage.cpp",
+      "expectedOwnerPageId": "use-sprites-images-and-nine-slice"
+    },
+    {
+      "path": "src/mle/ui/renderable/RenderImage.h",
+      "expectedOwnerPageId": "use-sprites-images-and-nine-slice"
+    },
+    {
+      "path": "src/mle/ui/renderable/Sprite.cpp",
+      "expectedOwnerPageId": "use-sprites-images-and-nine-slice"
+    },
+    {
+      "path": "src/mle/ui/renderable/Sprite.h",
+      "expectedOwnerPageId": "use-sprites-images-and-nine-slice"
+    },
+    {
+      "path": "src/mle/ui/renderable/Text.cpp",
+      "expectedOwnerPageId": "text-input-and-focus"
+    },
+    {
+      "path": "src/mle/ui/renderable/Text.h",
+      "expectedOwnerPageId": "text-input-and-focus"
+    },
+    {
+      "path": "src/mle/ui/shader/Blur.cpp",
+      "expectedOwnerPageId": "animation-and-effects"
+    },
+    {
+      "path": "src/mle/ui/shader/Blur.h",
+      "expectedOwnerPageId": "animation-and-effects"
+    },
+    {
+      "path": "src/mle/ui/shader/LuaShader.cpp",
+      "expectedOwnerPageId": "animation-and-effects"
+    },
+    {
+      "path": "src/mle/ui/shader/LuaShader.h",
+      "expectedOwnerPageId": "animation-and-effects"
+    },
+    {
+      "path": "src/mle/ui/shader/ShaderI.cpp",
+      "expectedOwnerPageId": "animation-and-effects"
+    },
+    {
+      "path": "src/mle/ui/shader/ShaderI.h",
+      "expectedOwnerPageId": "animation-and-effects"
+    },
+    {
+      "path": "src/mle/ui/systems/Bounds.cpp",
+      "expectedOwnerPageId": "entities-hierarchy-and-layout"
+    },
+    {
+      "path": "src/mle/ui/systems/Bounds.h",
+      "expectedOwnerPageId": "entities-hierarchy-and-layout"
+    },
+    {
+      "path": "src/mle/ui/systems/Events.cpp",
+      "expectedOwnerPageId": "ui-events-and-callbacks"
+    },
+    {
+      "path": "src/mle/ui/systems/Events.h",
+      "expectedOwnerPageId": "ui-events-and-callbacks"
+    },
+    {
+      "path": "src/mle/ui/systems/Hover.cpp",
+      "expectedOwnerPageId": "ui-events-and-callbacks"
+    },
+    {
+      "path": "src/mle/ui/systems/Hover.h",
+      "expectedOwnerPageId": "ui-events-and-callbacks"
+    },
+    {
+      "path": "src/mle/ui/systems/LuaElementOps.cpp",
+      "expectedOwnerPageId": "ui"
+    },
+    {
+      "path": "src/mle/ui/systems/LuaElementOps.h",
+      "expectedOwnerPageId": "ui"
+    },
+    {
+      "path": "src/mle/ui/systems/Rendering.cpp",
+      "expectedOwnerPageId": "rendering-and-visuals"
+    },
+    {
+      "path": "src/mle/ui/systems/Rendering.h",
+      "expectedOwnerPageId": "rendering-and-visuals"
+    },
+    {
+      "path": "src/mle/ui/Types.cpp",
+      "expectedOwnerPageId": "ui-composition"
+    },
+    {
+      "path": "src/mle/ui/Types.h",
+      "expectedOwnerPageId": "ui-composition"
+    },
+    {
+      "path": "src/mle/ui/UI.cpp",
+      "expectedOwnerPageId": "ui"
+    },
+    {
+      "path": "src/mle/ui/UI.h",
+      "expectedOwnerPageId": "ui"
+    },
+    {
+      "path": "src/mle/utils/Color.cpp",
+      "expectedOwnerPageId": "data-color-and-packing"
+    },
+    {
+      "path": "src/mle/utils/Color.h",
+      "expectedOwnerPageId": "data-color-and-packing"
+    },
+    {
+      "path": "src/mle/utils/ColorCache.cpp",
+      "expectedOwnerPageId": "data-color-and-packing"
+    },
+    {
+      "path": "src/mle/utils/ColorCache.h",
+      "expectedOwnerPageId": "data-color-and-packing"
+    },
+    {
+      "path": "src/mle/utils/containers/AtomicQueue.h",
+      "expectedOwnerPageId": "events-and-concurrency"
+    },
+    {
+      "path": "src/mle/utils/containers/AtomicTripleBuffer.h",
+      "expectedOwnerPageId": "events-and-concurrency"
+    },
+    {
+      "path": "src/mle/utils/containers/TSQueue.h",
+      "expectedOwnerPageId": "events-and-concurrency"
+    },
+    {
+      "path": "src/mle/utils/ECS.h",
+      "expectedOwnerPageId": "utilities"
+    },
+    {
+      "path": "src/mle/utils/EventDispatcher.h",
+      "expectedOwnerPageId": "events-and-concurrency"
+    },
+    {
+      "path": "src/mle/utils/File.cpp",
+      "expectedOwnerPageId": "data-color-and-packing"
+    },
+    {
+      "path": "src/mle/utils/File.h",
+      "expectedOwnerPageId": "data-color-and-packing"
+    },
+    {
+      "path": "src/mle/utils/Flags.h",
+      "expectedOwnerPageId": "data-color-and-packing"
+    },
+    {
+      "path": "src/mle/utils/Hash.h",
+      "expectedOwnerPageId": "data-color-and-packing"
+    },
+    {
+      "path": "src/mle/utils/ID.cpp",
+      "expectedOwnerPageId": "data-color-and-packing"
+    },
+    {
+      "path": "src/mle/utils/ID.h",
+      "expectedOwnerPageId": "data-color-and-packing"
+    },
+    {
+      "path": "src/mle/utils/Justify.h",
+      "expectedOwnerPageId": "data-color-and-packing"
+    },
+    {
+      "path": "src/mle/utils/LockedData.h",
+      "expectedOwnerPageId": "events-and-concurrency"
+    },
+    {
+      "path": "src/mle/utils/LuaUTUtils.h",
+      "expectedOwnerPageId": "data-color-and-packing"
+    },
+    {
+      "path": "src/mle/utils/RectPacker.cpp",
+      "expectedOwnerPageId": "data-color-and-packing"
+    },
+    {
+      "path": "src/mle/utils/RectPacker.h",
+      "expectedOwnerPageId": "data-color-and-packing"
+    },
+    {
+      "path": "src/mle/utils/RNG.cpp",
+      "expectedOwnerPageId": "data-color-and-packing"
+    },
+    {
+      "path": "src/mle/utils/RNG.h",
+      "expectedOwnerPageId": "data-color-and-packing"
+    },
+    {
+      "path": "src/mle/utils/Stopwatch.h",
+      "expectedOwnerPageId": "data-color-and-packing"
+    },
+    {
+      "path": "src/mle/utils/String.cpp",
+      "expectedOwnerPageId": "data-color-and-packing"
+    },
+    {
+      "path": "src/mle/utils/String.h",
+      "expectedOwnerPageId": "data-color-and-packing"
+    },
+    {
+      "path": "src/mle/utils/SystemState.h",
+      "expectedOwnerPageId": "utilities"
+    },
+    {
+      "path": "src/mle/utils/Types.h",
+      "expectedOwnerPageId": "utilities"
+    },
+    {
+      "path": "src/mle/utils/Utils.cpp",
+      "expectedOwnerPageId": "utilities"
+    },
+    {
+      "path": "src/mle/utils/Utils.h",
+      "expectedOwnerPageId": "utilities"
+    },
+    {
+      "path": "src/mle/window/Events.h",
+      "expectedOwnerPageId": "window-and-input-contracts"
+    },
+    {
+      "path": "src/mle/window/KeyUtils.cpp",
+      "expectedOwnerPageId": "window-and-input-contracts"
+    },
+    {
+      "path": "src/mle/window/KeyUtils.h",
+      "expectedOwnerPageId": "window-and-input-contracts"
+    },
+    {
+      "path": "src/mle/window/TextBox.cpp",
+      "expectedOwnerPageId": "handle-input-focus-and-text"
+    },
+    {
+      "path": "src/mle/window/TextBox.h",
+      "expectedOwnerPageId": "handle-input-focus-and-text"
+    },
+    {
+      "path": "src/mle/window/Types.h",
+      "expectedOwnerPageId": "window-and-input-contracts"
+    },
+    {
+      "path": "src/mle/window/UserInputManager.cpp",
+      "expectedOwnerPageId": "window-and-input-contracts"
+    },
+    {
+      "path": "src/mle/window/UserInputManager.h",
+      "expectedOwnerPageId": "window-and-input-contracts"
+    },
+    {
+      "path": "src/mle/window/Window.cpp",
+      "expectedOwnerPageId": "window"
+    },
+    {
+      "path": "src/mle/window/Window.h",
+      "expectedOwnerPageId": "window"
+    },
+    {
+      "path": "tests/Client/AUDIO_PLAYTEST.md",
+      "expectedOwnerPageId": "audio-test"
+    },
+    {
+      "path": "tests/Client/audio_requirements.txt",
+      "expectedDisposition": "internal/support-only"
+    },
+    {
+      "path": "tests/Client/CMakeLists.txt",
+      "expectedOwnerPageId": "interactive-client"
+    },
+    {
+      "path": "tests/Client/res/lua/ui/AudioTestLayer.lua",
+      "expectedOwnerPageId": "audio-test"
+    },
+    {
+      "path": "tests/Client/res/lua/ui/InitLayer.lua",
+      "expectedOwnerPageId": "interactive-client"
+    },
+    {
+      "path": "tests/Client/res/lua/ui/ModelTestLayer.lua",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/res/lua/ui/ui_tests/Animation.lua",
+      "expectedOwnerPageId": "ui-test"
+    },
+    {
+      "path": "tests/Client/res/lua/ui/ui_tests/FilterableList.lua",
+      "expectedOwnerPageId": "ui-test"
+    },
+    {
+      "path": "tests/Client/res/lua/ui/ui_tests/FormPanel.lua",
+      "expectedOwnerPageId": "ui-test"
+    },
+    {
+      "path": "tests/Client/res/lua/ui/ui_tests/Inventory.lua",
+      "expectedOwnerPageId": "ui-test"
+    },
+    {
+      "path": "tests/Client/res/lua/ui/ui_tests/Layer.lua",
+      "expectedOwnerPageId": "ui-test"
+    },
+    {
+      "path": "tests/Client/res/lua/ui/ui_tests/NineSlice.lua",
+      "expectedOwnerPageId": "ui-test"
+    },
+    {
+      "path": "tests/Client/res/lua/ui/ui_tests/PopupStack.lua",
+      "expectedOwnerPageId": "ui-test"
+    },
+    {
+      "path": "tests/Client/res/lua/ui/ui_tests/Scrollable.lua",
+      "expectedOwnerPageId": "ui-test"
+    },
+    {
+      "path": "tests/Client/res/lua/ui/ui_tests/SpriteProgressBar.lua",
+      "expectedOwnerPageId": "ui-test"
+    },
+    {
+      "path": "tests/Client/res/lua/ui/ui_tests/TextDropdownSelector.lua",
+      "expectedOwnerPageId": "ui-test"
+    },
+    {
+      "path": "tests/Client/res/models/Bow.glb",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/res/models/Bow2.glb",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/res/models/Char.glb",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/res/models/GoblinA.glb",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/res/models/GoblinAnimations.glb",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/res/models/GoblinF.glb",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/res/models/GoblinI.glb",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/res/models/Maxe.glb",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/res/models/Staff.glb",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/res/shaders/ui/bg_old.frag",
+      "expectedOwnerPageId": "ui-test"
+    },
+    {
+      "path": "tests/Client/res/shaders/ui/bg.frag",
+      "expectedOwnerPageId": "ui-test"
+    },
+    {
+      "path": "tests/Client/res/shaders/ui/bg2.frag",
+      "expectedOwnerPageId": "ui-test"
+    },
+    {
+      "path": "tests/Client/res/sounds/ambient.wav",
+      "expectedOwnerPageId": "audio-test"
+    },
+    {
+      "path": "tests/Client/res/sounds/ambient.wav.att",
+      "expectedOwnerPageId": "audio-test"
+    },
+    {
+      "path": "tests/Client/res/sounds/ambient7s.wav",
+      "expectedOwnerPageId": "audio-test"
+    },
+    {
+      "path": "tests/Client/res/sounds/generated/audio_manifest.json",
+      "expectedOwnerPageId": "audio-test"
+    },
+    {
+      "path": "tests/Client/res/sounds/generated/combat_high.wav",
+      "expectedOwnerPageId": "audio-test"
+    },
+    {
+      "path": "tests/Client/res/sounds/generated/combat_low.wav",
+      "expectedOwnerPageId": "audio-test"
+    },
+    {
+      "path": "tests/Client/res/sounds/generated/combat_texture.wav",
+      "expectedOwnerPageId": "audio-test"
+    },
+    {
+      "path": "tests/Client/res/sounds/generated/corrupt.wav",
+      "expectedOwnerPageId": "audio-test"
+    },
+    {
+      "path": "tests/Client/res/sounds/generated/duration_mono.wav",
+      "expectedOwnerPageId": "audio-test"
+    },
+    {
+      "path": "tests/Client/res/sounds/generated/duration_stereo.wav",
+      "expectedOwnerPageId": "audio-test"
+    },
+    {
+      "path": "tests/Client/res/sounds/generated/hit_01.wav",
+      "expectedOwnerPageId": "audio-test"
+    },
+    {
+      "path": "tests/Client/res/sounds/generated/hit_02.wav",
+      "expectedOwnerPageId": "audio-test"
+    },
+    {
+      "path": "tests/Client/res/sounds/generated/hit_03.wav",
+      "expectedOwnerPageId": "audio-test"
+    },
+    {
+      "path": "tests/Client/res/sounds/generated/hit_04.wav",
+      "expectedOwnerPageId": "audio-test"
+    },
+    {
+      "path": "tests/Client/res/sounds/generated/protection_filler.wav",
+      "expectedOwnerPageId": "audio-test"
+    },
+    {
+      "path": "tests/Client/res/sounds/generated/ui_protected.wav",
+      "expectedOwnerPageId": "audio-test"
+    },
+    {
+      "path": "tests/Client/res/textures/cubemaps/desert_planet/nx.png",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/res/textures/cubemaps/desert_planet/ny.png",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/res/textures/cubemaps/desert_planet/nz.png",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/res/textures/cubemaps/desert_planet/px.png",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/res/textures/cubemaps/desert_planet/py.png",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/res/textures/cubemaps/desert_planet/pz.png",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/res/textures/cubemaps/icy_planet/nx.png",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/res/textures/cubemaps/icy_planet/ny.png",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/res/textures/cubemaps/icy_planet/nz.png",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/res/textures/cubemaps/icy_planet/px.png",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/res/textures/cubemaps/icy_planet/py.png",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/res/textures/cubemaps/icy_planet/pz.png",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/res/textures/cubemaps/lava_planet/nx.png",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/res/textures/cubemaps/lava_planet/ny.png",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/res/textures/cubemaps/lava_planet/nz.png",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/res/textures/cubemaps/lava_planet/px.png",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/res/textures/cubemaps/lava_planet/py.png",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/res/textures/cubemaps/lava_planet/pz.png",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/res/textures/cubemaps/LICENSE.txt",
+      "expectedDisposition": "internal/support-only"
+    },
+    {
+      "path": "tests/Client/res/textures/cubemaps/lush_planet/nx.png",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/res/textures/cubemaps/lush_planet/ny.png",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/res/textures/cubemaps/lush_planet/nz.png",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/res/textures/cubemaps/lush_planet/px.png",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/res/textures/cubemaps/lush_planet/py.png",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/res/textures/cubemaps/lush_planet/pz.png",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/res/textures/ui/animation_sprite_sheet.png",
+      "expectedOwnerPageId": "ui-test"
+    },
+    {
+      "path": "tests/Client/res/textures/ui/bg.png",
+      "expectedOwnerPageId": "ui-test"
+    },
+    {
+      "path": "tests/Client/res/textures/ui/bg2.png",
+      "expectedOwnerPageId": "ui-test"
+    },
+    {
+      "path": "tests/Client/res/textures/ui/nine_slice_panel.png",
+      "expectedOwnerPageId": "ui-test"
+    },
+    {
+      "path": "tests/Client/res/textures/ui/progress_bar/fill.png",
+      "expectedOwnerPageId": "ui-test"
+    },
+    {
+      "path": "tests/Client/res/textures/ui/progress_bar/left.png",
+      "expectedOwnerPageId": "ui-test"
+    },
+    {
+      "path": "tests/Client/res/textures/ui/progress_bar/mid.png",
+      "expectedOwnerPageId": "ui-test"
+    },
+    {
+      "path": "tests/Client/res/textures/ui/progress_bar/sparkle.png",
+      "expectedOwnerPageId": "ui-test"
+    },
+    {
+      "path": "tests/Client/src/audio/CombatEventAggregator.cpp",
+      "expectedOwnerPageId": "audio-test"
+    },
+    {
+      "path": "tests/Client/src/audio/CombatEventAggregator.h",
+      "expectedOwnerPageId": "audio-test"
+    },
+    {
+      "path": "tests/Client/src/layers/AudioTest.cpp",
+      "expectedOwnerPageId": "audio-test"
+    },
+    {
+      "path": "tests/Client/src/layers/AudioTest.h",
+      "expectedOwnerPageId": "audio-test"
+    },
+    {
+      "path": "tests/Client/src/layers/Init.cpp",
+      "expectedOwnerPageId": "interactive-client"
+    },
+    {
+      "path": "tests/Client/src/layers/Init.h",
+      "expectedOwnerPageId": "interactive-client"
+    },
+    {
+      "path": "tests/Client/src/layers/ModelTest.cpp",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/src/layers/ModelTest.h",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/src/layers/ModelTestAssets.cpp",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/src/layers/ModelTestAssets.h",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/src/layers/ModelTestCamera.cpp",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/src/layers/ModelTestCamera.h",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/src/layers/ModelTestRenderer.cpp",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/src/layers/ModelTestRenderer.h",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/src/layers/ModelTestScene.cpp",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/src/layers/ModelTestScene.h",
+      "expectedOwnerPageId": "model-test"
+    },
+    {
+      "path": "tests/Client/src/layers/UITest.cpp",
+      "expectedOwnerPageId": "ui-test"
+    },
+    {
+      "path": "tests/Client/src/layers/UITest.h",
+      "expectedOwnerPageId": "ui-test"
+    },
+    {
+      "path": "tests/Client/src/Main.cpp",
+      "expectedOwnerPageId": "interactive-client"
+    },
+    {
+      "path": "tests/Client/src/utils/Utils.h",
+      "expectedDisposition": "internal/support-only"
+    },
+    {
+      "path": "tests/Client/tools/generate_audio_fixtures.py",
+      "expectedOwnerPageId": "test-fixtures"
+    },
+    {
+      "path": "tests/CMakeLists.txt",
+      "expectedOwnerPageId": "tests"
+    },
+    {
+      "path": "tests/Core/CMakeLists.txt",
+      "expectedOwnerPageId": "requirements"
+    },
+    {
+      "path": "tests/Core/res/lua/FilterableListUT.lua",
+      "expectedOwnerPageId": "test-fixtures"
+    },
+    {
+      "path": "tests/Core/res/lua/HelloLua.lua",
+      "expectedOwnerPageId": "test-fixtures"
+    },
+    {
+      "path": "tests/Core/res/lua/MathUT.lua",
+      "expectedOwnerPageId": "test-fixtures"
+    },
+    {
+      "path": "tests/Core/res/lua/MathUtils.lua",
+      "expectedOwnerPageId": "test-fixtures"
+    },
+    {
+      "path": "tests/Core/res/lua/ScrollableUT.lua",
+      "expectedOwnerPageId": "test-fixtures"
+    },
+    {
+      "path": "tests/Core/res/lua/ScrollableWithBarUT.lua",
+      "expectedOwnerPageId": "test-fixtures"
+    },
+    {
+      "path": "tests/Core/res/lua/UtilsUT.lua",
+      "expectedOwnerPageId": "test-fixtures"
+    },
+    {
+      "path": "tests/Core/res/shaders/shared_pc.frag",
+      "expectedOwnerPageId": "test-fixtures"
+    },
+    {
+      "path": "tests/Core/res/shaders/shared_pc.vert",
+      "expectedOwnerPageId": "test-fixtures"
+    },
+    {
+      "path": "tests/Core/res/shaders/split_pc.frag",
+      "expectedOwnerPageId": "test-fixtures"
+    },
+    {
+      "path": "tests/Core/res/shaders/split_pc.vert",
+      "expectedOwnerPageId": "test-fixtures"
+    },
+    {
+      "path": "tests/Core/res/shaders/test.comp",
+      "expectedOwnerPageId": "test-fixtures"
+    },
+    {
+      "path": "tests/Core/res/shaders/test.frag",
+      "expectedOwnerPageId": "test-fixtures"
+    },
+    {
+      "path": "tests/Core/res/shaders/test.vert",
+      "expectedOwnerPageId": "test-fixtures"
+    },
+    {
+      "path": "tests/Core/res/textures/test120.png",
+      "expectedOwnerPageId": "test-fixtures"
+    },
+    {
+      "path": "tests/Core/res/textures/test120c3c.png",
+      "expectedOwnerPageId": "test-fixtures"
+    },
+    {
+      "path": "tests/Core/shutdown/T.AudioShutdown.cpp",
+      "expectedOwnerPageId": "audio-lifecycle-and-command-flow"
+    },
+    {
+      "path": "tests/Core/src/audio/T.CombatEventAggregator.cpp",
+      "expectedOwnerPageId": "buses-voices-and-limitations"
+    },
+    {
+      "path": "tests/Core/src/audio/T.SourcePlaybackState.cpp",
+      "expectedOwnerPageId": "buses-voices-and-limitations"
+    },
+    {
+      "path": "tests/Core/src/audio/T.StreamGroup.cpp",
+      "expectedOwnerPageId": "playback-and-streaming"
+    },
+    {
+      "path": "tests/Core/src/audio/T.StreamState.cpp",
+      "expectedOwnerPageId": "playback-and-streaming"
+    },
+    {
+      "path": "tests/Core/src/audio/T.VoiceAllocator.cpp",
+      "expectedOwnerPageId": "buses-voices-and-limitations"
+    },
+    {
+      "path": "tests/Core/src/core/T.ThreadPool.cpp",
+      "expectedOwnerPageId": "core-threading-and-performance"
+    },
+    {
+      "path": "tests/Core/src/lua/T.Lua.cpp",
+      "expectedOwnerPageId": "runtime-calls-and-bindings"
+    },
+    {
+      "path": "tests/Core/src/Main.cpp",
+      "expectedOwnerPageId": "tests"
+    },
+    {
+      "path": "tests/Core/src/math/T.Types2D.cpp",
+      "expectedOwnerPageId": "geometry-and-intersections"
+    },
+    {
+      "path": "tests/Core/src/renderer/T.Buffer.cpp",
+      "expectedOwnerPageId": "renderer-resources-and-synchronization"
+    },
+    {
+      "path": "tests/Core/src/renderer/T.Camera.cpp",
+      "expectedOwnerPageId": "animation-skeletons-and-cameras"
+    },
+    {
+      "path": "tests/Core/src/renderer/T.FrameRenderer.cpp",
+      "expectedOwnerPageId": "frame-vulkan-and-queues"
+    },
+    {
+      "path": "tests/Core/src/renderer/T.Image.cpp",
+      "expectedOwnerPageId": "renderer-resources-and-synchronization"
+    },
+    {
+      "path": "tests/Core/src/renderer/T.Pipeline.cpp",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "tests/Core/src/renderer/T.Shader.cpp",
+      "expectedOwnerPageId": "shaders-and-pipelines"
+    },
+    {
+      "path": "tests/Core/src/renderer/T.TextureCache.cpp",
+      "expectedOwnerPageId": "renderer-resources-and-synchronization"
+    },
+    {
+      "path": "tests/Core/src/ui/T.Animation.cpp",
+      "expectedOwnerPageId": "animation-and-effects"
+    },
+    {
+      "path": "tests/Core/src/ui/T.Bounds.cpp",
+      "expectedOwnerPageId": "entities-hierarchy-and-layout"
+    },
+    {
+      "path": "tests/Core/src/ui/T.NineSlice.cpp",
+      "expectedOwnerPageId": "rendering-and-visuals"
+    },
+    {
+      "path": "tests/Core/src/ui/T.RenderingScissor.cpp",
+      "expectedOwnerPageId": "rendering-and-visuals"
+    },
+    {
+      "path": "tests/Core/src/ui/T.ScrollState.cpp",
+      "expectedOwnerPageId": "scrolling-and-popups"
+    },
+    {
+      "path": "tests/Core/src/ui/T.Sprite.cpp",
+      "expectedOwnerPageId": "rendering-and-visuals"
+    },
+    {
+      "path": "tests/Core/src/ui/T.Tags.cpp",
+      "expectedOwnerPageId": "entities-hierarchy-and-layout"
+    },
+    {
+      "path": "tests/Core/src/ui/T.Text.cpp",
+      "expectedOwnerPageId": "rendering-and-visuals"
+    },
+    {
+      "path": "tests/Core/src/utils/T.Justify.cpp",
+      "expectedOwnerPageId": "data-color-and-packing"
+    },
+    {
+      "path": "tests/Core/src/utils/T.RectPacker.cpp",
+      "expectedOwnerPageId": "data-color-and-packing"
+    },
+    {
+      "path": "tests/Core/src/utils/T.String.cpp",
+      "expectedOwnerPageId": "utilities"
+    },
+    {
+      "path": "tests/Core/src/utils/Utils.h",
+      "expectedOwnerPageId": "data-color-and-packing"
+    },
+    {
+      "path": "tests/Core/src/window/T.TextBox.cpp",
+      "expectedOwnerPageId": "text-input-and-focus"
+    },
+    {
+      "path": "tests/Core/src/window/T.UserInputManager.cpp",
+      "expectedOwnerPageId": "window-and-input-contracts"
+    },
+    {
+      "path": "tools/CMakeLists.txt",
+      "expectedOwnerPageId": "repository-tour"
+    },
+    {
+      "path": "tools/MLECubes/CMakeLists.txt",
+      "expectedOwnerPageId": "mlecubes"
+    },
+    {
+      "path": "tools/MLECubes/res/lua/config.lua",
+      "expectedOwnerPageId": "mlecubes"
+    },
+    {
+      "path": "tools/MLECubes/res/lua/ui/editor/header.lua",
+      "expectedOwnerPageId": "mlecubes"
+    },
+    {
+      "path": "tools/MLECubes/res/lua/ui/editor/layout.lua",
+      "expectedOwnerPageId": "mlecubes"
+    },
+    {
+      "path": "tools/MLECubes/res/lua/ui/init/layout.lua",
+      "expectedOwnerPageId": "mlecubes"
+    },
+    {
+      "path": "tools/MLECubes/res/shaders/ui/bg.frag",
+      "expectedOwnerPageId": "mlecubes"
+    },
+    {
+      "path": "tools/MLECubes/res/textures/colorBG.png",
+      "expectedOwnerPageId": "mlecubes"
+    },
+    {
+      "path": "tools/MLECubes/res/textures/star.png",
+      "expectedOwnerPageId": "mlecubes"
+    },
+    {
+      "path": "tools/MLECubes/res/textures/testBG.png",
+      "expectedOwnerPageId": "mlecubes"
+    },
+    {
+      "path": "tools/MLECubes/src/App.cpp",
+      "expectedOwnerPageId": "mlecubes"
+    },
+    {
+      "path": "tools/MLECubes/src/App.h",
+      "expectedOwnerPageId": "mlecubes"
+    },
+    {
+      "path": "tools/MLECubes/src/Main.cpp",
+      "expectedOwnerPageId": "mlecubes"
+    },
+    {
+      "path": "tools/MLECubes/src/scenes/Editor.cpp",
+      "expectedOwnerPageId": "mlecubes"
+    },
+    {
+      "path": "tools/MLECubes/src/scenes/Editor.h",
+      "expectedOwnerPageId": "mlecubes"
+    },
+    {
+      "path": "tools/MLECubes/src/scenes/Init.cpp",
+      "expectedOwnerPageId": "mlecubes"
+    },
+    {
+      "path": "tools/MLECubes/src/scenes/Init.h",
+      "expectedOwnerPageId": "mlecubes"
+    }
+  ]
+}

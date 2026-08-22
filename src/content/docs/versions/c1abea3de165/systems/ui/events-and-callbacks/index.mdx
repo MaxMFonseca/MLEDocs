@@ -33,6 +33,6 @@ Input dispatch uses a snapshot and lifetime tokens, so a key/scroll callback can
 
 Boolean callback removal is asymmetric in this snapshot. `on_hover = false` and `on_hover_in = false` clear `on_hover_out` instead of their own fields. `on_scroll = true` clears the scroll callback, while `false` only logs and does nothing. `on_key` boolean `true` removes a binding while `false` does nothing. Use functions for installation and explicit element/component replacement or destruction for cleanup; do not rely on these boolean branches as a uniform API.
 
-Text `on_submit`/`on_complete` and animation `on_finished` are owned by their respective components. Their full payload tables and all keybinding forms belong to the planned **UI events and callbacks reference**.
+Text `on_submit`/`on_complete` and animation `on_finished` are owned by their respective components. The [UI events and callbacks reference](../../../reference/ui-events-and-callbacks/) lists their full payload tables and all keybinding forms.
 
 Evidence: [`Events.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/ui/systems/Events.cpp), [`Hoverable.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/ui/components/Hoverable.cpp), and [`UserInputManager.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/window/UserInputManager.cpp).

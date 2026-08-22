@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { handbookPages } from '../../src/data/handbook';
 
 const origin = process.env.MLE_DOCS_E2E_ORIGIN ?? 'http://127.0.0.1:4321';
 const versionId = 'c1abea3de165';
@@ -7,6 +8,50 @@ const commit = 'c1abea3de165032fe064300340807b7a6af388f8';
 function url(path: string): string {
 	return new URL(`/MLEDocs${path}`, origin).toString();
 }
+
+test('all 71 published handbook records have immutable, latest, and Portuguese fallback routes', async ({ request }) => {
+	test.setTimeout(120_000);
+	expect(handbookPages).toHaveLength(71);
+	expect(handbookPages.every(({ publication }) => publication === 'published')).toBe(true);
+
+	for (const { pageId, slug } of handbookPages) {
+		const permanent = `/MLEDocs/versions/${versionId}/${slug}/`;
+		const latest = `/MLEDocs/latest/${slug}/`;
+		const portuguese = `/MLEDocs/pt-br/versions/${versionId}/${slug}/`;
+		const portugueseLatest = `/MLEDocs/pt-br/latest/${slug}/`;
+
+		const immutableResponse = await request.get(new URL(permanent, origin).toString());
+		expect(immutableResponse.status(), `${pageId} immutable`).toBe(200);
+		const immutableHtml = await immutableResponse.text();
+		expect(immutableHtml).toContain(`<link rel="canonical" href="https://maxmfonseca.github.io${permanent}"`);
+		expect(immutableHtml).toContain(`data-pagefind-filter="mleVersion" content="${versionId}"`);
+		expect(immutableHtml).toContain('data-pagefind-filter="mleLocale" content="en"');
+
+		const latestResponse = await request.get(new URL(latest, origin).toString(), { maxRedirects: 0 });
+		expect(latestResponse.status(), `${pageId} latest`).toBe(200);
+		const latestHtml = await latestResponse.text();
+		expect(latestHtml).toContain('<meta name="robots" content="noindex">');
+		expect(latestHtml).toContain(`<link rel="canonical" href="${permanent}">`);
+		expect(latestHtml).toContain(`content="0; url=${permanent}"`);
+		expect(latestHtml).not.toContain('data-pagefind-filter="mleVersion"');
+
+		const portugueseResponse = await request.get(new URL(portuguese, origin).toString());
+		expect(portugueseResponse.status(), `${pageId} Portuguese fallback`).toBe(200);
+		const portugueseHtml = await portugueseResponse.text();
+		expect(portugueseHtml).toContain(`<link rel="canonical" href="https://maxmfonseca.github.io${portuguese}"`);
+		expect(portugueseHtml).toContain('data-mle-translation-status="fallback"');
+		expect(portugueseHtml).toContain(`data-pagefind-filter="mleVersion" content="${versionId}"`);
+		expect(portugueseHtml).toContain('data-pagefind-filter="mleLocale" content="pt-br"');
+
+		const portugueseLatestResponse = await request.get(new URL(portugueseLatest, origin).toString(), { maxRedirects: 0 });
+		expect(portugueseLatestResponse.status(), `${pageId} Portuguese latest`).toBe(200);
+		const portugueseLatestHtml = await portugueseLatestResponse.text();
+		expect(portugueseLatestHtml).toContain('<meta name="robots" content="noindex">');
+		expect(portugueseLatestHtml).toContain(`<link rel="canonical" href="${portuguese}">`);
+		expect(portugueseLatestHtml).toContain(`content="0; url=${portuguese}"`);
+		expect(portugueseLatestHtml).not.toContain('data-pagefind-filter="mleVersion"');
+	}
+});
 
 for (const pageCase of [
 	{ path: 'systems/core/', title: 'Core runtime' },

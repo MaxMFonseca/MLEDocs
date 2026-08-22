@@ -33,6 +33,6 @@ Create the root only after `Client::init`, `Window::init`, renderer shader/cache
 
 This order means a callback can request layout and have it reflected in the packet built later in the same `UI::update`. A `destroy()` call merely adds `DestroyFlag`; the entity remains present until the final destroy phase.
 
-Use [Entities, hierarchy, and layout](../../systems/ui/entities-hierarchy-and-layout/) for the sizing rules and [Events and callbacks](../../systems/ui/events-and-callbacks/) for mutation boundaries. Advanced factories and exhaustive key tables remain assigned to the planned UI guides and reference.
+Use [Entities, hierarchy, and layout](../../systems/ui/entities-hierarchy-and-layout/) for the sizing rules and [Events and callbacks](../../systems/ui/events-and-callbacks/) for mutation boundaries. The practical workflow continues in [Build a UI screen](../../guides/build-a-ui-screen/), while [UI element keys](../../reference/ui-element-keys/) provides the exhaustive lookup table.
 
 Evidence: [`UI.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/ui/UI.cpp), [`Relationship.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/ui/components/Relationship.cpp), and [`Rendering.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/ui/systems/Rendering.cpp).

@@ -931,3 +931,25 @@ describe('tools, tests, fixtures, and contributor handbook content', () => {
 		}
 	});
 });
+
+describe('completed handbook publication language', () => {
+	const stalePublicationClaims = [
+		['start-here', /planned labels below describe documentation work still to be authored/i],
+		['concepts', /planned labels below describe documentation coverage/i],
+		['guides', /planned labels below are an editorial coverage map/i],
+		['reference', /description: Planned precise reference/i],
+		['reference', /planned labels below describe documentation work only/i],
+		['concepts/cpp-lua-boundary', /belongs to the planned \*\*Lua API reference\*\*/i],
+		['concepts/ui-composition', /remain assigned to the planned UI guides and reference/i],
+		['systems/lua', /belong to the planned \*\*Reusable components\*\* page/i],
+		['systems/lua/runtime-calls-and-bindings', /the planned \*\*Lua API\*\* reference will own exact names/i],
+		['systems/ui', /remain in the planned Task 5 pages visible in navigation/i],
+		['systems/ui/entities-hierarchy-and-layout', /belong to the planned \*\*UI element keys\*\* and \*\*UI layout values\*\* references/i],
+		['systems/ui/rendering-and-visuals', /belong to the planned \*\*Animation and effects\*\* page and visual guide/i],
+		['systems/ui/events-and-callbacks', /belong to the planned \*\*UI events and callbacks reference\*\*/i],
+	] as const;
+
+	it.each(stalePublicationClaims)('%s no longer advertises an already-published destination as planned', (slug, staleClaim) => {
+		expect(source(slug)).not.toMatch(staleClaim);
+	});
+});

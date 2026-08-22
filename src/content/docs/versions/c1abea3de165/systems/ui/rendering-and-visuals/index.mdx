@@ -36,6 +36,6 @@ A node shader may run before children or after them and may request a dedicated 
 
 ## Current boundary
 
-The packet bridge favors the newest available state; intermediate snapshots may be skipped. A changed Lua table is not observed until its handler versions a packet or requests layout as appropriate. Do not mutate render-owned data from arbitrary threads. The detailed shader/effect, sprite, image, and nine-slice options belong to the planned **Animation and effects** page and visual guide.
+The packet bridge favors the newest available state; intermediate snapshots may be skipped. A changed Lua table is not observed until its handler versions a packet or requests layout as appropriate. Do not mutate render-owned data from arbitrary threads. See [Animation and effects](../animation-and-effects/) and [Use sprites, images, and nine-slice](../../../guides/use-sprites-images-and-nine-slice/) for detailed visual workflows.
 
 Evidence: [`Rendering.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/ui/systems/Rendering.cpp), [`Renderable.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/ui/components/Renderable.cpp), and [`T.RenderingScissor.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Core/src/ui/T.RenderingScissor.cpp).

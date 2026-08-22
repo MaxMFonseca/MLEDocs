@@ -37,6 +37,6 @@ Ordinary script errors surface through Sol2's script call behavior. A Lua panic 
 
 Store Lua callbacks only as long as their C++ owner can unregister them. UI callback components retain `sol::function` values, while event listeners retain a UI pointer and entity identifier and re-check registry validity before invocation. Replacing the root or clearing the UI invalidates old entities and unregisters owned listeners during component destruction.
 
-The complete registered surface belongs to the planned **Lua API reference**. Operational loading and registration rules are in [Runtime calls and bindings](../../systems/lua/runtime-calls-and-bindings/).
+The complete registered surface is cataloged in the [Lua API reference](../../reference/lua-api/). Operational loading and registration rules are in [Runtime calls and bindings](../../systems/lua/runtime-calls-and-bindings/).
 
 Evidence: [`Lua.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/lua/Lua.cpp), [`Utils.h`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/lua/Utils.h), and [`Client.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/client/Client.cpp).

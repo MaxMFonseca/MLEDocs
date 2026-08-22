@@ -28,7 +28,7 @@ There is a second ownership path hidden behind UI rendering: every `Rendering` s
 - The working directory must make `res/lua/...` reachable. MLE does not discover an installation-relative resource root here.
 - `require`, `requirePath`, and `tryRequire` execute a file and return its `sol::object` result.
 - C++ creates and merges Lua tables; deep copy and merge recurse through nested tables without cycle detection.
-- First-party UI factories under `res/lua/ui/comp` are source examples and reusable modules, but their complete contracts belong to the planned **Reusable components** page.
+- First-party UI factories under `res/lua/ui/comp` are source examples and reusable modules; [Reusable components](../ui/reusable-components/) documents their composition and boundaries.
 
 The automated Lua suite covers table creation/merge, module execution, conversions, stringification, math helpers, and several shipped UI factories. Client Lua screens add demonstration evidence; they do not make all demonstrated combinations stable APIs.
 

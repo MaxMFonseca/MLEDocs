@@ -35,6 +35,6 @@ These wrappers do not call Lua's package `require`, do not consult `package.load
 
 Use `tryAs`, `tryGetList`, and `tryGetKeyAs` for data that can be malformed. The strict helpers can call the engine's unrecoverable path, and several are explicitly unsafe in release mode if their preconditions are ignored. Script syntax and runtime errors from an existing file are not converted to `Result` by `tryRequire`.
 
-`lua::toString` renders nested values for diagnostics with a maximum depth of 32. That is a depth assertion, not cycle handling. The registered surface is intentionally curated; the planned **Lua API** reference will own exact names, so do not infer that a C++ method is bound.
+`lua::toString` renders nested values for diagnostics with a maximum depth of 32. That is a depth assertion, not cycle handling. The registered surface is intentionally curated; the [Lua API reference](../../../reference/lua-api/) owns exact names, so do not infer that a C++ method is bound.
 
 Evidence: [`Lua.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/lua/Lua.cpp), [`Lua.h`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/lua/Lua.h), and [`Utils.h`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/lua/Utils.h).
