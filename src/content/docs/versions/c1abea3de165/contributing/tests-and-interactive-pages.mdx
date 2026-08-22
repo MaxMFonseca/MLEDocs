@@ -1,0 +1,71 @@
+---
+title: Tests and interactive pages
+description: Add automated Core tests, interactive Client surfaces, and fixtures while preserving honest evidence and handbook ownership.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [tests, project]
+sourceFiles: [tests/Core/CMakeLists.txt, tests/Client/CMakeLists.txt, tests/Client/src/layers/UITest.cpp, tests/Client/res/lua/ui/ui_tests/Layer.lua, tests/Client/tools/generate_audio_fixtures.py]
+testFiles: [tests/Core/src/Main.cpp, tests/Core/src/ui/T.Animation.cpp, tests/Core/shutdown/T.AudioShutdown.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: tests-and-interactive-pages
+---
+
+Choose evidence before choosing a directory. MLE uses five labels in its documentation inventory:
+
+<table tabindex="0" role="region" aria-label="Test and tool evidence classes">
+<thead><tr><th>Class</th><th>Meaning</th><th>Pass signal</th></tr></thead>
+<tbody>
+<tr><td><code>automated</code></td><td>GoogleTest assertion in <code>Core</code> or <code>AudioLifecycle</code></td><td>Executable exits with a passing GoogleTest result.</td></tr>
+<tr><td><code>interactive</code></td><td>Client C++ layer or Lua page driven by a person</td><td>Recorded action and observation; never called an automated pass.</td></tr>
+<tr><td><code>fixture</code></td><td>Committed resource consumed by a test or demonstration</td><td>Owning evidence passes; format support is not inferred.</td></tr>
+<tr><td><code>generator</code></td><td>Reproducibly creates a fixture family</td><td>Regeneration/verification matches committed output.</td></tr>
+<tr><td><code>tool</code></td><td>Executable development surface such as MLECubes</td><td>Explicit build/run observation plus any separate assertions.</td></tr>
+</tbody>
+</table>
+
+## Choose the evidence class
+
+Prefer an automated test for deterministic state, parsing, ordering, validation, math, and lifecycle behavior. Use an interactive page for Vulkan presentation, visual composition, platform input, audible output, or a workflow whose present architecture cannot be asserted without the real Client. Often a change needs both, but keep their results separate.
+
+## Add an automated Core test
+
+1. Place a focused `T.<Subject>.cpp` below the owning `tests/Core/src/<subsystem>/` directory. Use `tests/Core/shutdown/` only when the separate `AudioLifecycle` process boundary is required.
+2. Exercise production behavior and derive expected values independently. Reuse `tests/Core/res/**` only when the test genuinely needs a resource.
+3. Build `Core` or `AudioLifecycle`, list the new test, run a focused `--gtest_filter`, then run the whole owning executable.
+4. Update [Core test suite](../../tools/core-test-suite/) and the tracked test inventory with the narrow system owner and documentation owner.
+
+The recursive CMake glob picks up `tests/Core/src/**`, while `AudioLifecycle` lists its shutdown source explicitly. Adding a shutdown translation unit therefore also requires an intentional CMake change.
+
+## Add an interactive Client page or layer
+
+For a page within UI Test, add the Lua module under `tests/Client/res/lua/ui/ui_tests/` and register it in the `ui_tests/Layer.lua` multipanel. For a new top-level surface, add a `Layer` implementation under `tests/Client/src/layers/`, expose the transition from Init, install the required Lua bindings/root, and own shutdown/return behavior.
+
+Document the exact controls, prerequisites, resources, success observation, cleanup, and limitation. Add deterministic Core assertions for testable contracts, but never describe the visual/manual page itself as automated. Update [UI Test](../../tools/ui-test/), [Audio Test](../../tools/audio-test/), [Model Test](../../tools/model-test/), or [Interactive Client](../../tools/interactive-client/) as appropriate.
+
+## Add or regenerate fixtures
+
+Name the consumer and provenance first. Generated audio changes belong in `generate_audio_fixtures.py`; run its `--verify` mode and review `audio_manifest.json`. Preserve deliberate corrupt/edge inputs, license files, and support metadata. For binary image/model/audio changes, record what changed semantically instead of treating an opaque binary diff as sufficient review. See [Test fixtures](../../tools/test-fixtures/).
+
+## Update ownership and documentation
+
+Update the tracked inventory record with `path`, honest evidence class, narrow `ownerPageId`, and `documentedBy`. If a reader-facing page is added, update the typed handbook registry in `src/data/handbook.ts`, canonical English content, source/test evidence, search/navigation expectations, and same-commit pt-BR fallback tests. Do not add a physical translation unless it has actually been translated and verified.
+
+## Verify the change
+
+Run this sequence proportionally, broadening after focused evidence succeeds:
+
+```text
+focused GoogleTest filter or named interactive procedure
+owning automated executable
+fixture generator --verify (when applicable)
+documentation unit/content validation
+Astro check and production build
+links, search, navigation, accessibility, and reviewed visuals
+```
+
+In the review report, list automated results separately from interactive observations. Include build type, target, resource setup, filter or actions, output/log result, platform/GPU/audio context when relevant, and every inventory/handbook update.
+
+Evidence: [`tests/Core/CMakeLists.txt`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Core/CMakeLists.txt), [`tests/Client/CMakeLists.txt`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/CMakeLists.txt), and [`ui_tests/Layer.lua`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/res/lua/ui/ui_tests/Layer.lua).

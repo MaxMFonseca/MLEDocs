@@ -1,0 +1,61 @@
+---
+title: MLECubes
+description: Inspect the pinned MLECubes prototype, its disconnected build graph, dormant scenes, resources, and unsupported boundaries.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [tools, ui]
+sourceFiles: [CMakeLists.txt, tools/CMakeLists.txt, tools/MLECubes/CMakeLists.txt, tools/MLECubes/src/Main.cpp, src/mle/Entry.inl, tools/MLECubes/src/scenes/Init.cpp, tools/MLECubes/src/scenes/Editor.cpp, tools/MLECubes/res/lua/ui/editor/layout.lua]
+testFiles: []
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: mlecubes
+---
+
+MLECubes is early, unsupported scaffolding—not a production editor or finished voxel tool. Its nested CMake file declares an executable and its sources contain an Init-to-Editor UI sketch, but neither is integrated into a working path supplied by the pinned repository. The current entry also does **not** call the file-local `config()` that owns those scenes. These distinctions are essential when evaluating what can actually run.
+
+## Build graph and current entry
+
+The root `CMakeLists.txt` adds `external/` and, when enabled, `tests/`; it does not add `tools/`, and it defines no option that does. The separate `tools/CMakeLists.txt` would enumerate tool subdirectories, and `tools/MLECubes/CMakeLists.txt` would declare the `MLECubes` executable, but the root build never reaches either file.
+
+Therefore this snapshot has **no shipped root configure, build, or run path** for MLECubes. Building it requires an external build-graph modification that connects `tools/` and supplies the resource layout; the pinned repository does not establish a supported command or executable location.
+
+`tools/MLECubes/src/Main.cpp` includes `mle/Entry.inl` and declares `config()`. However, this snapshot's `Entry.inl` supplies `main()` itself, initializes Core and Client, pushes a plain base `Layer`, and enters the Client loop. It never calls `config()`, never initializes Renderer, and never adopts the declared MLECubes `Init` scene. Therefore the committed splash/editor workflow is source-present but not reachable through this executable entry as written.
+
+## Source-present scene sketch
+
+If a future entry integration invokes the declared configuration, the intended flow visible in source is:
+
+```text
+config() -> Init scene -> i/ui/init/layout
+                         35 updates
+                      -> Editor scene -> i/ui/editor/layout
+                                      -> named EditorView colored red
+```
+
+Init sets the splash root, counts 35 updates, then requests `Editor`. Editor sets its layout and listens for the named `EditorView`; creation emplaces a red background. The splash animates a shader color, while the editor header changes text outlines on hover and plays `mle/menu_click.flac` on click.
+
+## Layout
+
+| Group | Contents | Maturity |
+| --- | --- | --- |
+| `src/Main.cpp` | Entry include and unused `config()` declaration | Integration incomplete |
+| `src/App.h/.cpp` | Empty `mle_cubes::app` namespace | Placeholder |
+| `src/scenes/**` | Init timer and minimal Editor view callback | Prototype source |
+| `res/lua/**` | Window config, splash, editor layout/header | Source-present UI sketch |
+| `res/shaders/**`, `res/textures/**` | Splash/editor resources | Prototype assets |
+
+## Unsupported boundaries
+
+There are no automated MLECubes tests, cube/voxel document model, editing operations, persistence, save/load path, export pipeline, undo/redo, or support/stability contract in the pinned source. Commented controller and Lua-registration lines do not implement those features. A successful compile proves only that the current target compiles; it does not prove the dormant scene sketch launches or works.
+
+Before treating MLECubes as a usable tool, first connect a deliberate entry/lifecycle path, initialize every required subsystem, add reproducible resource setup, and add automated assertions for nonvisual behavior plus an explicitly labeled interactive verification procedure.
+
+Evidence: [root `CMakeLists.txt`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/CMakeLists.txt), [`tools/CMakeLists.txt`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tools/CMakeLists.txt), [`tools/MLECubes/src/Main.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tools/MLECubes/src/Main.cpp), [`src/mle/Entry.inl`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/Entry.inl), [`Init.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tools/MLECubes/src/scenes/Init.cpp), and [`Editor.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tools/MLECubes/src/scenes/Editor.cpp).
+
+{/* test-inventory: tool|tools/MLECubes/CMakeLists.txt|mlecubes|mlecubes */}
+{/* test-inventory: tool|tools/MLECubes/src/**|mlecubes|mlecubes */}
+{/* test-inventory: tool|tools/MLECubes/res/lua/**|mlecubes|mlecubes */}
+{/* test-inventory: tool|tools/MLECubes/res/shaders/**|mlecubes|mlecubes */}
+{/* test-inventory: tool|tools/MLECubes/res/textures/**|mlecubes|mlecubes */}

@@ -200,11 +200,15 @@ for (const localeCase of [
           .filter(({ pageId }) => expectedPageIds.includes(pageId))
           .map(({ labels }) => labels[localeCase.prefix === '/pt-br' ? 'pt-br' : 'en']);
         const plannedBlock = page.locator('[data-mle-section-planned]');
-        await expect(plannedBlock).toHaveCount(1);
-        const plannedRows = plannedBlock.locator('[data-mle-navigation-availability="planned"]');
-        await expect(plannedRows).toHaveCount(expectedLabels.length);
-        for (const label of expectedLabels) {
-          await expect(plannedRows.filter({ hasText: label })).toHaveCount(1);
+        if (expectedLabels.length === 0) {
+          await expect(plannedBlock).toHaveCount(0);
+        } else {
+          await expect(plannedBlock).toHaveCount(1);
+          const plannedRows = plannedBlock.locator('[data-mle-navigation-availability="planned"]');
+          await expect(plannedRows).toHaveCount(expectedLabels.length);
+          for (const label of expectedLabels) {
+            await expect(plannedRows.filter({ hasText: label })).toHaveCount(1);
+          }
         }
       }
 

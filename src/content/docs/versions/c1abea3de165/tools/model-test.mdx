@@ -1,0 +1,73 @@
+---
+title: Model Test
+description: Launch and use the Client's model, material, animation, camera, lighting, cubemap, and projection demonstration.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [models, renderer, client]
+sourceFiles: [tests/Client/src/layers/ModelTest.cpp, tests/Client/src/layers/ModelTestAssets.cpp, tests/Client/src/layers/ModelTestCamera.cpp, tests/Client/src/layers/ModelTestRenderer.cpp, tests/Client/src/layers/ModelTestScene.cpp, tests/Client/res/lua/ui/ModelTestLayer.lua]
+testFiles: [tests/Core/src/renderer/T.Camera.cpp, tests/Core/src/renderer/T.FrameRenderer.cpp, tests/Core/src/renderer/T.Pipeline.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: model-test
+---
+
+Model Test is an **interactive demonstration, not an automated assertion**. It drives real model loading, animation, retained UI, camera input, G-buffer rendering, lighting, background, and projection paths through the Client. Pair observations with the relevant [Core test suite](../core-test-suite/) and renderer/model pages before treating a behavior as a contract.
+
+## Launch path
+
+Build and start `Client`, then choose **Model Test** on the Init screen:
+
+```bash
+mle_ber -n Client -t Debug
+```
+
+The initial layer publishes `G.init_model_test`; Client replaces the game layer on the next fixed update. `ModelTestLayer::init` creates its UI and scene, registers Lua functions, refreshes resource paths, and installs the model viewport. Escape returns to Init through `G.return_to_init`.
+
+## Viewport controls
+
+| Input | Result | Boundary |
+| --- | --- | --- |
+| Left drag | Orbit the camera | Capture must begin inside the model viewport. |
+| Middle drag | Pan | Losing the held button clears capture. |
+| Wheel | Zoom | Cursor must be inside the viewport. |
+| Reset camera | Restore camera defaults | Available in the inspector. |
+
+UI capture or focused text pauses camera acquisition, so editing a resource field does not also orbit, pan, or zoom.
+
+## Inspector workflow
+
+1. Submit a model resource such as one from `tests/Client/res/models/*.glb`; completion searches the configured `i` model directory and supports a `#Node` selector.
+2. Submit an animation resource with a `#Clip` selector, or clear it to return to the T pose.
+3. Optionally load a held item, choose its attachment/bone, and adjust translation, rotation, and scale.
+4. Select a shader mode and edit the parameters exposed by its descriptor.
+5. Toggle the projection overlay, then tune simplification epsilon and color.
+6. Adjust sun yaw, sun pitch, intensity, and ambient contribution.
+7. Choose clear color or a cubemap background from `tests/Client/res/textures/cubemaps/**`.
+
+The committed model set includes character, weapon, and animation GLBs. Their presence proves only that this demonstration loads those fixtures; it does not make every loaded GLB layout a stable public format.
+
+## Render modes and feedback
+
+The layer builds G-buffer pipelines by primitive vertex kind and supports filled or wireframe rendering. Resolve modes, cartoon outline, projection, skybox, and HDR tonemap are assembled by the Model Test renderer helpers. The Lua inspector displays resource, shader, and background status strings; also inspect logs because several underlying engine calls do not produce an on-screen result.
+
+A useful manual report names the selected model/node or animation/clip, shader/background mode, input performed, visible result, log result, GPU/driver, and build type. A screenshot alone does not prove material, animation, synchronization, or portability correctness.
+
+## Resources and cleanup
+
+The tool depends on the Client helper's `mle` and `i` resource links. Model fixtures, six-face cubemap families, `ModelTestLayer.lua`, and engine shader resources must all resolve. Returning to Init queues layer replacement; the old layer's `shutdown` owns UI/resource cleanup. Closing the window follows the broader Client teardown limitations described in [Interactive Client](../interactive-client/).
+
+Evidence: [`ModelTest.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/src/layers/ModelTest.cpp), [`ModelTestRenderer.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/src/layers/ModelTestRenderer.cpp), and [`ModelTestLayer.lua`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/res/lua/ui/ModelTestLayer.lua).
+
+{/* test-inventory: interactive|tests/Client/res/lua/ui/ModelTestLayer.lua|model-test|model-test */}
+{/* test-inventory: interactive|tests/Client/src/layers/ModelTest.cpp|model-test|model-test */}
+{/* test-inventory: interactive|tests/Client/src/layers/ModelTest.h|model-test|model-test */}
+{/* test-inventory: interactive|tests/Client/src/layers/ModelTestAssets.cpp|model-test|model-test */}
+{/* test-inventory: interactive|tests/Client/src/layers/ModelTestAssets.h|model-test|model-test */}
+{/* test-inventory: interactive|tests/Client/src/layers/ModelTestCamera.cpp|model-test|model-test */}
+{/* test-inventory: interactive|tests/Client/src/layers/ModelTestCamera.h|model-test|model-test */}
+{/* test-inventory: interactive|tests/Client/src/layers/ModelTestRenderer.cpp|model-test|model-test */}
+{/* test-inventory: interactive|tests/Client/src/layers/ModelTestRenderer.h|model-test|model-test */}
+{/* test-inventory: interactive|tests/Client/src/layers/ModelTestScene.cpp|model-test|model-test */}
+{/* test-inventory: interactive|tests/Client/src/layers/ModelTestScene.h|model-test|model-test */}

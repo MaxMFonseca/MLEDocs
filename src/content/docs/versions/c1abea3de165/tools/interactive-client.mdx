@@ -44,6 +44,8 @@ Model Test polls `UserInputManager`: mouse-left drag orbits, mouse-middle drag p
 
 The tool also exposes Lua controls for model, held item, animation, attachment, cubemap, shader, projection, sun, ambient, and camera reset operations. The dedicated renderer/model handbook pages own those contracts; this page records only how the integrated Client reaches them.
 
+Use [Model Test](../model-test/) for its exact inspector workflow and evidence boundary. Use [Core test suite](../core-test-suite/) for the automated translation-unit index.
+
 ## UI and Audio Test boundaries
 
 UI Test loads `i/ui/ui_tests/Layer`, which indexes Animation, FilterableList, FormPanel, Inventory, Layer, NineSlice, PopupStack, Scrollable, SpriteProgressBar, and TextDropdownSelector pages. Use [UI Test](../ui-test/) for that catalog.
@@ -64,3 +66,9 @@ Do not use a rendered screen alone to claim correctness. Pair it with the corres
 - The interactive executable assumes a working SDL video driver and Vulkan environment.
 
 Evidence: [`tests/Client/src/Main.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/src/Main.cpp), [`Init.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/src/layers/Init.cpp), and [`ModelTest.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/src/layers/ModelTest.cpp).
+
+{/* test-inventory: automated|tests/Core/src/window/T.TextBox.cpp|text-input-and-focus|interactive-client */}
+{/* test-inventory: automated|tests/Core/src/window/T.UserInputManager.cpp|window-and-input-contracts|interactive-client */}
+{/* test-inventory: interactive|tests/Client/res/lua/ui/InitLayer.lua|interactive-client|interactive-client */}
+{/* test-inventory: interactive|tests/Client/src/layers/Init.cpp|interactive-client|interactive-client */}
+{/* test-inventory: interactive|tests/Client/src/layers/Init.h|interactive-client|interactive-client */}

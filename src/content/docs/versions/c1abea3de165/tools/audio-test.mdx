@@ -65,3 +65,15 @@ The last recorded attempt could not reach the UI or audio-device initialization 
 Do not turn the playtest's expected results into claims that someone heard them. When running it on a machine with a display and audio device, record the generated-source count and relevant log lines alongside any failure; device capacity changes the saturation scenario.
 
 Evidence: [`AudioTest.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/src/layers/AudioTest.cpp), [`AudioTestLayer.lua`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/res/lua/ui/AudioTestLayer.lua), [`generate_audio_fixtures.py`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/tools/generate_audio_fixtures.py), and [`AUDIO_PLAYTEST.md`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/AUDIO_PLAYTEST.md).
+
+[Test fixtures](../test-fixtures/) owns regeneration and provenance for the generated audio family.
+
+{/* test-inventory: automated|tests/Core/shutdown/T.AudioShutdown.cpp|audio-lifecycle-and-command-flow|audio-test */}
+{/* test-inventory: automated|tests/Core/src/audio/T.CombatEventAggregator.cpp|buses-voices-and-limitations|audio-test */}
+{/* test-inventory: automated|tests/Core/src/audio/T.SourcePlaybackState.cpp|buses-voices-and-limitations|audio-test */}
+{/* test-inventory: automated|tests/Core/src/audio/T.StreamGroup.cpp|playback-and-streaming|audio-test */}
+{/* test-inventory: automated|tests/Core/src/audio/T.StreamState.cpp|playback-and-streaming|audio-test */}
+{/* test-inventory: automated|tests/Core/src/audio/T.VoiceAllocator.cpp|buses-voices-and-limitations|audio-test */}
+{/* test-inventory: interactive|tests/Client/res/lua/ui/AudioTestLayer.lua|audio-test|audio-test */}
+{/* test-inventory: interactive|tests/Client/src/layers/AudioTest.cpp|audio-test|audio-test */}
+{/* test-inventory: interactive|tests/Client/src/layers/AudioTest.h|audio-test|audio-test */}

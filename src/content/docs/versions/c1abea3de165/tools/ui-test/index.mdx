@@ -42,3 +42,26 @@ UI Test uses `tests/Client/res/textures/ui/animation_sprite_sheet.png`, `nine_sl
 ## Evidence boundary
 
 Core tests directly assert animation math and completion, scroll clamping/overflow, sprite UV parsing, nine-slice parsing, bounds, scissor, text, and input primitives. Client UI Test launches real integration examples, but its visual outcomes and controls are interactive demonstrations rather than automated Core assertions. See [`UITest.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/src/layers/UITest.cpp) and the full [`Layer.lua`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/res/lua/ui/ui_tests/Layer.lua).
+
+[Test fixtures](../test-fixtures/) owns the UI shader/texture provenance, and [Tests and interactive pages](../../contributing/tests-and-interactive-pages/) explains how to add a page without changing its evidence class.
+
+{/* test-inventory: automated|tests/Core/src/ui/T.Animation.cpp|animation-and-effects|ui-test */}
+{/* test-inventory: automated|tests/Core/src/ui/T.Bounds.cpp|entities-hierarchy-and-layout|ui-test */}
+{/* test-inventory: automated|tests/Core/src/ui/T.NineSlice.cpp|rendering-and-visuals|ui-test */}
+{/* test-inventory: automated|tests/Core/src/ui/T.RenderingScissor.cpp|rendering-and-visuals|ui-test */}
+{/* test-inventory: automated|tests/Core/src/ui/T.ScrollState.cpp|scrolling-and-popups|ui-test */}
+{/* test-inventory: automated|tests/Core/src/ui/T.Sprite.cpp|rendering-and-visuals|ui-test */}
+{/* test-inventory: automated|tests/Core/src/ui/T.Tags.cpp|entities-hierarchy-and-layout|ui-test */}
+{/* test-inventory: automated|tests/Core/src/ui/T.Text.cpp|rendering-and-visuals|ui-test */}
+{/* test-inventory: interactive|tests/Client/res/lua/ui/ui_tests/Animation.lua|ui-test|ui-test */}
+{/* test-inventory: interactive|tests/Client/res/lua/ui/ui_tests/FilterableList.lua|ui-test|ui-test */}
+{/* test-inventory: interactive|tests/Client/res/lua/ui/ui_tests/FormPanel.lua|ui-test|ui-test */}
+{/* test-inventory: interactive|tests/Client/res/lua/ui/ui_tests/Inventory.lua|ui-test|ui-test */}
+{/* test-inventory: interactive|tests/Client/res/lua/ui/ui_tests/Layer.lua|ui-test|ui-test */}
+{/* test-inventory: interactive|tests/Client/res/lua/ui/ui_tests/NineSlice.lua|ui-test|ui-test */}
+{/* test-inventory: interactive|tests/Client/res/lua/ui/ui_tests/PopupStack.lua|ui-test|ui-test */}
+{/* test-inventory: interactive|tests/Client/res/lua/ui/ui_tests/Scrollable.lua|ui-test|ui-test */}
+{/* test-inventory: interactive|tests/Client/res/lua/ui/ui_tests/SpriteProgressBar.lua|ui-test|ui-test */}
+{/* test-inventory: interactive|tests/Client/res/lua/ui/ui_tests/TextDropdownSelector.lua|ui-test|ui-test */}
+{/* test-inventory: interactive|tests/Client/src/layers/UITest.cpp|ui-test|ui-test */}
+{/* test-inventory: interactive|tests/Client/src/layers/UITest.h|ui-test|ui-test */}

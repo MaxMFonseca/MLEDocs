@@ -1,0 +1,63 @@
+---
+title: Core test suite
+description: Build, filter, and interpret MLE's 29 automated Core and AudioLifecycle GoogleTest translation units.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [core, tests]
+sourceFiles: [tests/CMakeLists.txt, tests/Core/CMakeLists.txt, scripts/envsetup.sh]
+testFiles: [tests/Core/src/Main.cpp, tests/Core/shutdown/T.AudioShutdown.cpp, tests/Core/src/core/T.ThreadPool.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: core-test-suite
+---
+
+The automated surface consists of two GoogleTest executables: `Core` and the separate `AudioLifecycle` shutdown suite. CMake discovers both with the `unit` label. The pinned tree contains **29 `T.*.cpp` translation units**; the interactive `Client` executable is not one of them.
+
+## Build and run
+
+With `MLE_BUILD_TESTS=ON`, configure and build as described in [Run the automated tests](../../start-here/tests/). From a repository-root shell that has sourced `scripts/envsetup.sh`, the helper prepares the Core resource tree and forwards GoogleTest arguments:
+
+```bash
+mle_run_test -n Core -t Debug
+mle_run_test -n Core -t Debug -- --gtest_filter=ThreadPoolTest.*
+```
+
+Use the actual suite and test names printed by `--gtest_list_tests` when composing a filter. `AudioLifecycle` is emitted at `build/<build_type>/tests/Core/AudioLifecycle`; the helper's name-to-directory convention cannot launch it, so run that executable directly. The inspected first-party CMake does not establish a verified root `ctest` entry point.
+
+## Runtime and resource boundary
+
+`Core` initializes Core, Client, and Renderer, calls `RUN_ALL_TESTS()`, then shuts down Renderer and Core. It does not explicitly shut down Client or Window. `AudioLifecycle` stays separate so shutdown tests can control the audio mailbox and final-drain thread without the main runner's lifecycle.
+
+The helper rebuilds `build/<type>/tests/Core/res`, linking engine resources under `mle` and `tests/Core/res` under `i`. Those test resources include Lua modules, shaders, and textures. Suppressed link errors and the helper's final status are not proof of a passing run; use GoogleTest's result and logs.
+
+<table tabindex="0" role="region" aria-label="Automated Core test inventory">
+<thead><tr><th>Family</th><th>Translation units</th><th>What the assertions cover</th></tr></thead>
+<tbody>
+<tr><td>Core and Lua</td><td><code>T.ThreadPool.cpp</code>, <code>T.Lua.cpp</code></td><td>Pool scheduling and Lua tables, modules, conversions, retained-UI factories.</td></tr>
+<tr><td>Math and utilities</td><td><code>T.Types2D.cpp</code>, <code>T.Justify.cpp</code>, <code>T.RectPacker.cpp</code>, <code>T.String.cpp</code></td><td>Geometry, packing, justification, conversion, UTF-8, and search helpers.</td></tr>
+<tr><td>Renderer</td><td>Seven <code>T.*.cpp</code> files</td><td>Buffers, camera, frame rendering, images, pipelines, shaders, and texture cache behavior.</td></tr>
+<tr><td>UI</td><td>Eight <code>T.*.cpp</code> files</td><td>Animation, bounds, nine-slice, scissor, scrolling, sprites, tags, and text.</td></tr>
+<tr><td>Window/input</td><td><code>T.TextBox.cpp</code>, <code>T.UserInputManager.cpp</code></td><td>Focus/text routing and listener snapshot/precedence behavior.</td></tr>
+<tr><td>Audio</td><td>Five state/policy files plus <code>T.AudioShutdown.cpp</code></td><td>Deterministic state, allocation, aggregation, mailbox, startup, and shutdown contracts—not audible output.</td></tr>
+</tbody>
+</table>
+
+See [UI Test](../ui-test/), [Audio Test](../audio-test/), and [Interactive Client](../interactive-client/) for the distinction between these assertions and integrated demonstrations. Fixture provenance belongs to [Test fixtures](../test-fixtures/).
+
+Evidence: [`tests/Core/CMakeLists.txt`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Core/CMakeLists.txt), [`tests/Core/src/Main.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Core/src/Main.cpp), and [`scripts/envsetup.sh`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/scripts/envsetup.sh).
+
+{/* test-inventory: automated|tests/Core/src/core/T.ThreadPool.cpp|core-threading-and-performance|core-test-suite */}
+{/* test-inventory: automated|tests/Core/src/lua/T.Lua.cpp|runtime-calls-and-bindings|core-test-suite */}
+{/* test-inventory: automated|tests/Core/src/math/T.Types2D.cpp|geometry-and-intersections|core-test-suite */}
+{/* test-inventory: automated|tests/Core/src/renderer/T.Buffer.cpp|renderer-resources-and-synchronization|core-test-suite */}
+{/* test-inventory: automated|tests/Core/src/renderer/T.Camera.cpp|animation-skeletons-and-cameras|core-test-suite */}
+{/* test-inventory: automated|tests/Core/src/renderer/T.FrameRenderer.cpp|frame-vulkan-and-queues|core-test-suite */}
+{/* test-inventory: automated|tests/Core/src/renderer/T.Image.cpp|renderer-resources-and-synchronization|core-test-suite */}
+{/* test-inventory: automated|tests/Core/src/renderer/T.Pipeline.cpp|shaders-and-pipelines|core-test-suite */}
+{/* test-inventory: automated|tests/Core/src/renderer/T.Shader.cpp|shaders-and-pipelines|core-test-suite */}
+{/* test-inventory: automated|tests/Core/src/renderer/T.TextureCache.cpp|renderer-resources-and-synchronization|core-test-suite */}
+{/* test-inventory: automated|tests/Core/src/utils/T.Justify.cpp|data-color-and-packing|core-test-suite */}
+{/* test-inventory: automated|tests/Core/src/utils/T.RectPacker.cpp|data-color-and-packing|core-test-suite */}
+{/* test-inventory: automated|tests/Core/src/utils/T.String.cpp|utilities|core-test-suite */}

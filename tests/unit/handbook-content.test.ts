@@ -144,6 +144,14 @@ const clientPlatformContracts = [
 	['interactive-client', 'tools/interactive-client', ['client', 'window', 'ui'], 'in-development'],
 ] as const;
 
+const toolTestContracts = [
+	['core-test-suite', 'tools/core-test-suite', ['core', 'tests']],
+	['model-test', 'tools/model-test', ['models', 'renderer', 'client']],
+	['test-fixtures', 'tools/test-fixtures', ['tests', 'project']],
+	['mlecubes', 'tools/mlecubes', ['tools', 'ui']],
+	['tests-and-interactive-pages', 'contributing/tests-and-interactive-pages', ['tests', 'project']],
+] as const;
+
 const ownership: Readonly<Record<string, { sourceFiles: readonly string[]; testFiles: readonly string[] }>> = {
 	architecture: {
 		sourceFiles: ['src/mle/Entry.inl', 'src/mle/core/Core.cpp', 'src/mle/client/Client.cpp'],
@@ -232,7 +240,7 @@ describe('runtime foundations handbook content', () => {
 				.filter(({ publication }) => publication === 'published')
 				.map(({ pageId }) => pageId)
 				.sort(),
-		).toEqual([...contracts.map(([pageId]) => pageId), ...rendererContracts.map(([pageId]) => pageId), ...luaUiFoundationContracts.map(([pageId]) => pageId), ...luaUiAdvancedContracts.map(([pageId]) => pageId), ...audioContracts.map(([pageId]) => pageId), ...clientPlatformContracts.map(([pageId]) => pageId)].sort());
+		).toEqual([...contracts.map(([pageId]) => pageId), ...rendererContracts.map(([pageId]) => pageId), ...luaUiFoundationContracts.map(([pageId]) => pageId), ...luaUiAdvancedContracts.map(([pageId]) => pageId), ...audioContracts.map(([pageId]) => pageId), ...clientPlatformContracts.map(([pageId]) => pageId), ...toolTestContracts.map(([pageId]) => pageId)].sort());
 	});
 
 	it.each(contracts)('%s has pinned, canonical technical metadata', (pageId, slug, subsystems) => {
@@ -824,5 +832,102 @@ describe('Client and platform-shell handbook content', () => {
 		expect(tool).toMatch(/interactive demonstration.*not.*automated|demonstrated.*not.*assert/is);
 		for (const layer of ['InitLayer', 'ModelTestLayer', 'UITestLayer', 'AudioTestLayer', 'PerfLayer', 'TerminalLayer']) expect(tool).toContain(layer);
 		for (const control of ['F3', 'Ctrl+M']) expect(tool).toContain(control);
+	});
+});
+
+describe('tools, tests, fixtures, and contributor handbook content', () => {
+	it.each(toolTestContracts)('%s has canonical pinned evidence and its exact publication contract', (pageId, slug, subsystems) => {
+		const text = source(slug);
+		const metadata = technicalPageMetadataSchema.parse(parseFrontmatter(text).frontmatter);
+		expect(metadata).toMatchObject({
+			mleCommit: commit, maturity: 'in-development', pageId, translationStatus: 'canonical', subsystems,
+		});
+		expect(metadata.audiences).toEqual(expect.arrayContaining(['integrator', 'contributor']));
+		expect(metadata.sourceFiles.length).toBeGreaterThan(0);
+		if (pageId === 'mlecubes') expect(metadata.testFiles).toEqual([]);
+		else expect(metadata.testFiles.length).toBeGreaterThan(0);
+		expect(metadata.lastVerified).toBe('2026-08-21');
+		expect(handbookPages.find((page) => page.pageId === pageId)).toMatchObject({ slug, publication: 'published' });
+		expect(text).toContain(`github.com/MaxMFonseca/MLE/blob/${commit}/`);
+		expect(text).not.toMatch(/\b(?:TBD|lorem ipsum|Doxygen)\b/i);
+	});
+
+	it('publishes exactly the five Task 8 records', () => {
+		expect(toolTestContracts).toHaveLength(5);
+		for (const [pageId] of toolTestContracts) expect(handbookPages.find((page) => page.pageId === pageId)?.publication).toBe('published');
+	});
+
+	it('documents the automated Core entry points, filters, resources, and shutdown boundary', () => {
+		const page = source('tools/core-test-suite');
+		expect(page).toMatch(/Core.*AudioLifecycle.*GoogleTest.*unit/is);
+		expect(page).toMatch(/--gtest_filter=.*ThreadPoolTest|ThreadPoolTest.*--gtest_filter=/is);
+		expect(page).toMatch(/tests\/Core\/res.*mle.*i.*resource/is);
+		expect(page).toMatch(/RUN_ALL_TESTS.*Renderer.*Core.*shutdown/is);
+		expect(page).toMatch(/29.*T\.\*\.cpp|29.*translation units/is);
+	});
+
+	it('documents Model Test controls and keeps its evidence class interactive', () => {
+		const page = source('tools/model-test');
+		expect(page).toMatch(/interactive demonstration.*not.*automated|demonstrated.*not.*assert/is);
+		expect(page).toMatch(/left.*orbit.*middle.*pan.*wheel.*zoom/is);
+		expect(page).toMatch(/model.*animation.*held item.*attachment.*cubemap/is);
+		expect(page).toMatch(/shader.*projection.*sun.*ambient.*clear color/is);
+		expect(page).toMatch(/i\/models\/.*\.glb|tests\/Client\/res\/models/is);
+	});
+
+	it('documents fixture provenance, regeneration, corruption, and review boundaries', () => {
+		const page = source('tools/test-fixtures');
+		const metadata = technicalPageMetadataSchema.parse(parseFrontmatter(page).frontmatter);
+		expect(page).toMatch(/generate_audio_fixtures\.py.*--verify/is);
+		expect(page).toMatch(/corrupt\.wav.*negative|negative.*corrupt\.wav/is);
+		expect(page).toMatch(/committed.*generated.*review.*manifest/is);
+		expect(page).toMatch(/not.*public.*format|does not.*supported.*format/is);
+		expect(page).toMatch(/generated.*consumed.*only.*interactive.*Audio Test/is);
+		expect(page).toMatch(/Core audio.*in[- ]memory.*do not load.*generated.*WAV/is);
+		expect(metadata.testFiles).not.toContain('tests/Core/src/audio/T.StreamState.cpp');
+	});
+
+	it('describes MLECubes as minimal unsupported scaffolding', () => {
+		const page = source('tools/mlecubes');
+		expect(page).toMatch(/Entry\.inl.*Init.*35.*Editor/is);
+		expect(page).toMatch(/EditorView.*red/is);
+		expect(page).toMatch(/App\.(?:h|cpp).*empty/is);
+		expect(page).toMatch(/no.*automated.*tests/is);
+		expect(page).toMatch(/not.*production|unsupported|prototype/is);
+		expect(page).toMatch(/root.*CMakeLists.*does not add.*tools.*no shipped root.*configure.*build.*run path/is);
+		expect(page).toMatch(/external.*build.graph.*modification/is);
+	});
+
+	it('gives contributors separate automated, interactive, fixture, registry, and verification workflows', () => {
+		const page = source('contributing/tests-and-interactive-pages');
+		for (const heading of ['Choose the evidence class', 'Add an automated Core test', 'Add an interactive Client page or layer', 'Add or regenerate fixtures', 'Update ownership and documentation', 'Verify the change']) {
+			expect(page).toContain(`## ${heading}`);
+		}
+		expect(page).toMatch(/automated.*interactive.*fixture.*generator.*tool/is);
+		expect(page).toMatch(/handbook registry|handbook\.ts/is);
+	});
+
+	it('reconciles the existing tool pages with the final inventory owners', () => {
+		const ui = source('tools/ui-test');
+		expect(ui).toContain('[Test fixtures](../test-fixtures/)');
+		expect(ui).toContain('[Tests and interactive pages](../../contributing/tests-and-interactive-pages/)');
+		const audio = source('tools/audio-test');
+		expect(audio).toContain('[Test fixtures](../test-fixtures/)');
+		const client = source('tools/interactive-client');
+		expect(client).toContain('[Model Test](../model-test/)');
+		expect(client).toContain('[Core test suite](../core-test-suite/)');
+	});
+
+	it('presents the fully published Tools and Contributing hubs without a planned-content promise', () => {
+		const hubs = [
+			source('tools'),
+			source('contributing'),
+			readFileSync(resolve('src/content/docs/pt-br/versions/c1abea3de165/tools/index.mdx'), 'utf8'),
+			readFileSync(resolve('src/content/docs/pt-br/versions/c1abea3de165/contributing/index.mdx'), 'utf8'),
+		];
+		for (const hub of hubs) {
+			expect(hub).toContain("lastVerified: '2026-08-21'");
+			expect(hub).not.toMatch(/planned labels below|will document|rótulos planejados abaixo|vai documentar|vão reunir/i);
+		}
 	});
 });

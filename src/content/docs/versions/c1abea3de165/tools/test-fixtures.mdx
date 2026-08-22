@@ -1,0 +1,71 @@
+---
+title: Test fixtures
+description: Understand MLE's committed Core and Client resources, deterministic audio generator, provenance, and review workflow.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [tests, project]
+sourceFiles: [tests/Core/res/lua/HelloLua.lua, tests/Core/res/shaders/test.vert, tests/Client/tools/generate_audio_fixtures.py, tests/Client/res/sounds/generated/audio_manifest.json, tests/Client/src/layers/AudioTest.cpp, tests/Client/AUDIO_PLAYTEST.md, tests/Client/res/textures/cubemaps/LICENSE.txt]
+testFiles: [tests/Core/src/lua/T.Lua.cpp, tests/Core/src/renderer/T.Shader.cpp, tests/Core/src/renderer/T.Image.cpp, tests/Core/src/renderer/T.TextureCache.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: test-fixtures
+---
+
+Fixtures are committed evidence inputs, not a blanket compatibility promise. A test loading one PNG, shader, Lua module, WAV, GLB, or cubemap family does **not** make every byte layout a supported public format. Keep provenance, the consumer, and the evidence class together when changing a resource.
+
+## Fixture map
+
+<table tabindex="0" role="region" aria-label="Test fixture families">
+<thead><tr><th>Family</th><th>Consumer</th><th>Evidence boundary</th></tr></thead>
+<tbody>
+<tr><td><code>tests/Core/res/lua/**</code></td><td><code>T.Lua.cpp</code></td><td>Small modules and retained-UI factory inputs used by automated assertions.</td></tr>
+<tr><td><code>tests/Core/res/shaders/**</code></td><td>Shader, pipeline, and frame tests</td><td>Known stage/push-constant fixtures; not a shader ABI promise.</td></tr>
+<tr><td><code>tests/Core/res/textures/**</code></td><td>Image and texture-cache tests</td><td>Representative channel/extent inputs.</td></tr>
+<tr><td><code>tests/Client/res/models/**</code></td><td>Model Test</td><td>Interactive GLB resources, demonstrated rather than asserted end-to-end.</td></tr>
+<tr><td><code>tests/Client/res/textures/cubemaps/**</code></td><td>Model Test</td><td>Six-face background families; <code>LICENSE.txt</code> records third-party provenance.</td></tr>
+<tr><td><code>tests/Client/res/shaders/ui/**</code> and <code>textures/ui/**</code></td><td>UI Test</td><td>Interactive effects, sprite, progress-bar, and nine-slice resources.</td></tr>
+<tr><td><code>tests/Client/res/sounds/generated/**</code></td><td>Interactive Client Audio Test only</td><td>Deterministic cues, duration windows, saturation inputs, one corrupt negative case, and a manifest.</td></tr>
+<tr><td><code>ambient*.wav</code> and <code>.att</code></td><td>Interactive Client audio</td><td>Separately committed inputs; not produced by the deterministic generator.</td></tr>
+</tbody>
+</table>
+
+## Regenerate deterministic audio
+
+Install the pinned generator requirements in an isolated Python environment, then verify without modifying committed resources:
+
+```bash
+python -m pip install -r tests/Client/audio_requirements.txt
+python tests/Client/tools/generate_audio_fixtures.py --verify
+```
+
+`--verify` generates into a temporary directory and byte-compares the complete expected set. The generator uses a fixed seed and 48 kHz sources. `audio_manifest.json` records filenames, hashes, rate, channel/frame metadata, roles, and generated peaks where applicable. `corrupt.wav` is a deliberately truncated RIFF header used as a negative fixture; do not “repair” it.
+
+The generated WAV family is consumed only by the interactive Client Audio Test. Core audio tests construct state and sample data in memory; they do not load these generated WAV files. A generated cue can therefore support an interactive scenario without becoming automated Core evidence.
+
+Running the script without `--verify` writes the committed output directory. Do that only when intentionally changing fixture semantics.
+
+## Regeneration and review workflow
+
+1. Identify the owning test or interactive page and state why existing fixtures cannot express the case.
+2. Change the generator when the family is generated; do not hand-edit generated WAV bytes or the manifest.
+3. Regenerate, then immediately run `--verify`.
+4. Review the committed binary set, `audio_manifest.json`, added/removed filenames, hashes, duration/channel properties, and the owning test or demonstration.
+5. Run the narrow automated suite or record the exact interactive action. Byte equality does not prove audible or visual correctness.
+6. Update [Tests and interactive pages](../../contributing/tests-and-interactive-pages/) ownership and documentation when a new family is introduced.
+
+For hand-authored Lua/shader fixtures, review the source diff and the consuming assertion. For model, image, or cubemap binaries, preserve license/support files and record their provenance. A support note or license is metadata—not an automated test.
+
+Evidence: [`generate_audio_fixtures.py`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/tools/generate_audio_fixtures.py), [`audio_manifest.json`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/res/sounds/generated/audio_manifest.json), [`AudioTest.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/src/layers/AudioTest.cpp), [`AUDIO_PLAYTEST.md`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/AUDIO_PLAYTEST.md), and [`tests/Core/res`](https://github.com/MaxMFonseca/MLE/tree/c1abea3de165032fe064300340807b7a6af388f8/tests/Core/res).
+
+{/* test-inventory: fixture|tests/Core/res/lua/**|test-fixtures|test-fixtures */}
+{/* test-inventory: fixture|tests/Core/res/shaders/**|test-fixtures|test-fixtures */}
+{/* test-inventory: fixture|tests/Core/res/textures/**|test-fixtures|test-fixtures */}
+{/* test-inventory: fixture|tests/Client/res/models/**|model-test|test-fixtures */}
+{/* test-inventory: fixture|tests/Client/res/textures/cubemaps/**|model-test|test-fixtures */}
+{/* test-inventory: fixture|tests/Client/res/shaders/ui/**|ui-test|test-fixtures */}
+{/* test-inventory: fixture|tests/Client/res/textures/ui/**|ui-test|test-fixtures */}
+{/* test-inventory: fixture|tests/Client/res/sounds/generated/**|audio-test|test-fixtures */}
+{/* test-inventory: fixture|tests/Client/res/sounds/ambient*|audio-test|test-fixtures */}
+{/* test-inventory: generator|tests/Client/tools/generate_audio_fixtures.py|test-fixtures|test-fixtures */}

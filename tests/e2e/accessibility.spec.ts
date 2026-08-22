@@ -1029,6 +1029,24 @@ for (const handbookCase of [
 		theme: 'dark',
 		selector: 'main table',
 	},
+	{
+		name: 'Core test inventory table in Light',
+		path: `/versions/${versionId}/tools/core-test-suite/`,
+		theme: 'light',
+		selector: 'main table',
+	},
+	{
+		name: 'fixture workflow code in Dark',
+		path: `/versions/${versionId}/tools/test-fixtures/`,
+		theme: 'dark',
+		selector: 'main pre',
+	},
+	{
+		name: 'Portuguese contributor test fallback table in Light',
+		path: `/pt-br/versions/${versionId}/contributing/tests-and-interactive-pages/`,
+		theme: 'light',
+		selector: 'main table',
+	},
 ] as const) {
   test(`runtime handbook accessibility: ${handbookCase.name} reflows locally and is axe-clean`, async ({
     page,

@@ -126,7 +126,7 @@ const contributorFoundations = [
 	},
 ] as const;
 
-const contributorPageIds = contributorFoundations.map(({ pageId }) => pageId).sort();
+const contributorPageIds = [...contributorFoundations.map(({ pageId }) => pageId), 'tests-and-interactive-pages'].sort();
 
 const referenceContracts = [
 	{
@@ -358,10 +358,10 @@ describe('getting-started foundations', () => {
 			.sort();
 
 		expect(physicalContributorPageIds()).toEqual(contributorPageIds);
-		expect(registryPageIds).toEqual([...contributorPageIds, 'tests-and-interactive-pages'].sort());
+		expect(registryPageIds).toEqual(contributorPageIds);
 	});
 
-	it('models the Contributing hub with exactly five available children and no planned groups', () => {
+	it('models the Contributing hub with exactly six available children and no planned groups', () => {
 		const model = buildSectionIndexModel({
 			sectionId: 'contributing',
 			version: versions[0],
@@ -385,13 +385,8 @@ describe('getting-started foundations', () => {
 		});
 
 		expect(model.available.map((child) => child.pageId).sort()).toEqual(contributorPageIds);
-		expect(model.plannedGroups).toEqual([
-			{
-				id: 'contributing-tests',
-				label: 'Tests and interactive pages',
-				children: [{ pageId: 'tests-and-interactive-pages', label: 'Tests and interactive pages', availability: 'planned' }],
-			},
-		]);
+		expect(model.available).toHaveLength(6);
+		expect(model.plannedGroups).toEqual([]);
 	});
 
 	it('keeps contributor testing expectations separate from the Start Here focused invocation', () => {

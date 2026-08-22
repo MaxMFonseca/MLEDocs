@@ -464,6 +464,13 @@ for (const handbookVisual of [
 		theme: 'dark',
 		width: 1280,
 	},
+	{
+		name: 'tools and test index desktop Light',
+		path: 'tools/core-test-suite/',
+		file: 'handbook-tools-test-index-desktop-light.png',
+		theme: 'light',
+		width: 1280,
+	},
 ] as const) {
 	test(handbookVisual.name, async ({ page }) => {
 		await page.setViewportSize({

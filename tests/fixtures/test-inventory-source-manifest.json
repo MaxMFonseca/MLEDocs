@@ -1,0 +1,241 @@
+{
+  "mleCommit": "c1abea3de165032fe064300340807b7a6af388f8",
+  "groups": [
+    {
+      "kind": "automated",
+      "ownerPageId": "audio-lifecycle-and-command-flow",
+      "documentedBy": "audio-test",
+      "paths": ["tests/Core/shutdown/T.AudioShutdown.cpp"]
+    },
+    {
+      "kind": "automated",
+      "ownerPageId": "buses-voices-and-limitations",
+      "documentedBy": "audio-test",
+      "paths": [
+        "tests/Core/src/audio/T.CombatEventAggregator.cpp",
+        "tests/Core/src/audio/T.SourcePlaybackState.cpp",
+        "tests/Core/src/audio/T.VoiceAllocator.cpp"
+      ]
+    },
+    {
+      "kind": "automated",
+      "ownerPageId": "playback-and-streaming",
+      "documentedBy": "audio-test",
+      "paths": ["tests/Core/src/audio/T.StreamGroup.cpp", "tests/Core/src/audio/T.StreamState.cpp"]
+    },
+    {
+      "kind": "automated",
+      "ownerPageId": "core-threading-and-performance",
+      "documentedBy": "core-test-suite",
+      "paths": ["tests/Core/src/core/T.ThreadPool.cpp"]
+    },
+    {
+      "kind": "automated",
+      "ownerPageId": "runtime-calls-and-bindings",
+      "documentedBy": "core-test-suite",
+      "paths": ["tests/Core/src/lua/T.Lua.cpp"]
+    },
+    {
+      "kind": "automated",
+      "ownerPageId": "geometry-and-intersections",
+      "documentedBy": "core-test-suite",
+      "paths": ["tests/Core/src/math/T.Types2D.cpp"]
+    },
+    {
+      "kind": "automated",
+      "ownerPageId": "renderer-resources-and-synchronization",
+      "documentedBy": "core-test-suite",
+      "paths": [
+        "tests/Core/src/renderer/T.Buffer.cpp",
+        "tests/Core/src/renderer/T.Image.cpp",
+        "tests/Core/src/renderer/T.TextureCache.cpp"
+      ]
+    },
+    {
+      "kind": "automated",
+      "ownerPageId": "animation-skeletons-and-cameras",
+      "documentedBy": "core-test-suite",
+      "paths": ["tests/Core/src/renderer/T.Camera.cpp"]
+    },
+    {
+      "kind": "automated",
+      "ownerPageId": "frame-vulkan-and-queues",
+      "documentedBy": "core-test-suite",
+      "paths": ["tests/Core/src/renderer/T.FrameRenderer.cpp"]
+    },
+    {
+      "kind": "automated",
+      "ownerPageId": "shaders-and-pipelines",
+      "documentedBy": "core-test-suite",
+      "paths": [
+        "tests/Core/src/renderer/T.Pipeline.cpp",
+        "tests/Core/src/renderer/T.Shader.cpp"
+      ]
+    },
+    {
+      "kind": "automated",
+      "ownerPageId": "animation-and-effects",
+      "documentedBy": "ui-test",
+      "paths": ["tests/Core/src/ui/T.Animation.cpp"]
+    },
+    {
+      "kind": "automated",
+      "ownerPageId": "entities-hierarchy-and-layout",
+      "documentedBy": "ui-test",
+      "paths": ["tests/Core/src/ui/T.Bounds.cpp", "tests/Core/src/ui/T.Tags.cpp"]
+    },
+    {
+      "kind": "automated",
+      "ownerPageId": "rendering-and-visuals",
+      "documentedBy": "ui-test",
+      "paths": [
+        "tests/Core/src/ui/T.NineSlice.cpp",
+        "tests/Core/src/ui/T.RenderingScissor.cpp",
+        "tests/Core/src/ui/T.Sprite.cpp",
+        "tests/Core/src/ui/T.Text.cpp"
+      ]
+    },
+    {
+      "kind": "automated",
+      "ownerPageId": "scrolling-and-popups",
+      "documentedBy": "ui-test",
+      "paths": ["tests/Core/src/ui/T.ScrollState.cpp"]
+    },
+    {
+      "kind": "automated",
+      "ownerPageId": "data-color-and-packing",
+      "documentedBy": "core-test-suite",
+      "paths": ["tests/Core/src/utils/T.Justify.cpp", "tests/Core/src/utils/T.RectPacker.cpp"]
+    },
+    {
+      "kind": "automated",
+      "ownerPageId": "utilities",
+      "documentedBy": "core-test-suite",
+      "paths": ["tests/Core/src/utils/T.String.cpp"]
+    },
+    {
+      "kind": "automated",
+      "ownerPageId": "text-input-and-focus",
+      "documentedBy": "interactive-client",
+      "paths": ["tests/Core/src/window/T.TextBox.cpp"]
+    },
+    {
+      "kind": "automated",
+      "ownerPageId": "window-and-input-contracts",
+      "documentedBy": "interactive-client",
+      "paths": ["tests/Core/src/window/T.UserInputManager.cpp"]
+    },
+    {
+      "kind": "interactive",
+      "ownerPageId": "audio-test",
+      "documentedBy": "audio-test",
+      "paths": ["tests/Client/res/lua/ui/AudioTestLayer.lua"]
+    },
+    {
+      "kind": "interactive",
+      "ownerPageId": "interactive-client",
+      "documentedBy": "interactive-client",
+      "paths": ["tests/Client/res/lua/ui/InitLayer.lua"]
+    },
+    {
+      "kind": "interactive",
+      "ownerPageId": "model-test",
+      "documentedBy": "model-test",
+      "paths": ["tests/Client/res/lua/ui/ModelTestLayer.lua"]
+    },
+    {
+      "kind": "interactive",
+      "ownerPageId": "ui-test",
+      "documentedBy": "ui-test",
+      "paths": [
+        "tests/Client/res/lua/ui/ui_tests/Animation.lua",
+        "tests/Client/res/lua/ui/ui_tests/FilterableList.lua",
+        "tests/Client/res/lua/ui/ui_tests/FormPanel.lua",
+        "tests/Client/res/lua/ui/ui_tests/Inventory.lua",
+        "tests/Client/res/lua/ui/ui_tests/Layer.lua",
+        "tests/Client/res/lua/ui/ui_tests/NineSlice.lua",
+        "tests/Client/res/lua/ui/ui_tests/PopupStack.lua",
+        "tests/Client/res/lua/ui/ui_tests/Scrollable.lua",
+        "tests/Client/res/lua/ui/ui_tests/SpriteProgressBar.lua",
+        "tests/Client/res/lua/ui/ui_tests/TextDropdownSelector.lua"
+      ]
+    },
+    {
+      "kind": "interactive",
+      "ownerPageId": "audio-test",
+      "documentedBy": "audio-test",
+      "paths": ["tests/Client/src/layers/AudioTest.cpp", "tests/Client/src/layers/AudioTest.h"]
+    },
+    {
+      "kind": "interactive",
+      "ownerPageId": "interactive-client",
+      "documentedBy": "interactive-client",
+      "paths": ["tests/Client/src/layers/Init.cpp", "tests/Client/src/layers/Init.h"]
+    },
+    {
+      "kind": "interactive",
+      "ownerPageId": "model-test",
+      "documentedBy": "model-test",
+      "paths": [
+        "tests/Client/src/layers/ModelTest.cpp",
+        "tests/Client/src/layers/ModelTest.h",
+        "tests/Client/src/layers/ModelTestAssets.cpp",
+        "tests/Client/src/layers/ModelTestAssets.h",
+        "tests/Client/src/layers/ModelTestCamera.cpp",
+        "tests/Client/src/layers/ModelTestCamera.h",
+        "tests/Client/src/layers/ModelTestRenderer.cpp",
+        "tests/Client/src/layers/ModelTestRenderer.h",
+        "tests/Client/src/layers/ModelTestScene.cpp",
+        "tests/Client/src/layers/ModelTestScene.h"
+      ]
+    },
+    {
+      "kind": "interactive",
+      "ownerPageId": "ui-test",
+      "documentedBy": "ui-test",
+      "paths": ["tests/Client/src/layers/UITest.cpp", "tests/Client/src/layers/UITest.h"]
+    },
+    {
+      "kind": "fixture",
+      "ownerPageId": "test-fixtures",
+      "documentedBy": "test-fixtures",
+      "paths": ["tests/Core/res/lua/**", "tests/Core/res/shaders/**", "tests/Core/res/textures/**"]
+    },
+    {
+      "kind": "fixture",
+      "ownerPageId": "model-test",
+      "documentedBy": "test-fixtures",
+      "paths": ["tests/Client/res/models/**", "tests/Client/res/textures/cubemaps/**"]
+    },
+    {
+      "kind": "fixture",
+      "ownerPageId": "ui-test",
+      "documentedBy": "test-fixtures",
+      "paths": ["tests/Client/res/shaders/ui/**", "tests/Client/res/textures/ui/**"]
+    },
+    {
+      "kind": "fixture",
+      "ownerPageId": "audio-test",
+      "documentedBy": "test-fixtures",
+      "paths": ["tests/Client/res/sounds/generated/**", "tests/Client/res/sounds/ambient*"]
+    },
+    {
+      "kind": "generator",
+      "ownerPageId": "test-fixtures",
+      "documentedBy": "test-fixtures",
+      "paths": ["tests/Client/tools/generate_audio_fixtures.py"]
+    },
+    {
+      "kind": "tool",
+      "ownerPageId": "mlecubes",
+      "documentedBy": "mlecubes",
+      "paths": [
+        "tools/MLECubes/CMakeLists.txt",
+        "tools/MLECubes/src/**",
+        "tools/MLECubes/res/lua/**",
+        "tools/MLECubes/res/shaders/**",
+        "tools/MLECubes/res/textures/**"
+      ]
+    }
+  ]
+}

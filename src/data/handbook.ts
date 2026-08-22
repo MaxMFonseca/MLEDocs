@@ -164,13 +164,13 @@ const handbookGroupsUnvalidated = [
 	]),
 	group('platform-tools', 'tools', 'Client and test tools', 24, [
 		{ pageId: 'interactive-client', slug: 'tools/interactive-client', title: 'Interactive Client', kind: 'tool', emphasis: 'focused', publication: 'published', subsystem: 'client' },
-		{ pageId: 'core-test-suite', slug: 'tools/core-test-suite', title: 'Core test suite', kind: 'tool', emphasis: 'focused', subsystem: 'core' },
-		{ pageId: 'model-test', slug: 'tools/model-test', title: 'Model Test', kind: 'tool', emphasis: 'focused', subsystem: 'models' },
-		{ pageId: 'test-fixtures', slug: 'tools/test-fixtures', title: 'Test fixtures', kind: 'tool', emphasis: 'focused', subsystem: 'tools' },
-		{ pageId: 'mlecubes', slug: 'tools/mlecubes', title: 'MLECubes', kind: 'tool', emphasis: 'focused', subsystem: 'tools' },
+		{ pageId: 'core-test-suite', slug: 'tools/core-test-suite', title: 'Core test suite', kind: 'tool', emphasis: 'focused', publication: 'published', subsystem: 'core' },
+		{ pageId: 'model-test', slug: 'tools/model-test', title: 'Model Test', kind: 'tool', emphasis: 'focused', publication: 'published', subsystem: 'models' },
+		{ pageId: 'test-fixtures', slug: 'tools/test-fixtures', title: 'Test fixtures', kind: 'tool', emphasis: 'focused', publication: 'published', subsystem: 'tools' },
+		{ pageId: 'mlecubes', slug: 'tools/mlecubes', title: 'MLECubes', kind: 'tool', emphasis: 'focused', publication: 'published', subsystem: 'tools' },
 	]),
 	group('contributing-tests', 'contributing', 'Tests and interactive pages', 25, [
-		{ pageId: 'tests-and-interactive-pages', slug: 'contributing/tests-and-interactive-pages', title: 'Tests and interactive pages', kind: 'contributing', emphasis: 'focused', subsystem: 'tools' },
+		{ pageId: 'tests-and-interactive-pages', slug: 'contributing/tests-and-interactive-pages', title: 'Tests and interactive pages', kind: 'contributing', emphasis: 'focused', publication: 'published', subsystem: 'tools' },
 	]),
 ] as const satisfies readonly HandbookGroup[];
 

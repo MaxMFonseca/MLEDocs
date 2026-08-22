@@ -54,6 +54,11 @@ for (const pageCase of [
 	{ path: 'guides/handle-input-focus-and-text/', title: 'Handle input, focus, and text' },
 	{ path: 'reference/window-and-input-contracts/', title: 'Window and input contracts' },
 	{ path: 'tools/interactive-client/', title: 'Interactive Client' },
+	{ path: 'tools/core-test-suite/', title: 'Core test suite' },
+	{ path: 'tools/model-test/', title: 'Model Test' },
+	{ path: 'tools/test-fixtures/', title: 'Test fixtures' },
+	{ path: 'tools/mlecubes/', title: 'MLECubes' },
+	{ path: 'contributing/tests-and-interactive-pages/', title: 'Tests and interactive pages' },
 ] as const) {
 	test(`${pageCase.title} renders as a pinned handbook page`, async ({ page }) => {
 		await page.goto(url(`/versions/${versionId}/${pageCase.path}`));
@@ -113,6 +118,34 @@ test('latest UI guide resolves to the permanent commit route', async ({ page }) 
 	await page.goto(url('/latest/guides/build-a-form-and-handle-input/'));
 	await expect(page).toHaveURL(new RegExp(`/MLEDocs/versions/${versionId}/guides/build-a-form-and-handle-input/$`));
 	await expect(page.getByRole('heading', { level: 1 })).toHaveText('Build a form and handle input');
+});
+
+test('latest test inventory resolves to the permanent commit route', async ({ page }) => {
+	await page.goto(url('/latest/tools/core-test-suite/'));
+	await expect(page).toHaveURL(new RegExp(`/MLEDocs/versions/${versionId}/tools/core-test-suite/$`));
+	await expect(page.getByRole('heading', { level: 1 })).toHaveText('Core test suite');
+});
+
+	test('Portuguese test inventory route is a visible same-commit English fallback', async ({ page }) => {
+		await page.goto(url(`/pt-br/versions/${versionId}/tools/core-test-suite/`));
+		await expect(page.getByRole('heading', { level: 1 })).toHaveText('Core test suite');
+		await expect(page.locator('main')).toHaveAttribute('lang', 'en');
+		await expect(page.locator('[data-mle-translation-status="fallback"]')).toContainText(
+			`Commit fixado: ${versionId}.`,
+		);
+		await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+		'href', new RegExp(`/MLEDocs/pt-br/versions/${versionId}/tools/core-test-suite/$`),
+	);
+});
+
+test('tools sidebar, pagination, and cross-links follow the final registry order', async ({ page }) => {
+	await page.goto(url(`/versions/${versionId}/tools/core-test-suite/`));
+	const labels = (await page.locator('#starlight__sidebar').getByRole('link').allTextContents()).map((label) => label.trim());
+	const start = labels.indexOf('Interactive Client');
+	expect(labels.slice(start, start + 5)).toEqual(['Interactive Client', 'Core test suite', 'Model Test', 'Test fixtures', 'MLECubes']);
+	await expect(page.getByRole('link', { name: 'Model Test', exact: true })).toHaveAttribute('href', /\/tools\/model-test\/$/);
+	await page.goto(url(`/versions/${versionId}/tools/model-test/`));
+	await expect(page.getByRole('link', { name: 'Test fixtures', exact: true })).toHaveAttribute('href', /\/tools\/test-fixtures\/$/);
 });
 
 test('Portuguese geometry route is a same-commit English fallback', async ({ page }) => {

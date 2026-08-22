@@ -61,7 +61,7 @@ function registryRouteSequence(
   const pageIds = [
     section.pageId,
     ...section.plannedGroups.flatMap((group) => group.children.map((child) => child.pageId)),
-  ].filter((pageId) => pageId !== 'tests-and-interactive-pages');
+  ];
   return pageIds.map((pageId) =>
     pageId === section.pageId
       ? `/MLEDocs${localePrefix}/versions/${versionId}/${section.segment}/`

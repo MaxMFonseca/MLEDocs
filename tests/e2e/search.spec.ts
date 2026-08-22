@@ -288,3 +288,13 @@ test('Pagefind returns the pinned UI key reference in active and all scopes', as
 	expect(await input.inputValue()).toBe('text_input_disable');
 	await expect.poll(async () => dialog.locator('.pagefind-ui__result').count()).toBeGreaterThan(1);
 });
+
+test('Pagefind discovers the published test and tool handbook', async ({ page }) => {
+	await page.goto(pageUrl('/versions/c1abea3de165/tools/core-test-suite/'));
+	const { dialog } = await openSearch(page, 'Search');
+	await dialog.locator('.pagefind-ui__search-input').fill('AudioLifecycle');
+	const result = dialog.locator('.pagefind-ui__result').filter({ hasText: 'Core test suite' }).first();
+	await expect(result).toBeVisible({ timeout: 15_000 });
+	await expect(result).toHaveAttribute('data-mle-search-version', 'c1abea3de165');
+	await expect(result).toHaveAttribute('data-mle-search-locale', 'en');
+});
