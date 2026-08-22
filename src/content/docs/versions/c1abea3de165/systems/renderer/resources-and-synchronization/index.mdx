@@ -1,0 +1,40 @@
+---
+title: Resources and synchronization
+description: Buffer, image, transfer, queue-family ownership, layout, cache readiness, and deferred-deletion contracts.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [renderer]
+sourceFiles: [src/mle/renderer/Buffer.cpp, src/mle/renderer/Image.cpp, src/mle/renderer/SyncManager.cpp, src/mle/renderer/TextureCache.cpp]
+testFiles: [tests/Core/src/renderer/T.Buffer.cpp, tests/Core/src/renderer/T.Image.cpp, tests/Core/src/renderer/T.TextureCache.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: renderer-resources-and-synchronization
+---
+
+MLE wraps Vulkan memory and synchronization in move-only resource types. `Buffer` and `Image` allocate through VMA; caches and frame services decide how long those wrappers remain alive.
+
+## Creation and transfer
+
+Choose `Buffer::CI::AllocationType` according to CPU access. A staging buffer is persistently mapped; GPU-only variants may require `writeStaged()`. Copies assert source/destination ranges and require the command buffer to match the resources' current queue-family ownership.
+
+`Image::transitionState()` translates an engine state such as `TRANSFER_DST`, `FS_READ`, `COLOR_ATT`, or `PRESENT` into a Vulkan layout, stage, and access mask, then records a synchronization2 barrier. Image copies and blits perform the required layout changes but do not silently fix a queue-family mismatch.
+
+When families differ, record queue-family ownership **release** on the old family, submit it, then record ownership **acquire** on the new family with the semaphore returned by the helper. When command types alias the same family, no ownership semaphore is needed.
+
+## Cache readiness
+
+`TextureCache::loadTexture()` reads `res/textures/<src>`, begins an asynchronous transfer, and returns `NOT_READY`. The fence callback acquires the image on graphics, transitions it for fragment sampling, and marks the cached entry ready. Later `get()` returns the image; an absent key returns `NOT_FOUND`. `addTextureWait()` performs the same path synchronously.
+
+Replacement keeps the previous shared image in a retired list until cache shutdown. This avoids immediate invalidation but is not a public eviction policy.
+
+## Completion and deletion
+
+`SyncManager` pools fences and semaphores. Its wait thread observes tracked fences and enqueues callbacks on `ThreadPool`; therefore a callback is asynchronous CPU work after GPU completion, not work performed on the render thread.
+
+Use frame-owned deletion when a resource was referenced by submitted frame commands. Deferred deletion runs only after that frame slot's fence is observed. The separate GC queue runs when `runGC()` is called. Renderer shutdown waits for device idle before clearing caches.
+
+Failures from allocation, file decoding, or lookup use `Result`/`Expected` where implemented. Vulkan errors and violated ownership/layout/thread preconditions frequently assert or become unrecoverable.
+
+Evidence: [`Buffer.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/renderer/Buffer.cpp), [`Image.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/renderer/Image.cpp), and [`T.Image.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Core/src/renderer/T.Image.cpp).

@@ -1,0 +1,44 @@
+---
+title: Control camera and animation
+description: Select a clip, bind it to a mesh, evaluate transforms, update skin data, and drive an independent Vulkan camera.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [renderer, models]
+sourceFiles: [src/mle/renderer/Animation.cpp, src/mle/renderer/AnimationCache.cpp, src/mle/renderer/SkinBinding.cpp, src/mle/renderer/Camera.cpp]
+testFiles: [tests/Core/src/renderer/T.Camera.cpp, tests/Client/src/layers/ModelTestCamera.cpp, tests/Client/src/layers/ModelTestScene.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: control-camera-and-animation
+---
+
+Camera movement and animation evaluation are independent. The application maps input to a `Camera`, advances clip time, evaluates mesh transforms, and supplies both results to its render pass.
+
+## Prerequisites
+
+Initialize the renderer, load a mesh pack with nonempty unique clip names, and retrieve the exact mesh and clip references from their caches. Allocate caller-owned transform storage for the mesh nodes and joint storage for the selected mesh-owned `SkinBinding`. Ensure render code and update code do not concurrently mutate that storage.
+
+## Sequence
+
+1. Retrieve `source#Clip` from `AnimationCache`; the unqualified source aliases only the first clip.
+2. Request `AnimationCache::getBinding(mesh, clip)`. This maps every animated target name to a retained mesh node.
+3. Advance time according to application policy. Evaluate the clip into node-global matrices, or use `evaluateNoInterpolation()` for sampled transforms.
+4. For a skinned mesh, combine node globals with the `SkinBinding` joint mapping and inverse-bind matrices, then upload the palette using the buffer/resource ownership rules.
+5. Configure `Camera` eye/target/up and perspective FOV/aspect/near/far, or choose orthographic bounds. Use `getViewProj()` as the pass expects.
+6. Map input outside `Camera`: Model Test demonstrates left-drag orbit, middle-drag pan, wheel zoom, and reset. Forward only the resulting calls (`rotateAroundTarget`, movement, `zoom`, and setters).
+7. Record the model draw with the camera and animation data on the responsible render thread/graphics queue.
+
+## Success signal
+
+The named clip resolves, evaluated node/joint matrices change over time, the intended mesh animates without joint-index errors, and camera input changes the view while the projection remains finite. The Core camera tests provide concrete matrix expectations.
+
+## Cleanup
+
+Caller-owned evaluation buffers follow the submission/deferred-deletion rules. Clip and `AnimationBinding` references end with `AnimationCache`. A `SkinBinding` ends with its owning `Mesh` in `MeshCache`; it is not owned by `SkeletonCache`. A separately requested `Skeleton` ends with `SkeletonCache`. After device idle, renderer shutdown clears the animation cache, then the skeleton cache, then the mesh cache.
+
+## Limitations
+
+Unsupported animation paths are ignored; malformed accessors/names or unresolved node relationships assert. Perspective clusters do not support orthographic cameras. Model Test controls and bone-attached held items are demonstrated integration, not a universal controller or animation-component contract.
+
+Evidence: [`AnimationCache.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/renderer/AnimationCache.cpp), [`Camera.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/renderer/Camera.cpp), and [`ModelTestCamera.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/src/layers/ModelTestCamera.cpp).

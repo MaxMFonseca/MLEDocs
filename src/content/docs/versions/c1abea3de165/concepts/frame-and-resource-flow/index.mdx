@@ -1,0 +1,39 @@
+---
+title: Frame and resource flow
+description: Follow one MLE frame from CPU coordination through render-thread recording, Vulkan submission, presentation, and deferred cleanup.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [renderer]
+sourceFiles: [src/mle/renderer/Renderer.cpp, src/mle/renderer/FrameRenderer.cpp, src/mle/renderer/RenderingThread.cpp, src/mle/renderer/CommandManager.cpp, src/mle/renderer/SyncManager.cpp]
+testFiles: [tests/Core/src/renderer/T.FrameRenderer.cpp, tests/Core/src/renderer/T.Buffer.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: frame-and-resource-flow
+---
+
+An MLE frame crosses several ownership boundaries. Keeping them separate is essential: non-render CPU work makes application state available, the `FrameRenderer` jthread owns the frame and synchronously calls `Client::render()`, a `RenderingThread` records a secondary command buffer during that call, the selected Vulkan graphics queue executes the completed primary buffer, and `presentKHR` hands the acquired swapchain image to presentation.
+
+## The sequence
+
+1. Client-side CPU code makes scene and resource state available to the renderer.
+2. The `FrameRenderer` jthread waits for work and calls `beginFrame()`. It waits on the next frame fence, resets its command pool and frame-local buffer cursors, runs next-frame callbacks and deferred deletion, then recreates a dirty swapchain if required.
+3. `acquireNextImage()` obtains a swapchain image and signals the frame's image-available semaphore. An iconified or zero-sized window keeps the swapchain not visible instead of producing a frame.
+4. Still on the `FrameRenderer` jthread, `Client::render()` invokes the active layers. A `RenderingThread` calls `getSecondaryCommandBuffer()`, records its pass, and calls `executeCommands()` to insert that secondary buffer into the current primary buffer. Allocation, recording, and execution happen on the same `FrameRenderer` thread; both endpoints assert that boundary.
+5. `endFrame()` runs the configured present pass, or the default full-screen color-correction pass, and transitions the swapchain wrapper to `PRESENT`.
+6. The primary buffer is submitted to the graphics queue, waiting on image availability and signaling a per-swapchain-image semaphore. `presentKHR` waits on that signal.
+
+The compute and transfer command types may map to the graphics family or to separate families. That topology is **selected-device-dependent**, so do not write integration code that assumes three distinct queues.
+
+## Resource lifetime across frames
+
+Uploads can begin on the transfer queue and complete through a fence callback before an acquire/transition on graphics. A cached texture remains `NOT_READY` during this interval. When work must outlive the recording scope, move its staging buffer or image into the callback that observes completion.
+
+`deleteAfterFrame()` adds destruction to a frame slot. The callback runs only after that slot's frame fence is observed on a later reuse. The separate garbage collector executes callbacks through `runGC()`; enqueueing alone is not a completion guarantee. Renderer shutdown waits for the device before clearing caches and Vulkan services.
+
+## Failure boundaries
+
+Out-of-date and suboptimal acquire/present results mark the swapchain dirty. Other Vulkan failures flow through `check()` and can become unrecoverable. Command-buffer thread mismatches, missing ownership transfers, and invalid render ordering are assertions rather than recoverable results.
+
+Evidence: [`FrameRenderer.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/renderer/FrameRenderer.cpp), [`RenderingThread.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/renderer/RenderingThread.cpp), and [`CommandManager.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/renderer/CommandManager.cpp).

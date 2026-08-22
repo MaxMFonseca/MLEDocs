@@ -1,0 +1,36 @@
+---
+title: Targets, text, and composition
+description: Dynamic-rendering attachments, image composition, textures, atlases, glyph SDF pages, and the default present pass.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [renderer]
+sourceFiles: [src/mle/renderer/RenderingThread.cpp, src/mle/renderer/Image.cpp, src/mle/renderer/TextureAtlas.cpp, src/mle/renderer/Font.cpp, src/mle/renderer/FontCache.cpp]
+testFiles: [tests/Core/src/renderer/T.Image.cpp, tests/Core/src/renderer/T.TextureCache.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: targets-text-and-composition
+---
+
+MLE composes off-screen images with Vulkan dynamic rendering, then sends one image through a configurable or default present pass. `RenderingThread` is the recording façade for attachments, viewports, scissors, draws, and compute dispatch.
+
+## Attachments and image operations
+
+Set at least one color or depth attachment before `beginRendering()`. The recorder transitions color images to `COLOR_ATT` and depth to `DEPTH_ATT`; a zero-sized render area expands to the attachment extent. Viewport and scissor defaults follow the render area. Changing attachments ends an active rendering scope.
+
+`Image` also exposes copies, linear blits, blending, clears, readback/PNG, cubemap loading, and custom views. These operations still require correct queue-family ownership and usage-capable formats. The default present pass dynamically renders a full-screen triangle with `mle/present/color_correct.frag`; a null frame image instead clears the swapchain image.
+
+## Textures and atlases
+
+`TextureCache` owns default checkerboard, white, black, and flat-normal images plus named samplers. File loads are asynchronous unless the wait variant is chosen. `TextureAtlas` packs uploaded regions and returns normalized UV rectangles; it may chain another atlas when enabled. `enqueueCopy()` alone does not upload pixels—request or perform a flush at an appropriate frame boundary.
+
+## Font flow
+
+`FontCache` owns `Font` objects. A font rasterizes glyphs, builds signed-distance-field pixels, and places them in atlas pages. UI text uses instanced quads carrying position, size, and atlas UV data; `ui/text.frag` derives text and border coverage from the sampled SDF. This page describes renderer mechanics; text layout and UI element behavior belong to the UI section.
+
+## Boundaries
+
+The Core tests cover image operations and texture cache readiness, but not the font/atlas pipeline or complete presentation. Atlas chaining, font rasterization, UI blur, nine-slice, and other first-party shaders are source-observed. Their use by interactive Client layers demonstrates integration without making it a cross-platform guarantee.
+
+Evidence: [`RenderingThread.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/renderer/RenderingThread.cpp), [`TextureAtlas.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/renderer/TextureAtlas.cpp), and [`Font.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/renderer/Font.cpp).

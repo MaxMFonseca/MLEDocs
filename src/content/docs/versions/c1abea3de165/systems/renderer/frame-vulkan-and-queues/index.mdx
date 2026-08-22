@@ -1,0 +1,39 @@
+---
+title: Frame, Vulkan, and queues
+description: Vulkan device requirements, selected queue topology, frame slots, command recording, submission, and presentation in MLE.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [renderer]
+sourceFiles: [src/mle/renderer/VkCtx.cpp, src/mle/renderer/FrameRenderer.cpp, src/mle/renderer/CommandManager.cpp, src/mle/renderer/RenderingThread.cpp]
+testFiles: [tests/Core/src/renderer/T.FrameRenderer.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: frame-vulkan-and-queues
+---
+
+`VkCtx`, `RendererCommandManager`, and `FrameRenderer` turn an initialized client window into submitted and presented Vulkan work. They are internal services exposed through `Renderer::i()`; callers must preserve their thread and lifetime rules.
+
+## Device and queue selection
+
+`VkCtx` builds a Vulkan 1.3 instance, client surface, physical/logical device, and VMA allocator. Client builds request swapchain, push descriptors, dynamic rendering, synchronization2, descriptor indexing/runtime arrays, update-after-bind, extended dynamic state, non-solid fill, and wide lines. Buffer device address and host query reset are also enabled. The code requests these features without a complete support preflight, so creation can fail on an unsuitable driver.
+
+Queue scoring prefers graphics/present, a compute-only family where available, and a transfer-only family where available. Compute or transfer otherwise aliases another queue. Consequently, queue count and family ownership are selected-device-dependent.
+
+## Frame ownership
+
+`FrameRenderer` owns two reusable `FrameData` slots. Its jthread alone owns `beginFrame()` and `endFrame()`. Beginning a slot waits for its fence, resets the pool and host-buffer cursors, runs the slot's deletion stack, handles a dirty swapchain, and acquires the next image. A `RenderingThread` records a secondary buffer; `executeCommands()` must run from the frame thread that owns the primary command buffer.
+
+At frame end, the present pass writes the acquired image, the engine transitions it to `PRESENT`, graphics submission waits on image availability and signals a swapchain-image semaphore, and `presentKHR` waits on that semaphore. Out-of-date/suboptimal results schedule recreation. A zero-sized/iconified window yields `SWAPCHAIN_NOT_VISIBLE` instead of a drawable frame.
+
+## Command rules
+
+- A `CommandBuffer` must be submitted, reclaimed, or invalidated before destruction.
+- One-time command buffers are pooled by calling thread; synchronous submission reclaims on that thread.
+- Submission is serialized per underlying queue. `waitDeviceIdle()` locks every queue submit mutex before waiting.
+- Graphics draws require active dynamic rendering and a pipeline. Compute dispatch requires a compute pipeline outside rendering.
+
+The command manager is explicitly marked for rework in the pinned source. Treat these contracts as snapshot behavior, not a stable abstraction.
+
+Evidence: [`VkCtx.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/renderer/VkCtx.cpp), [`FrameRenderer.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/renderer/FrameRenderer.cpp), and [`T.FrameRenderer.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Core/src/renderer/T.FrameRenderer.cpp).

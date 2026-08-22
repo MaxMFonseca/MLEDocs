@@ -1,0 +1,48 @@
+---
+title: Upload and render a model
+description: Load a GLTF pack, choose a mesh node, and record an indexed model draw with explicit upload and ownership boundaries.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [renderer, models]
+sourceFiles: [src/mle/renderer/Renderer.cpp, src/mle/renderer/GLTF.cpp, src/mle/renderer/Mesh.cpp, src/mle/renderer/RenderingThread.cpp]
+testFiles: [tests/Client/src/layers/ModelTestAssets.cpp, tests/Client/src/layers/ModelTestRenderer.cpp, tests/Core/src/renderer/T.Buffer.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: upload-and-render-a-model
+---
+
+This guide follows `Renderer::addMeshPack()` and the Model Test render path. It deliberately stops below Model Test's application-specific PBR graph.
+
+## Prerequisites
+
+Initialize Core, a client window, and `Renderer`. Place a `.glb`/`.gltf` under `res/models` with a usable default scene and supported accessors. Have a graphics pipeline whose reflected vertex layout and material descriptors match the data you intend to draw.
+
+## Sequence
+
+1. Call `Renderer::i().addMeshPack("path/model.glb")`. The CPU loader reads GLTF, adds named clips, walks mesh-bearing default-scene nodes, and builds `Mesh` objects. Each primitive creates separate vertex and index buffers and synchronously waits for transfer submission plus graphics ownership acquire. Embedded material images use `addTextureWait()` synchronously.
+2. Select an exact mesh key, normally `path/model.glb#Node`. The base name aliases the first discovered mesh and is unsuitable when node order matters.
+3. Retain only non-owning references while the mesh/texture caches remain alive. Embedded GLTF textures are ready when `addMeshPack()` returns because they use `addTextureWait()`. The general `loadTexture()` path is asynchronous: `NOT_READY` means pending and `NOT_FOUND` means the key does not exist.
+4. On the frame/render thread, create or receive a `RenderingThread`, set color/depth attachments, and begin dynamic rendering.
+5. Bind the compatible pipeline, that primitive's vertex/index buffers, material descriptor data, camera/model push data, then issue `drawIndexed`. On the same `FrameRenderer` thread, `executeCommands()` inserts the completed secondary buffer into the current primary buffer.
+
+```cpp
+Renderer::i().addMeshPack("characters/hero.glb");
+auto mesh = Renderer::i().meshCache().get(entt::hashed_string{"characters/hero.glb#Body"});
+// Record the mesh's primitive buffers and material data with the owning render path.
+```
+
+## Success signal
+
+The qualified mesh lookup succeeds, each chosen primitive has its own vertex/index buffers and material references, the embedded textures are already ready, and the submitted frame displays the selected primitive without validation errors.
+
+## Cleanup
+
+Do not manually destroy cache-owned mesh/material resources. Stop frame work and allow `Renderer::shutdown()` to wait for device idle, then clear model and texture caches before destroying `VkCtx`.
+
+## Limitations
+
+The current loader does not establish full GLTF conformance. Model Test's qualified input/completion syntax, shader modes, backgrounds, held items, and render passes are demonstrations rather than guaranteed engine APIs. Queue topology and upload ownership transitions depend on the selected device.
+
+Evidence: [`Renderer.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/renderer/Renderer.cpp), [`Mesh.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/renderer/Mesh.cpp), and [`ModelTestRenderer.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/src/layers/ModelTestRenderer.cpp).

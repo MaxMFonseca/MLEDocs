@@ -1,0 +1,36 @@
+---
+title: Shaders and pipelines
+description: Compiled shader lookup, SPIR-V reflection, descriptor merging, push data, and graphics/compute pipeline constraints.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [renderer]
+sourceFiles: [src/mle/renderer/Shader.cpp, src/mle/renderer/ShaderCache.cpp, src/mle/renderer/Pipeline.cpp, src/mle/renderer/PipelineCache.cpp, src/mle/renderer/DescriptorPool.cpp]
+testFiles: [tests/Core/src/renderer/T.Shader.cpp, tests/Core/src/renderer/T.Pipeline.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: shaders-and-pipelines
+---
+
+MLE consumes compiled SPIR-V and derives much of its pipeline interface through reflection. `ShaderCache::get("scene/vox.vert")` resolves `res/shaders/scene/vox.vert.spv`; the name must retain the `.vert`, `.frag`, or `.comp` stage suffix before `.spv`.
+
+## Reflection contracts
+
+Vertex inputs must start at location zero and remain consecutive. Names beginning with `ini_` are treated as per-instance attributes, and every `ini_` attribute must appear after all vertex attributes. Reflection builds vertex/instance bindings and strides from those declarations.
+
+Descriptor sets are sorted and merged across stages. A matching set/binding must agree on descriptor type and count; mismatch is unrecoverable. Named uniform descriptors retain reflected member offsets/sizes. A shader stage supports at most **one push-constant block per stage**. Pipeline creation merges compatible stage ranges and uses reflected offsets when `RenderingThread::pushConstants()` copies bytes.
+
+## Pipeline creation and use
+
+A compute pipeline supplies only `compute_shader`. A graphics pipeline supplies vertex/fragment stages plus attachment formats and selected raster, depth, blend, topology, and dynamic state. External descriptor-set layouts may replace reflected sets; one selected set may use push descriptors.
+
+During recording, set the pipeline before descriptor sets, push descriptors, push constants, or draws. Graphics operations belong inside dynamic rendering; compute dispatch belongs outside it. `PipelineCache` and `ShaderCache` own their objects until replacement or renderer shutdown.
+
+## Failure and maturity
+
+Unsupported stage extensions, reflection types, nonconsecutive attributes, incompatible bindings, missing pipelines, and Vulkan creation failures assert or abort. `GrowDescriptorPool` grows after out-of-pool/fragmented results but treats other allocation errors as unrecoverable. The reflected interface is practical internal machinery, not a polished or stable shader SDK.
+
+The Core tests cover vertex/instance reflection, descriptor and push-constant reflection/merging, and representative graphics/compute pipeline creation. They do not validate every shipped shader or driver.
+
+Evidence: [`Shader.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/renderer/Shader.cpp), [`Pipeline.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/renderer/Pipeline.cpp), and [`T.Shader.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Core/src/renderer/T.Shader.cpp).

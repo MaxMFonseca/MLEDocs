@@ -1,0 +1,38 @@
+---
+title: Loading meshes and materials
+description: GLTF path resolution, scene-node selection, mesh buffer upload, material texture ownership, aliases, and loader limitations.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [renderer, models]
+sourceFiles: [src/mle/renderer/GLTF.cpp, src/mle/renderer/Mesh.cpp, src/mle/renderer/MeshCache.cpp, src/mle/renderer/Renderer.cpp]
+testFiles: [tests/Client/src/layers/ModelTestAssets.cpp, tests/Core/src/renderer/T.Buffer.cpp, tests/Core/src/renderer/T.TextureCache.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: loading-meshes-and-materials
+---
+
+`GLTF::load()` accepts `.glb` and `.gltf`. A missing path, unsupported extension, or TinyGLTF load failure returns `FAILED_TO_OPEN`; loader warnings are logged. Accessor-shape violations and unsupported component types generally assert.
+
+## From file to cache
+
+`Renderer::addMeshPack(name)` resolves `res/models/<name>` and appends `.glb` only when no extension is supplied. After loading, it adds every named animation and walks mesh-bearing nodes from the selected default scene.
+
+Each mesh key is `name#node`. Duplicate node names receive an `@<node-index>` suffix during scene enumeration. The **first** mesh receives the base pack alias and, separately, the first animation receives its base alias. That convenience is ordering-dependent; use the qualified key when the exact node or clip matters.
+
+`Mesh::init()` preserves the chosen node's ancestors and referenced skin joints. Each primitive creates separate vertex and index buffers. Both uploads synchronously wait for their transfer submission and the graphics-queue ownership acquire before `Primitive::load()` returns. Supported attributes include positions plus the implemented color/normal/UV/joint/weight paths; the source asserts expected accessor types.
+
+Embedded material images are converted to RGBA and inserted through `TextureCache::addTextureWait()`, with the appropriate sRGB choice for color textures. This embedded GLTF workflow is synchronous. The cache's general `loadTexture()` path is different: it can return `NOT_READY` while an asynchronous load is pending.
+
+## Ownership and observable result
+
+`MeshCache` owns `Mesh` objects; `TextureCache` owns material images. Returned references do not transfer ownership. After the pack is added, retrieving the qualified hash should return a non-null mesh whose primitives reference uploaded buffers and materials. A renderer can then bind the mesh buffers, its pipeline/descriptors, and issue indexed draws.
+
+## Cleanup and limits
+
+Mesh and texture wrappers must die before the Vulkan context. Renderer shutdown clears mesh resources after device idle. The loader is not documented as full GLTF conformance: sparse accessors, morph targets, arbitrary material extensions, and every image/component form are not established by source or automated tests.
+
+Model Test accepts paths such as `i/path/model.glb#Node` and demonstrates completion and selection. That syntax and the test's PBR passes are application behavior, not a guaranteed public loader API.
+
+Evidence: [`GLTF.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/renderer/GLTF.cpp), [`Mesh.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/renderer/Mesh.cpp), and [`ModelTestAssets.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/src/layers/ModelTestAssets.cpp).

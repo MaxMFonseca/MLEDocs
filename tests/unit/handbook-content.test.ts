@@ -25,6 +25,22 @@ const contracts = [
 	['core-math-utility-types', 'reference/core-math-utility-types', ['core', 'math', 'utilities']],
 ] as const;
 
+const rendererContracts = [
+	['frame-and-resource-flow', 'concepts/frame-and-resource-flow', ['renderer']],
+	['renderer-overview', 'systems/renderer', ['renderer']],
+	['frame-vulkan-and-queues', 'systems/renderer/frame-vulkan-and-queues', ['renderer']],
+	['renderer-resources-and-synchronization', 'systems/renderer/resources-and-synchronization', ['renderer']],
+	['shaders-and-pipelines', 'systems/renderer/shaders-and-pipelines', ['renderer']],
+	['targets-text-and-composition', 'systems/renderer/targets-text-and-composition', ['renderer']],
+	['models', 'systems/models', ['renderer', 'models']],
+	['loading-meshes-and-materials', 'systems/models/loading-meshes-and-materials', ['renderer', 'models']],
+	['animation-skeletons-and-cameras', 'systems/models/animation-skeletons-and-cameras', ['renderer', 'models']],
+	['create-a-shader-and-pipeline', 'guides/create-a-shader-and-pipeline', ['renderer']],
+	['upload-and-render-a-model', 'guides/upload-and-render-a-model', ['renderer', 'models']],
+	['control-camera-and-animation', 'guides/control-camera-and-animation', ['renderer', 'models']],
+	['renderer-and-resource-contracts', 'reference/renderer-and-resource-contracts', ['renderer', 'models']],
+] as const;
+
 const ownership: Readonly<Record<string, { sourceFiles: readonly string[]; testFiles: readonly string[] }>> = {
 	architecture: {
 		sourceFiles: ['src/mle/Entry.inl', 'src/mle/core/Core.cpp', 'src/mle/client/Client.cpp'],
@@ -112,7 +128,7 @@ describe('runtime foundations handbook content', () => {
 				.filter(({ publication }) => publication === 'published')
 				.map(({ pageId }) => pageId)
 				.sort(),
-		).toEqual([...contracts.map(([pageId]) => pageId), 'renderer-overview'].sort());
+		).toEqual([...contracts.map(([pageId]) => pageId), ...rendererContracts.map(([pageId]) => pageId)].sort());
 	});
 
 	it.each(contracts)('%s has pinned, canonical technical metadata', (pageId, slug, subsystems) => {
@@ -236,5 +252,100 @@ describe('runtime foundations handbook content', () => {
 		expect(text).not.toMatch(/\b(?:ERR|SHUTTING_DOWN|SHUTDOWN|NEEDS_RECREATION|NULL_PTR|Quatf|CBytesRef)\b/);
 		expect(text).toMatch(/owner page/i);
 		expect(text).toMatch(/not.*(?:API|SDK).*stability/is);
+	});
+});
+
+describe('renderer and models handbook content', () => {
+	it('publishes the exact 13 renderer and model records without advancing later systems', () => {
+		for (const [pageId] of rendererContracts) {
+			expect(handbookPages.find((page) => page.pageId === pageId)?.publication).toBe('published');
+		}
+		for (const pageId of ['lua', 'ui', 'audio', 'client', 'tools-and-test-applications']) {
+			expect(handbookPages.find((page) => page.pageId === pageId)?.publication).not.toBe('published');
+		}
+	});
+
+	it.each(rendererContracts)('%s has canonical pinned evidence and an exact physical route', (pageId, slug, subsystems) => {
+		const text = source(slug);
+		const parsed = parseFrontmatter(text);
+		const metadata = technicalPageMetadataSchema.parse(parsed.frontmatter);
+		expect(metadata).toMatchObject({
+			mleCommit: commit,
+			maturity: 'in-development',
+			pageId,
+			translationStatus: 'canonical',
+		});
+		expect(metadata.audiences).toEqual(expect.arrayContaining(['integrator', 'contributor']));
+		expect(metadata.subsystems).toEqual(subsystems);
+		expect(metadata.sourceFiles.length).toBeGreaterThan(0);
+		expect(metadata.testFiles.length).toBeGreaterThan(0);
+		expect(metadata.lastVerified).toBe(pageId === 'renderer-overview' ? '2026-08-20' : '2026-08-21');
+		expect(handbookPages.find((page) => page.pageId === pageId)).toMatchObject({ slug, publication: 'published' });
+		expect(text).toContain(`github.com/MaxMFonseca/MLE/blob/${commit}/`);
+		expect(text).not.toMatch(/\b(?:TBD|lorem ipsum|Doxygen)\b/i);
+	});
+
+	it('keeps CPU orchestration, render-thread recording, queue submission, and presentation distinct', () => {
+		const text = source('concepts/frame-and-resource-flow');
+		expect(text).toMatch(/FrameRenderer.*jthread.*Client::render\(\).*RenderingThread.*secondary command buffer.*graphics queue.*presentKHR/is);
+		expect(text).toMatch(/getSecondaryCommandBuffer.*executeCommands.*same.*FrameRenderer.*thread/is);
+		expect(text).not.toMatch(/worker(?:-side| thread).*RenderingThread/is);
+		expect(text).toMatch(/selected-device-dependent/i);
+		expect(text).toMatch(/deferred deletion.*frame fence/is);
+	});
+
+	it('states resource and shader preconditions at their use boundaries', () => {
+		const resources = source('systems/renderer/resources-and-synchronization');
+		expect(resources).toMatch(/queue-family ownership.*release.*acquire/is);
+		expect(resources).toMatch(/NOT_READY.*NOT_FOUND/s);
+		expect(resources).toMatch(/layout.*transitionState.*barrier/is);
+		const shaders = source('systems/renderer/shaders-and-pipelines');
+		expect(shaders).toMatch(/\.vert.*\.frag.*\.comp.*\.spv/s);
+		expect(shaders).toMatch(/ini_.*after.*vertex attributes/is);
+		expect(shaders).toMatch(/one push-constant block.*stage/is);
+		const guide = source('guides/create-a-shader-and-pipeline');
+		expect(guide).toContain('getVkImageFormat(ImageFormat::COLOR)');
+		expect(guide).toContain('pipelineCache().setPipeline("my/pass", ci)');
+		expect(guide).toMatch(
+			/std::array color_attachment_formats = \{.*getVkImageFormat\(ImageFormat::COLOR\).*\};.*auto blend_attachments = Pipeline::makeDefaultBlendAttachments<1>\(\);.*ci\.color_attachment_formats = color_attachment_formats;.*ci\.blend_attachments = blend_attachments;.*setPipeline\("my\/pass", ci\)/s,
+		);
+		expect(guide).not.toMatch(/ci\.color_attachment_formats\s*=\s*\{/);
+		expect(guide).not.toContain('getFormat(ImageFormat::COLOR)');
+		expect(guide).not.toContain('pipelineCache().add(');
+	});
+
+	it('separates source contracts, automated tests, and Model Test demonstrations', () => {
+		const models = source('systems/models');
+		expect(models).toMatch(/Model Test.*demonstration.*not.*guarantee/is);
+		expect(models).toMatch(/addMeshPack.*animation.*mesh caches/is);
+		expect(models).toMatch(/Mesh.*owns.*SkinBinding.*node indices.*inverse binds/is);
+		expect(models).toMatch(/Skeleton.*joint names.*parent relationships.*separate.*otherwise unused cache/is);
+		const loading = source('systems/models/loading-meshes-and-materials');
+		expect(loading).toMatch(/\.glb.*\.gltf.*FAILED_TO_OPEN/s);
+		expect(loading).toMatch(/name#.*first.*alias/is);
+		expect(loading).toMatch(/each primitive.*separate.*vertex.*index buffers.*synchronous.*transfer.*acquire/is);
+		expect(loading).toMatch(/embedded.*addTextureWait.*synchronous/is);
+		const animation = source('systems/models/animation-skeletons-and-cameras');
+		expect(animation).toMatch(/nonempty.*unique.*animation/is);
+		expect(animation).toMatch(/Mesh.*owns.*SkinBinding.*node indices.*inverse binds/is);
+		expect(animation).toMatch(/Skeleton.*joint names.*parent relationships.*separate.*otherwise unused cache/is);
+		expect(animation).toMatch(/mesh-owned SkinBinding.*animation integration.*source-observed.*Model Test/is);
+		expect(animation).toMatch(/Camera.*perspective.*orthographic/is);
+		const upload = source('guides/upload-and-render-a-model');
+		expect(upload).toMatch(/embedded.*addTextureWait.*synchronous/is);
+		expect(upload).toMatch(/general.*loadTexture.*asynchronous.*NOT_READY/is);
+		const control = source('guides/control-camera-and-animation');
+		expect(control).toMatch(/SkinBinding.*ends with.*Mesh.*MeshCache/is);
+		expect(control).not.toMatch(/mesh, clip, skeleton, and binding references must not outlive their caches/i);
+	});
+
+	it('gives every guide an observable result, cleanup, and limitation boundary', () => {
+		for (const slug of ['guides/create-a-shader-and-pipeline', 'guides/upload-and-render-a-model', 'guides/control-camera-and-animation']) {
+			const text = source(slug);
+			expect(text).toMatch(/Prerequisites/i);
+			expect(text).toMatch(/Success signal/i);
+			expect(text).toMatch(/Cleanup/i);
+			expect(text).toMatch(/Limitations/i);
+		}
 	});
 });

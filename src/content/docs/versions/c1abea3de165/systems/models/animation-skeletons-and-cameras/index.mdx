@@ -1,0 +1,36 @@
+---
+title: Animation, skeletons, and cameras
+description: Clip loading, skeleton and mesh binding, evaluated transforms, camera matrices, input separation, and demonstrated model controls.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [renderer, models]
+sourceFiles: [src/mle/renderer/Animation.cpp, src/mle/renderer/AnimationCache.cpp, src/mle/renderer/Skeleton.cpp, src/mle/renderer/SkinBinding.cpp, src/mle/renderer/Camera.cpp]
+testFiles: [tests/Core/src/renderer/T.Camera.cpp, tests/Client/src/layers/ModelTestCamera.cpp, tests/Client/src/layers/ModelTestScene.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: animation-skeletons-and-cameras
+---
+
+MLE separates animation data from the mesh it drives. `AnimationClip` owns channel keyframes and `AnimationBinding` maps channel target names to a particular mesh's nodes. Each `Mesh` owns its `SkinBinding` values; each binding owns joint node indices and inverse binds used with that mesh's evaluated node globals. `Skeleton` contains only joint names and parent relationships in a separate, otherwise unused cache at this snapshot.
+
+## Loading and binding
+
+`AnimationCache` requires **nonempty, unique animation names** within a source file. Keys are `source#clip`; the source name may alias the first clip. Translation, rotation, and scale channels are decoded from supported float accessors. Unsupported channel paths are ignored, while malformed accessor relationships assert.
+
+`getBinding(mesh, clip)` resolves each animated target name through the mesh node table and caches the mapping by mesh/clip pointer pair. `AnimationClip::evaluate()` interpolates into caller-provided node-global matrices; the no-interpolation variant samples without interpolation. The mesh-owned `SkinBinding` then combines those node globals with its joint node indices and inverse binds for shader data. `Renderer::addMeshPack()` fills the animation and mesh caches; it does not add an entry to `SkeletonCache`.
+
+## Camera responsibility
+
+`Camera` owns eye, target, up, cached view/projection matrices, and either **perspective** or **orthographic** projection. It flips the projection Y row for Vulkan. Mutators mark cached matrices dirty. Orbit clamps pitch, zoom clamps distance to 0.1, and view-cluster generation currently supports perspective only.
+
+The camera does not read window input. Model Test's camera layer demonstrates left-drag orbit, middle-drag pan, wheel zoom, reset, and pausing over its inspector; another application may map input differently.
+
+## Threading, cleanup, and evidence
+
+Clip evaluation writes caller-owned spans, so the caller must prevent concurrent mutation/use. Cache references remain valid only while the mesh/animation caches own their objects. `AnimationCache::shutdown()` clears clips and animation bindings; clearing `MeshCache` destroys the meshes and their `SkinBinding` values. The separate, otherwise unused skeleton cache is also cleared during renderer shutdown after device idle.
+
+The Core camera tests cover matrix dirtiness, perspective/orthographic projection, orbit, local movement, zoom, inverses, and perspective clusters. Mesh-owned SkinBinding and animation integration are source-observed and demonstrated by Model Test rather than directly covered by the Core renderer suite.
+
+Evidence: [`Animation.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/renderer/Animation.cpp), [`SkinBinding.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/renderer/SkinBinding.cpp), and [`T.Camera.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Core/src/renderer/T.Camera.cpp).

@@ -436,7 +436,7 @@ test('skip link is first in the visible focus order and targets the page heading
   await expect(skipLink).toBeInViewport();
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/#_top$/);
-  await expect(page.getByRole('heading', { level: 1, name: 'Renderer overview' })).toBeInViewport();
+  await expect(page.getByRole('heading', { level: 1, name: 'Renderer' })).toBeInViewport();
 });
 
 test('desktop and mobile controls have accessible names and valid relationships', async ({ page }) => {
@@ -948,6 +948,18 @@ for (const handbookCase of [
   {
     name: 'reference table in Dark',
     path: `/versions/${versionId}/reference/core-math-utility-types/`,
+    theme: 'dark',
+    selector: 'main table',
+  },
+  {
+    name: 'renderer guide code in Light',
+    path: `/versions/${versionId}/guides/create-a-shader-and-pipeline/`,
+    theme: 'light',
+    selector: 'main pre',
+  },
+  {
+    name: 'renderer contracts table in Dark',
+    path: `/versions/${versionId}/reference/renderer-and-resource-contracts/`,
     theme: 'dark',
     selector: 'main table',
   },

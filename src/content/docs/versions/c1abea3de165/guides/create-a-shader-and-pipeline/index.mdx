@@ -1,0 +1,58 @@
+---
+title: Create a shader and pipeline
+description: Add compiled SPIR-V, satisfy MLE reflection conventions, create a cached pipeline, and record a valid draw or dispatch.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [renderer]
+sourceFiles: [src/mle/renderer/Shader.cpp, src/mle/renderer/ShaderCache.cpp, src/mle/renderer/Pipeline.cpp, src/mle/renderer/RenderingThread.cpp]
+testFiles: [tests/Core/src/renderer/T.Shader.cpp, tests/Core/src/renderer/T.Pipeline.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: create-a-shader-and-pipeline
+---
+
+This path follows the cache and reflection code used by shipped MLE shaders. It describes the current internal API rather than promising a stable shader SDK.
+
+## Prerequisites
+
+Initialize `Renderer` and keep its Vulkan device, shader cache, and pipeline cache alive. Compile GLSL to SPIR-V under `res/shaders`; preserve the stage in the output name, for example `my/pass.vert.spv` and `my/pass.frag.spv`.
+
+## Sequence
+
+1. Declare consecutive vertex input locations beginning at zero. Put per-instance inputs after vertex inputs and prefix their names with `ini_`.
+2. Keep each stage to at most one push-constant block. Matching descriptors across stages must use the same set, binding, type, and count.
+3. Ask `ShaderCache` for logical names such as `my/pass.vert` and `my/pass.frag`. The cache reads `res/shaders/<name>.spv`, creates modules, and reflects the interface.
+4. Fill `Pipeline::CI`. For graphics, provide vertex/fragment shaders and exact attachment formats plus the intended raster/depth/blend state. For compute, provide the compute shader only.
+5. Store the pipeline with `PipelineCache::setPipeline()` under the name the recording code will use.
+6. On a `RenderingThread`, set attachments and begin rendering before selecting a graphics pipeline, binding descriptors/buffers, pushing data, and drawing. For compute, select the compute pipeline and dispatch outside rendering.
+
+```cpp
+Pipeline::CI ci{};
+ci.vertex_shader = &Renderer::i().shaderCache().get("my/pass.vert");
+ci.fragment_shader = &Renderer::i().shaderCache().get("my/pass.frag");
+std::array color_attachment_formats = {
+    Renderer::i().vk().getVkImageFormat(ImageFormat::COLOR),
+};
+auto blend_attachments = Pipeline::makeDefaultBlendAttachments<1>();
+ci.color_attachment_formats = color_attachment_formats;
+ci.blend_attachments = blend_attachments;
+Renderer::i().pipelineCache().setPipeline("my/pass", ci);
+```
+
+This is an explanatory skeleton using the pinned API names. The named arrays must remain alive through `setPipeline()` because `Pipeline::CI` stores spans, and the blend-attachment count must match the color-format count. Fill the remaining state required by the pass.
+
+## Success signal
+
+Shader reflection logs the expected attributes/descriptors, pipeline creation returns without an unrecoverable error, and a validation-clean frame shows the pass output (or the compute target changes as expected).
+
+## Cleanup
+
+Let `PipelineCache` and `ShaderCache` own the objects. Stop the frame thread and destroy pipelines before shaders and the Vulkan context through `Renderer::shutdown()`.
+
+## Limitations
+
+Unsupported reflection types, attribute gaps/order, descriptor mismatches, missing files, and Vulkan creation failures assert or abort. Feature and format availability is device-dependent. Automated tests cover representative reflection and pipeline creation, not every shipped shader/driver.
+
+Evidence: [`Shader.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/renderer/Shader.cpp) and [`T.Pipeline.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Core/src/renderer/T.Pipeline.cpp).

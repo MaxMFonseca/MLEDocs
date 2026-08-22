@@ -260,7 +260,7 @@ test('breadcrumb on exact English page', async ({ page }) => {
 		'English',
 		versionId,
 		'Engine Systems',
-		'Renderer overview',
+		'Renderer',
 	]);
 
 	await expect(breadcrumb).toHaveScreenshot('breadcrumb-exact-en.png', {
@@ -279,7 +279,7 @@ test('breadcrumb on Portuguese same-commit fallback', async ({ page }) => {
 		'Português (Brasil)',
 		versionId,
 		'Sistemas do motor',
-		'Renderer overview',
+		'Renderer',
 	]);
 
 	await expect(breadcrumb).toHaveScreenshot('breadcrumb-pt-br-fallback.png', {
@@ -363,6 +363,27 @@ for (const handbookVisual of [
 		name: 'combined reference desktop Dark',
 		path: 'reference/core-math-utility-types/',
 		file: 'handbook-reference-desktop-dark.png',
+		theme: 'dark',
+		width: 1440,
+	},
+	{
+		name: 'frame and queues architecture desktop Dark',
+		path: 'concepts/frame-and-resource-flow/',
+		file: 'handbook-frame-resource-flow-desktop-dark.png',
+		theme: 'dark',
+		width: 1280,
+	},
+	{
+		name: 'resource-heavy model guide phone Light',
+		path: 'guides/upload-and-render-a-model/',
+		file: 'handbook-model-upload-phone-light.png',
+		theme: 'light',
+		width: 390,
+	},
+	{
+		name: 'model animation system desktop Dark',
+		path: 'systems/models/animation-skeletons-and-cameras/',
+		file: 'handbook-model-animation-desktop-dark.png',
 		theme: 'dark',
 		width: 1440,
 	},

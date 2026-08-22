@@ -659,12 +659,12 @@ test('language control opens the exact Portuguese homepage for the same commit',
 test('direct renderer deep link survives reload without changing commit or route', async ({ page }) => {
   const deepLink = pageUrl(`/versions/${versionId}/systems/renderer/`);
   await page.goto(deepLink);
-  await expect(page.getByRole('heading', { level: 1, name: 'Renderer overview' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Renderer' })).toBeVisible();
 
   await page.reload();
 
   await expect(page).toHaveURL(deepLink);
-  await expect(page.getByRole('heading', { level: 1, name: 'Renderer overview' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Renderer' })).toBeVisible();
   await expect(page.locator('[data-mle-permanent-link]')).toHaveText(versionId);
 });
 
@@ -673,7 +673,7 @@ for (const breadcrumbCase of [
     name: 'English renderer',
     path: `/versions/${versionId}/systems/renderer/`,
     ariaLabel: 'Breadcrumb',
-    labels: ['English', versionId, 'Engine Systems', 'Renderer overview'],
+    labels: ['English', versionId, 'Engine Systems', 'Renderer'],
     hrefs: [
       `/MLEDocs/versions/${versionId}/`,
       `/MLEDocs/versions/${versionId}/`,
@@ -684,7 +684,7 @@ for (const breadcrumbCase of [
     name: 'Portuguese fallback renderer',
     path: `/pt-br/versions/${versionId}/systems/renderer/`,
     ariaLabel: 'Caminho de navegação',
-    labels: ['Português (Brasil)', versionId, 'Sistemas do motor', 'Renderer overview'],
+    labels: ['Português (Brasil)', versionId, 'Sistemas do motor', 'Renderer'],
     hrefs: [
       `/MLEDocs/pt-br/versions/${versionId}/`,
       `/MLEDocs/pt-br/versions/${versionId}/`,

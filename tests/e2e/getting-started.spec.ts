@@ -183,7 +183,7 @@ test('section hubs expose every finished page while unrelated reference groups r
 
   await page.goto(pageUrl(`/versions/${versionId}/reference/`));
   const available = page.locator('[data-mle-section-available]');
-  await expect(available.getByRole('link')).toHaveCount(3);
+  await expect(available.getByRole('link')).toHaveCount(4);
   await expect(available.getByRole('link', { name: 'Build options' })).toHaveAttribute(
     'href',
     `/MLEDocs/versions/${versionId}/reference/build-options/`,
@@ -196,10 +196,13 @@ test('section hubs expose every finished page while unrelated reference groups r
     'href',
     `/MLEDocs/versions/${versionId}/reference/core-math-utility-types/`,
   );
+  await expect(available.getByRole('link', { name: 'Renderer and resource contracts' })).toHaveAttribute(
+    'href',
+    `/MLEDocs/versions/${versionId}/reference/renderer-and-resource-contracts/`,
+  );
   const planned = page.locator('[data-mle-navigation-availability="planned"]');
-  await expect(planned).toHaveCount(8);
+  await expect(planned).toHaveCount(7);
   await expect(planned).toContainText([
-    'Renderer and resource contractsPage planned',
     'Lua APIPage planned',
     'UI element keysPage planned',
     'UI componentsPage planned',

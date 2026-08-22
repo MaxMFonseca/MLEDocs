@@ -1,0 +1,37 @@
+---
+title: Models
+description: The source-backed boundary between GLTF decoding, GPU mesh/material resources, animation state, cameras, and the Model Test demonstration.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [renderer, models]
+sourceFiles: [src/mle/renderer/GLTF.cpp, src/mle/renderer/Mesh.cpp, src/mle/renderer/Animation.cpp, src/mle/renderer/Skeleton.cpp, src/mle/renderer/Camera.cpp]
+testFiles: [tests/Core/src/renderer/T.Camera.cpp, tests/Client/src/layers/ModelTest.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: models
+---
+
+MLE's model path converts GLTF data into cached meshes, embedded textures, and animation clips, then leaves scene composition and draw policy to the application. There is no single high-level “model renderer” with a stability guarantee.
+
+## System map
+
+- [`GLTF`](./loading-meshes-and-materials/) loads `.glb` or `.gltf`, identifies mesh-bearing nodes in the default scene, and decodes supported accessors/images.
+- `Renderer::addMeshPack()` fills the animation and mesh caches. Each primitive owns separate GPU vertex and index buffers plus its material references; `MeshCache` owns the meshes and aliases the pack name to its first mesh.
+- Each `Mesh` owns its `SkinBinding` values. A binding owns joint node indices and inverse binds for that mesh. [`Skeleton`](./animation-skeletons-and-cameras/) contains only joint names and parent relationships in a separate, otherwise unused cache at this snapshot; it is not the skinning owner used by `addMeshPack()`.
+- `Camera` owns view/projection matrices but does not own input. A client layer translates input into orbit, pan, walk, or zoom calls.
+
+## Ownership and threads
+
+The `Renderer` singleton owns model-related caches. Model loading decodes CPU data and records GPU transfers; draw recording must observe the renderer's command-thread and queue-family rules. Cache references are non-owning and become invalid when their cache shuts down or an owning object is cleared.
+
+Shutdown waits for device idle before clearing animation, skeleton, and mesh caches. Clearing the separate skeleton cache does not own or invalidate the `SkinBinding` values inside meshes; mesh and texture ownership still ends with their respective caches. Do not let a `Mesh`, material texture, or other Vulkan-backed wrapper outlive `Renderer`/`VkCtx`.
+
+## Evidence boundary
+
+The automated renderer suite directly tests `Camera`, buffers, images, shaders, pipelines, and textures. It does not directly test GLTF mesh hierarchy, skeleton binding, or clip evaluation at this snapshot.
+
+The interactive **Model Test is a demonstration, not an engine guarantee**. It shows node/clip selection, held items attached to bones, camera manipulation, several application-defined shader modes, background cubemaps, and projection overlays. Its render passes and resource syntax are useful call paths, but they remain test-application policy.
+
+Evidence: [`Renderer::addMeshPack`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/renderer/Renderer.cpp), [`Mesh.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/renderer/Mesh.cpp), and [`ModelTest.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/src/layers/ModelTest.cpp).

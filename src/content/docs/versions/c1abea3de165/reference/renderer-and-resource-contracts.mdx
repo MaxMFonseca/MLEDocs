@@ -1,0 +1,51 @@
+---
+title: Renderer and resource contracts
+description: A curated lookup for renderer owners, command types, resource states, shader conventions, model identifiers, and evidence maturity.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [renderer, models]
+sourceFiles: [src/mle/renderer/Types.h, src/mle/renderer/Renderer.h, src/mle/renderer/Image.h, src/mle/renderer/Shader.h, src/mle/renderer/GLTF.h]
+testFiles: [tests/Core/src/renderer/T.Buffer.cpp, tests/Core/src/renderer/T.Image.cpp, tests/Core/src/renderer/T.Shader.cpp, tests/Core/src/renderer/T.Pipeline.cpp, tests/Core/src/renderer/T.Camera.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: renderer-and-resource-contracts
+---
+
+This lookup names the high-value contracts in the pinned implementation. Follow the owner-page links for sequencing and limitations; this is not an API or SDK stability promise.
+
+<table tabindex="0" role="region" aria-label="Renderer and resource contract lookup">
+  <thead><tr><th>Area</th><th>Identifiers and contract</th><th>Evidence</th><th>Owner</th></tr></thead>
+  <tbody>
+    <tr><td>Service root</td><td><code>Renderer</code>, <code>VkCtx</code>, command, sync, and frame services</td><td>Source-observed; frame-format test</td><td><a href="../../systems/renderer/">Renderer</a></td></tr>
+    <tr><td>Command kinds</td><td><code>GRAPHICS</code>, <code>COMPUTE</code>, <code>TRANSFER</code>; types may alias one family</td><td>Source-observed, device-dependent</td><td><a href="../../systems/renderer/frame-vulkan-and-queues/">Frame and queues</a></td></tr>
+    <tr><td>Frame completion</td><td>Frame fence, image-available and swapchain-image semaphores, <code>presentKHR</code></td><td>Source-observed</td><td><a href="../../concepts/frame-and-resource-flow/">Frame and resource flow</a></td></tr>
+    <tr><td>Buffer allocation</td><td><code>GPU_ONLY</code>, host-write/read variants, <code>STAGING</code></td><td>Automated</td><td><a href="../../systems/renderer/resources-and-synchronization/">Resources</a></td></tr>
+    <tr><td>Image states</td><td>Transfer, shader read/write, color/depth attachment, <code>PRESENT</code></td><td>Automated operations; source mapping</td><td><a href="../../systems/renderer/resources-and-synchronization/">Resources</a></td></tr>
+    <tr><td>Cache results</td><td><code>NOT_READY</code> is pending; <code>NOT_FOUND</code> is absent</td><td>Automated texture tests</td><td><a href="../../systems/renderer/resources-and-synchronization/">Resources</a></td></tr>
+    <tr><td>Shader stages</td><td>Logical <code>.vert</code>, <code>.frag</code>, <code>.comp</code>; cached file ends in <code>.spv</code></td><td>Automated reflection</td><td><a href="../../systems/renderer/shaders-and-pipelines/">Shaders</a></td></tr>
+    <tr><td>Vertex convention</td><td>Consecutive locations; <code>ini_</code> instance data follows vertex data</td><td>Automated reflection</td><td><a href="../../systems/renderer/shaders-and-pipelines/">Shaders</a></td></tr>
+    <tr><td>Pipeline interface</td><td>Reflected/external descriptor sets, push descriptors, stage push ranges</td><td>Automated representative cases</td><td><a href="../../systems/renderer/shaders-and-pipelines/">Shaders</a></td></tr>
+    <tr><td>Attachments</td><td>Up to four color attachments plus depth through <code>RenderingThread</code></td><td>Source-observed</td><td><a href="../../systems/renderer/targets-text-and-composition/">Targets and composition</a></td></tr>
+    <tr><td>Model keys</td><td>Pack alias and <code>source#node</code>; duplicates may add <code>@index</code></td><td>Source-observed; Model Test demonstration</td><td><a href="../../systems/models/loading-meshes-and-materials/">Model loading</a></td></tr>
+    <tr><td>Animation keys</td><td><code>source#clip</code>; names must be nonempty and unique</td><td>Source-observed; Model Test demonstration</td><td><a href="../../systems/models/animation-skeletons-and-cameras/">Animation and cameras</a></td></tr>
+    <tr><td>Camera</td><td><code>PERSPECTIVE</code>, <code>ORTH</code>, cached matrices, Vulkan Y flip</td><td>Automated</td><td><a href="../../systems/models/animation-skeletons-and-cameras/">Animation and cameras</a></td></tr>
+  </tbody>
+</table>
+
+## First-party shader locations
+
+- `res/shaders/present/`: final color correction.
+- `res/shaders/model_pbr/`: model G-buffer, resolve, stylized, outline, wire, projection, and skinned vertex variants used by Model Test.
+- `res/shaders/scene/`: scene/debug passes.
+- `res/shaders/ui/`: rectangle, sprite, nine-slice, text SDF, background/border, and blur composition.
+- `res/shaders/noise/` and root shader files: focused compute/primitive helpers.
+
+Presence in this inventory does not imply every shader is automatically registered or covered by tests.
+
+## Result and failure boundary
+
+Recoverable surfaces include file/decode lookup results such as `FAILED_TO_OPEN`, `INVALID_ARGUMENT`, `NOT_READY`, and `NOT_FOUND`. Vulkan failures, unsupported reflection/accessor shapes, command-thread misuse, invalid render ordering, or missing queue ownership commonly assert or become unrecoverable.
+
+Source identity: [`Types.h`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/renderer/Types.h), [`Renderer.h`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/renderer/Renderer.h), and [`GLTF.h`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/renderer/GLTF.h).

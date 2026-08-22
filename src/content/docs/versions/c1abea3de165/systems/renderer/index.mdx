@@ -1,6 +1,6 @@
 ---
-title: Renderer overview
-description: Source-backed architecture and frame lifecycle for MLE's Vulkan renderer.
+title: Renderer
+description: A concise map of MLE's Vulkan services, their owners, and the pages that explain each rendering contract.
 contentType: technical
 mleCommit: c1abea3de165032fe064300340807b7a6af388f8
 maturity: in-development
@@ -29,17 +29,23 @@ translationStatus: canonical
 pageId: renderer-overview
 ---
 
-MLE's renderer is a group of Vulkan services owned by the `Renderer` singleton. `Renderer::init()` initializes the Vulkan context first, then command and synchronization managers, the frame renderer, and the resource caches. Shutdown waits for the device to become idle and releases those services before destroying the Vulkan context. See [`Renderer.h`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/renderer/Renderer.h) and [`Renderer.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/renderer/Renderer.cpp).
+MLE's renderer is a set of Vulkan services owned by the `Renderer` singleton. `Renderer::init()` creates the Vulkan context, command and synchronization managers, frame renderer, then the shader, pipeline, texture, font, mesh, skeleton, and animation caches. `shutdown()` waits for the device before releasing those owners in reverse dependency order. See [`Renderer.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/renderer/Renderer.cpp).
 
-## Vulkan context
+## Choose the owner page
 
-`VkCtx` creates the Vulkan 1.3 instance, optional debug messenger, client surface, physical and logical devices, and VMA allocator. It selects graphics, compute, and transfer queue families and records whether compute is separate or transfer is dedicated; those arrangements depend on the selected device. The client device enables synchronization2 and dynamic rendering. See [`VkCtx.h`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/renderer/VkCtx.h) and [`VkCtx.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/renderer/VkCtx.cpp).
+- [Frame, Vulkan, and queues](./frame-vulkan-and-queues/) owns device requirements, frame slots, acquire/submit/present, and command-thread rules.
+- [Resources and synchronization](./resources-and-synchronization/) owns buffers, images, transfers, layouts, cache readiness, and deferred deletion.
+- [Shaders and pipelines](./shaders-and-pipelines/) owns compiled shader discovery, SPIR-V reflection, descriptors, push constants, and graphics/compute state.
+- [Targets, text, and composition](./targets-text-and-composition/) owns dynamic-rendering attachments, image composition, textures, atlases, and fonts.
+- [Models](../models/) owns GLTF, meshes, materials, skeletons, animations, and cameras.
 
-## Frame lifecycle
+## Lifecycle boundary
 
-`FrameRenderer` owns the swapchain and two frame-data slots. Its render thread waits on the next frame's fence, clears frame-local buffers and deferred deletions, recreates a dirty swapchain when needed, and acquires a swapchain image. At frame end it records the configured or default present pass, transitions the swapchain image for presentation, submits with semaphores and a fence, and presents the image. The default present pass uses Vulkan dynamic rendering for a full-screen draw. See [`FrameRenderer.h`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/renderer/FrameRenderer.h) and [`FrameRenderer.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/renderer/FrameRenderer.cpp).
+Call `Renderer::stop()` before `shutdown()` so the frame jthread is requested to stop and joined. Vulkan-backed resources must be destroyed while their device and owning cache remain alive. `Renderer::shutdown()` does wait for device idle, but the wider application entry path is still in development; do not treat scope exit as a documented automatic shutdown sequence.
 
-Frame-local host-visible buffer slices, callbacks scheduled for the next frame, deferred resource deletion, and a separate garbage-collection queue are present in the current implementation. These are implementation details of an in-development API, not compatibility guarantees.
+## Prerequisites and maturity
+
+The client renderer requests Vulkan 1.3, swapchain and push-descriptor extensions, synchronization2, dynamic rendering, descriptor-indexing features, buffer device addresses, and several dynamic/raster features. The selected device, queues, formats, and present mode remain platform-dependent. The current device creation code does not comprehensively preflight every requested feature.
 
 ## Test evidence
 
@@ -50,4 +56,4 @@ The Core renderer suite checks representative behavior rather than the entire ru
 - [`T.Image.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Core/src/renderer/T.Image.cpp) covers image creation and views, uploads, copies, blits, file loading, and PNG saving.
 - [`T.Pipeline.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Core/src/renderer/T.Pipeline.cpp) and [`T.Shader.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Core/src/renderer/T.Shader.cpp) exercise graphics and compute pipeline creation plus SPIR-V reflection data.
 
-These tests support the listed behaviors. They do not establish API stability or prove every platform and presentation path.
+These tests support the listed behaviors. They do not establish API stability, cover the complete frame loop, or prove every platform and presentation path. Model Test behavior is a shipped demonstration rather than a guarantee.
