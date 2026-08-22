@@ -336,3 +336,65 @@ test('getting started visual source evidence desktop Dark', async ({ page }) => 
 		fullPage: true,
 	});
 });
+
+for (const handbookVisual of [
+	{
+		name: 'architecture handbook desktop Light',
+		path: 'concepts/architecture/',
+		file: 'handbook-architecture-desktop-light.png',
+		theme: 'light',
+		width: 1280,
+	},
+	{
+		name: 'Core threading handbook desktop Dark',
+		path: 'systems/core/threading-and-performance/',
+		file: 'handbook-core-threading-desktop-dark.png',
+		theme: 'dark',
+		width: 1280,
+	},
+	{
+		name: 'geometry handbook phone Light',
+		path: 'systems/math/geometry-and-intersections/',
+		file: 'handbook-geometry-phone-light.png',
+		theme: 'light',
+		width: 390,
+	},
+	{
+		name: 'combined reference desktop Dark',
+		path: 'reference/core-math-utility-types/',
+		file: 'handbook-reference-desktop-dark.png',
+		theme: 'dark',
+		width: 1440,
+	},
+] as const) {
+	test(handbookVisual.name, async ({ page }) => {
+		await page.setViewportSize({
+			width: handbookVisual.width,
+			height: handbookVisual.width < 500 ? 844 : 900,
+		});
+		await setTheme(page, handbookVisual.theme);
+		await page.goto(`versions/${versionId}/${handbookVisual.path}`);
+		await expect(page.locator('html')).toHaveAttribute('data-theme', handbookVisual.theme);
+		await settlePage(page);
+
+		await expect(page).toHaveScreenshot(handbookVisual.file, {
+			animations: 'disabled',
+			caret: 'hide',
+			fullPage: true,
+		});
+	});
+}
+
+test('runtime handbook Portuguese same-commit fallback phone', async ({ page }) => {
+	await page.setViewportSize({ width: 390, height: 844 });
+	await setTheme(page, 'dark');
+	await page.goto(`pt-br/versions/${versionId}/systems/core/runtime-configuration/`);
+	await expect(page.locator('[data-mle-translation-status="fallback"]')).toBeVisible();
+	await settlePage(page);
+
+	await expect(page).toHaveScreenshot('handbook-pt-br-fallback-phone-dark.png', {
+		animations: 'disabled',
+		caret: 'hide',
+		fullPage: true,
+	});
+});

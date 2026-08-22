@@ -60,7 +60,7 @@ function registryRouteSequence(
   const pageIds = [
     section.pageId,
     ...section.plannedGroups.flatMap((group) => group.children.map((child) => child.pageId)),
-  ];
+  ].filter((pageId) => pageId !== 'tests-and-interactive-pages');
   return pageIds.map((pageId) =>
     pageId === section.pageId
       ? `/MLEDocs${localePrefix}/versions/${versionId}/${section.segment}/`
@@ -175,11 +175,15 @@ test('section hubs expose every finished page while unrelated reference groups r
 
   await page.goto(pageUrl(`/versions/${versionId}/contributing/`));
   await expect(page.locator('[data-mle-section-available] a')).toHaveCount(5);
-  await expect(page.locator('[data-mle-navigation-availability="planned"]')).toHaveCount(0);
+  const contributingPlanned = page.locator('[data-mle-navigation-availability="planned"]');
+  await expect(contributingPlanned).toHaveCount(1);
+  await expect(contributingPlanned).toContainText([
+    'Tests and interactive pagesPage planned',
+  ]);
 
   await page.goto(pageUrl(`/versions/${versionId}/reference/`));
   const available = page.locator('[data-mle-section-available]');
-  await expect(available.getByRole('link')).toHaveCount(2);
+  await expect(available.getByRole('link')).toHaveCount(3);
   await expect(available.getByRole('link', { name: 'Build options' })).toHaveAttribute(
     'href',
     `/MLEDocs/versions/${versionId}/reference/build-options/`,
@@ -188,14 +192,21 @@ test('section hubs expose every finished page while unrelated reference groups r
     'href',
     `/MLEDocs/versions/${versionId}/reference/helper-commands/`,
   );
+  await expect(available.getByRole('link', { name: 'Core, math, and utility types' })).toHaveAttribute(
+    'href',
+    `/MLEDocs/versions/${versionId}/reference/core-math-utility-types/`,
+  );
   const planned = page.locator('[data-mle-navigation-availability="planned"]');
-  await expect(planned).toHaveCount(5);
+  await expect(planned).toHaveCount(8);
   await expect(planned).toContainText([
-    'Core, math, and utility typesPage planned',
-    'Renderer referencePage planned',
-    'Lua binding inventoryPage planned',
-    'UI keysPage planned',
-    'Audio commandsPage planned',
+    'Renderer and resource contractsPage planned',
+    'Lua APIPage planned',
+    'UI element keysPage planned',
+    'UI componentsPage planned',
+    'UI events and callbacksPage planned',
+    'UI layout valuesPage planned',
+    'Audio contractsPage planned',
+    'Window and input contractsPage planned',
   ]);
 });
 

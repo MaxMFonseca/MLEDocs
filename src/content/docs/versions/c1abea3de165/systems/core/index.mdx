@@ -1,0 +1,73 @@
+---
+title: Core runtime
+description: Startup services, result policy, logging, shared types, and lifecycle boundaries owned by MLE Core.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences:
+  - integrator
+  - contributor
+subsystems:
+  - core
+sourceFiles:
+  - src/mle/Entry.inl
+  - src/mle/core/Assert.h
+  - src/mle/core/Consts.h
+  - src/mle/core/Core.cpp
+  - src/mle/core/Core.h
+  - src/mle/core/Logger.cpp
+  - src/mle/core/Logger.h
+  - src/mle/core/Result.h
+  - src/mle/core/Types.h
+  - src/mle/core/Unwrap.h
+testFiles:
+  - tests/Client/src/Main.cpp
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: core
+---
+
+Core establishes the services that other MLE systems assume are available: runtime configuration, diagnostic sinks, a general worker pool, and performance sampling. It also supplies shared scalar aliases, result vocabulary, constants, formatters, and fail-fast helpers. [`Core.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/core/Core.cpp) is the authority for the actual startup and shutdown order.
+
+## Position in the engine
+
+An entry point calls `Core::init` before initializing Client or Renderer. Core does not own either of those systems. Its services instead form a foundation used by their startup and runtime paths.
+
+```text
+entry point
+    └─ Core::init
+         ├─ RuntimeConfig: keys and command-line values
+         ├─ Logger: file and stdout sinks
+         ├─ ThreadPool: shared background work
+         └─ PerfTracker: periodic timing samples
+```
+
+`RuntimeConfig` precedes Logger because log-level configuration must exist before sinks read it. ThreadPool starts before PerfTracker. On explicit Core shutdown, only the latter two are reversed: performance sampling stops before worker threads.
+
+## Ownership and lifecycle
+
+Core and its services use process-wide heap-backed singletons. `Core::init` has no repeated-initialization guard of its own, so the entry point owns the once-only startup invariant. `Core::shutdown` has the corresponding responsibility for the services it actually stops. Review [Lifecycle and ownership](/MLEDocs/versions/c1abea3de165/concepts/lifecycle-and-ownership/) before writing a new executable; the generic `Entry.inl` is not a complete teardown template.
+
+Logger owns a truncating `logs/latest.log` sink and a colored stdout sink. Runtime configuration listeners update their runtime levels. Core does not call `Logger::shutdown` in this snapshot, so successful Core shutdown must not be described as complete destruction of every Core service.
+
+## Data and control flow
+
+Registered command-line keys become strings in RuntimeConfig. Typed getters parse copies of those strings on demand. Callers submit general work to ThreadPool and receive either no completion object or a `std::future`; performance scopes independently record durations into atomic counters sampled by `PerfTracker`.
+
+At function boundaries, `Result` carries a status and `Expected<T>` carries either a value or a `Result`. `Core::check`, `unwrap`, and assertion macros convert selected failures or invariant violations into process termination. See [Errors and diagnostics](/MLEDocs/versions/c1abea3de165/concepts/errors-and-diagnostics/) before using those helpers in recoverable paths.
+
+## Common integration pattern
+
+The source-observed sequence for an executable is to place `argc` and `argv` in `Core::InitInfo`, call `Core::i().init(info)`, initialize the dependent application systems, run them, stop those dependents, and then call `Core::i().shutdown()`. Renderer remains a separately owned dependent. The shipped test Client demonstrates that arrangement in its `Main.cpp`; it does not prove that `Entry.inl` performs the same cleanup.
+
+## Test evidence
+
+The scoped Core tests exercise ThreadPool and selected utilities and math types, not the orchestration in `Core::init`. The interactive Client entry is integration evidence for Core-before-Client and Core-after-Renderer ordering, but it has no GoogleTest assertion around that order. Startup, Logger construction, and shutdown omissions are therefore source-observed.
+
+## Internal and unsupported surfaces
+
+`Assert.h`, `Unwrap.h`, singleton macros, and renderer resource constants in `Consts.h` are shared implementation surfaces. Their placement in headers does not promise ABI, API, or SDK stability. Complete configuration behavior belongs to [Runtime configuration](/MLEDocs/versions/c1abea3de165/systems/core/runtime-configuration/); worker and sampling rules belong to [Threading and performance](/MLEDocs/versions/c1abea3de165/systems/core/threading-and-performance/).
+
+## Limitations
+
+Core does not guard against duplicate initialization, and the generic `Entry.inl` fragment performs no Core shutdown. It contains a commented `mle::shutdown()` line whose function is unresolved in the pinned source, not a commented `Core::shutdown` call. Core shutdown also omits Logger. No scoped test verifies complete process teardown. Integrators must keep explicit ownership in the executable rather than infer automatic cleanup from singleton lifetime.

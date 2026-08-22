@@ -1,0 +1,65 @@
+---
+title: Utilities
+description: Shared event, container, file, string, identity, color, layout, and support vocabulary used across MLE.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences:
+  - integrator
+  - contributor
+subsystems:
+  - utilities
+sourceFiles:
+  - src/mle/utils/Types.h
+  - src/mle/utils/Utils.cpp
+  - src/mle/utils/Utils.h
+  - src/mle/utils/ECS.h
+  - src/mle/utils/SystemState.h
+testFiles:
+  - tests/Core/src/utils/Utils.h
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: utilities
+---
+
+The utility layer holds small contracts reused across otherwise independent engine systems: shared ownership aliases, singleton and cast helpers, ECS formatting, lifecycle vocabulary, containers, file and string operations, colors, and layout calculations. It is a toolbox, not a service with one runtime lifecycle. [`Utils.h`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/utils/Utils.h) contains the broad support macros; focused headers own the behavior they implement.
+
+## Position in the engine
+
+Core uses `TSQueue` for worker tasks. UI uses `AtomicTripleBuffer` to pass render packets. Client creates a `ColorCache`, and renderer atlas code uses `RectPacker`. These call sites show why the types exist, but ownership remains with each caller or subsystem.
+
+```text
+shared vocabulary and helpers
+    ├─ events / locks / queues ──> Core, UI, Renderer
+    └─ files / strings / IDs / color / layout ──> Client, Lua, UI, tools
+```
+
+## Ownership and lifecycle
+
+Utility values such as `Flags` and `Color` own their state, while `RectPacker` owns mutable packing bins. `Justify<T>` is stateless: its layout algorithms are static functions, and `LineMode` is a nested policy enum. String split and trim results can be views that borrow the input. `BytesRef` and `UserPtr` are non-owning raw-pointer aliases. Event dispatchers store listener raw pointers behind caller-owned handles, and atomic containers require the caller to preserve their producer/consumer topology.
+
+The singleton macro creates a heap instance that is intentionally never destroyed. That process lifetime avoids static destruction ordering but does not perform application-level shutdown. Copy/move suppression and `i()` access describe current ownership mechanics; header visibility is not an SDK stability promise.
+
+## Data and control flow
+
+Immediate event dispatch invokes listeners synchronously; queued event dispatch stores copied events until `poll`. Queue containers move or copy values between threads according to their specific contracts. File helpers return owned bytes or strings in `Expected<T>`, while parsing helpers return values or a `Result` error.
+
+Utility functions do not automatically translate errors into exceptions or logs consistently. File helpers log and return `FAILED_TO_OPEN`; `strTo` returns `INVALID_ARGUMENT` or `OUT_OR_RANGE`; unchecked UTF converters return strings without a malformed-input result. The calling system must choose the right boundary.
+
+## Common use
+
+Choose a concurrency primitive by topology, not by the word “atomic”: `AtomicQueue` and `AtomicTripleBuffer` are single-producer/single-consumer structures in the source. Use `TSQueue` when blocking mutex-protected FIFO access is appropriate and indefinite waiting can be safely woken by application data. Use event listener handles as owned registrations, never as detached callback tokens.
+
+For data helpers, preserve the input lifetime behind returned string views, do not persist process-local IDs as universal identities, and validate color or packing inputs before calling assertion-only paths. [Data, color, and packing](/MLEDocs/versions/c1abea3de165/systems/utilities/data-color-and-packing/) gives the exact edge behavior.
+
+## Test evidence
+
+Scoped tests directly cover string parsing/manipulation, justification, and rectangle packing. `TSQueue` is exercised indirectly by the ThreadPool suite; there is no standalone queue assertion. `tests/Core/src/utils/Utils.h` is support code, not a test case, and supplies no independent behavioral evidence.
+
+## Internal and unsupported surfaces
+
+`ECS.h`, `SystemState`, `Hash.h`, `LockedData`, container implementations, cast macros, and Lua registration headers are support surfaces. `utils/Utils.cpp` is an include-only translation unit. An unused `EDFromVariant` helper does not establish a supported event-dispatcher policy.
+
+## Limitations
+
+The utility layer has intentionally narrow and occasionally unfinished contracts: no queue close/timeout/cancellation, unchecked malformed UTF input, nonpersistent IDs, source-specific color parsing, and order-sensitive rectangle packing. Those limits are not generalized away by their broad reuse. See [Events and concurrency](/MLEDocs/versions/c1abea3de165/systems/utilities/events-and-concurrency/) for thread rules and the [combined lookup](/MLEDocs/versions/c1abea3de165/reference/core-math-utility-types/) for curated names.

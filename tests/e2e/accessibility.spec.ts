@@ -937,3 +937,51 @@ for (const auditCase of gettingStartedAccessibilityCases) {
     expect(accessibility.violations).toEqual([]);
   });
 }
+
+for (const handbookCase of [
+  {
+    name: 'geometry code in Light',
+    path: `/versions/${versionId}/systems/math/geometry-and-intersections/`,
+    theme: 'light',
+    selector: 'main pre',
+  },
+  {
+    name: 'reference table in Dark',
+    path: `/versions/${versionId}/reference/core-math-utility-types/`,
+    theme: 'dark',
+    selector: 'main table',
+  },
+] as const) {
+  test(`runtime handbook accessibility: ${handbookCase.name} reflows locally and is axe-clean`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 360, height: 800 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.addInitScript(
+      (theme) => localStorage.setItem('starlight-theme', theme),
+      handbookCase.theme,
+    );
+    await page.goto(pageUrl(handbookCase.path));
+
+    await expect(page.locator('html')).toHaveAttribute('data-theme', handbookCase.theme);
+    await expectLoadedFontsAndNoOverflow(page);
+    const localScroller = page.locator(handbookCase.selector).first();
+    await expect(localScroller).toBeVisible();
+    const layout = await localScroller.evaluate((element) => ({
+      focusable: element.matches(':focus') || element.tabIndex >= 0,
+      localOverflow: element.scrollWidth > element.clientWidth,
+      overflowX: getComputedStyle(element).overflowX,
+      transitionDuration: getComputedStyle(element).transitionDuration,
+    }));
+    expect(layout.localOverflow).toBe(true);
+    expect(layout.overflowX).toMatch(/auto|scroll/);
+    expect(layout.focusable).toBe(true);
+    expect(layout.transitionDuration).toBe('0s');
+    await localScroller.focus();
+    await expectTwoPartFocus(localScroller, false);
+    await page.keyboard.press('ArrowRight');
+    await expect.poll(() => localScroller.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
+
+    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  });
+}

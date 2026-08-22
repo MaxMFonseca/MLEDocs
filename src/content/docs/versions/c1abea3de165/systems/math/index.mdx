@@ -1,0 +1,62 @@
+---
+title: Math
+description: Scalar aliases, GLM vocabulary, two- and three-dimensional geometry, and numerical helpers used by MLE.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences:
+  - integrator
+  - contributor
+subsystems:
+  - math
+sourceFiles:
+  - src/mle/math/Types.h
+  - src/mle/math/Types2D.cpp
+  - src/mle/math/Types2D.h
+  - src/mle/math/Types3D.cpp
+  - src/mle/math/Types3D.h
+  - src/mle/math/Utils.cpp
+  - src/mle/math/Utils.h
+testFiles:
+  - tests/Core/src/math/T.Types2D.cpp
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: math
+---
+
+MLE's math layer gives the rest of the engine a common scalar and GLM vocabulary, then adds geometry and comparison helpers used by Client, Renderer, UI, and tools. It is a thin engine-owned layer rather than a replacement for GLM. [`Types.h`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/math/Types.h) defines the aliases; `Types2D.*`, `Types3D.*`, and `Utils.*` add behavior.
+
+## Position and representation
+
+MLE's fixed-width integer aliases feed math aliases such as `vec2i` and `vec3u`. Floating aliases use `float_t` and `double_t`, and vectors, matrices, and quaternions are GLM types. That means GLM's storage, constructor, and operator rules still apply unless an MLE wrapper states something narrower.
+
+```text
+Core scalar aliases → GLM vector/matrix aliases → MLE geometry → engine systems
+                                              └→ JSON/Lua/format bridges
+```
+
+The custom formatters print vectors in component order and matrices by indexed columns. The quaternion formatter prints `x, y, z, w`; the JSON bridge deliberately uses a different `w, x, y, z` order. The [Lua, JSON, and numerics](/MLEDocs/versions/c1abea3de165/systems/math/lua-json-and-numerics/) page keeps those conversion contracts adjacent.
+
+## Ownership and data flow
+
+Most math values own their components and have no lifecycle beyond the C++ object. A few views or conversions borrow caller input, but those belong to utilities rather than the GLM aliases. Geometry methods return values or `std::optional` hit information and do not allocate shared engine resources.
+
+Callers are responsible for several invariants: line and ray directions are generally assumed normalized, valid boxes and spheres require sensible bounds and radii, and some coordinate conversions divide by rectangle size. Constructors do not uniformly repair every invalid input.
+
+## Common use
+
+Use `Rect<T>` when normalized two-dimensional bounds and inclusive edge checks are wanted. Use the line and ray types only after checking whether the desired operation needs an infinite line, a forward ray, or a finite segment; similar names do not erase their different parameter ranges. In 3D, validate returned `NearFar` intervals rather than assuming a hit is in front of the origin.
+
+Floating comparisons use a combined relative tolerance and an absolute floor. They suit tolerant engine comparisons but are not an exact-order replacement. Explicit conversion helpers such as `asI32`, `asF32`, and plain `as<T>` may truncate or narrow in the usual C++ manner.
+
+## Test evidence
+
+`T.Types2D.cpp` extensively covers rectangle normalization and bounds, line/ray projection and intersection, nonzero line segments, circle operations, and Ramer–Douglas–Peucker polygon simplification. There is no matching scoped 3D test, and the numerical, formatting, JSON, and Lua bridges are not directly asserted by the six scoped files.
+
+## Internal and unsupported surfaces
+
+`Polygon2f::area`, `Polygon2f::center`, and `Polygon2f::sortCCW` are assertion stubs in this snapshot. They are not usable geometry contracts. Formatter specializations and header placement support current engine call sites but do not establish serialization or SDK stability.
+
+## Limitations
+
+Several functions expose source-specific edge behavior: zero-length segment projection is unguarded, some degenerate 3D inputs can normalize zero, and 3D ray tests can report intersections behind the origin. Consult [Geometry and intersections](/MLEDocs/versions/c1abea3de165/systems/math/geometry-and-intersections/) rather than importing textbook semantics from a type name.

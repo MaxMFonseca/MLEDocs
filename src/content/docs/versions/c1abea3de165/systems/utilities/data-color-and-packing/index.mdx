@@ -1,0 +1,85 @@
+---
+title: Data, color, and packing
+description: File and string results, process-local IDs, random values, colors, layout justification, and rectangle packing.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences:
+  - integrator
+  - contributor
+subsystems:
+  - utilities
+  - lua
+sourceFiles:
+  - src/mle/utils/File.cpp
+  - src/mle/utils/File.h
+  - src/mle/utils/String.cpp
+  - src/mle/utils/String.h
+  - src/mle/utils/ID.cpp
+  - src/mle/utils/ID.h
+  - src/mle/utils/RNG.cpp
+  - src/mle/utils/RNG.h
+  - src/mle/utils/Flags.h
+  - src/mle/utils/Hash.h
+  - src/mle/utils/Stopwatch.h
+  - src/mle/utils/Color.cpp
+  - src/mle/utils/Color.h
+  - src/mle/utils/ColorCache.cpp
+  - src/mle/utils/ColorCache.h
+  - src/mle/utils/Justify.h
+  - src/mle/utils/RectPacker.cpp
+  - src/mle/utils/RectPacker.h
+  - src/mle/utils/LuaUTUtils.h
+testFiles:
+  - tests/Core/src/utils/T.String.cpp
+  - tests/Core/src/utils/T.Justify.cpp
+  - tests/Core/src/utils/T.RectPacker.cpp
+  - tests/Core/src/utils/Utils.h
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: data-color-and-packing
+---
+
+These utilities move data across file, text, identity, presentation, and layout boundaries. They share no global lifecycle, so safe use depends on each value's ownership and edge contract. [`String.h`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/utils/String.h), the focused implementation files, and their scoped tests are the authority.
+
+## Files, directories, and strings
+
+`readFileBytes` and `readFileString` read a complete seekable file and return owned contents. Open and observed read failures log and return `FAILED_TO_OPEN`; a zero-length file succeeds. Directory enumeration returns paths in iterator order, recursively when requested. It does not sort them, and missing or invalid directories map to `FAILED_TO_OPEN`.
+
+`strTo<T>` requires a full `from_chars` parse. Empty text, whitespace, trailing characters, and invalid syntax return `INVALID_ARGUMENT`; numeric overflow returns the source-spelled `OUT_OR_RANGE`. Split and trim operations can return string views, which borrow the original input. ASCII case helpers operate on bytes. Valid UTF-8/UTF-32 conversion is covered by tests, but the implementation uses unchecked conversion: UTF handling does not validate malformed input and exposes no error result for it.
+
+## Identity, random values, flags, and timing
+
+`genID` uses a relaxed atomic counter that begins at zero. IDs are thread-safe to generate within the process, but they carry no persistence or cross-process uniqueness contract; wraparound and collision with the `INVALID_ID` sentinel are unguarded.
+
+`RNG` wraps `mt19937_64`, is not itself synchronized, and uses the unusual range parameter order `(max, min)`. `ThreadRNG::i` supplies one default-constructed, `random_device`-seeded instance per thread. Chance clamps its input to `[0, 1]`, while invalid min/max ordering is not repaired.
+
+`Flags<BitType>` is a typed mask; raw masks can retain unnamed bits. `Vec2iHash` is suitable for in-process hashed containers, not a persisted stable identifier. `Stopwatch` owns a `steady_clock` start time and reports integer seconds or floating seconds/milliseconds; copies retain the same start and long-lived float conversions lose precision.
+
+## Color and Lua conversion
+
+`Color` stores floating RGBA described by the source as sRGB. It packs several byte orders, converts between sRGB and linear channels, constructs HSV colors, mixes, and generates gradients. Packing does not clamp component values, and `mix` enforces range only through assertions.
+
+Direct `Color::fromString` recognizes lowercase `0x` or `#` hexadecimal spellings. Text that does not enter either prefix branch returns `WHITE`; in particular, non-prefixed text returns `WHITE`. A prefixed malformed hexadecimal string that reaches `std::stoul` can throw because this function does not catch the conversion exception. Named colors belong to `ColorCache`, whose eleven uppercase defaults run from `WHITE`, `BLACK`, and the primary/secondary colors through `GRAY`, `LIGHT_GRAY`, and `DARK_GRAY`; a missing name also logs and returns `WHITE`. This distinction corrects the broader named-color comment on `Color::fromString`.
+
+The Lua table path in `Color::fromLua` accepts RGBA-like fields. Its HSV branch computes `fromHSVA` but does not return that result in this snapshot. Parsing then continues through named RGB fields and, when those are absent, indexed list parsing. An h/s/v-only table reaches the invalid-list path, logs, and returns `WHITE`; a table that also supplies RGB fields or indexed components can return that later parse instead. This is a known implementation defect, not supported HSV-table conversion. The separate Lua factory bound as `fromHSV` does return a color with alpha one.
+
+## Justification and packing
+
+`Justify<T>` calculates starting positions for start, center, end, and space modes and greedily wraps rows. An oversized first item is still placed at position zero. Integral versions truncate division, and a last line can use a distinct mode. Float and integer behavior is extensively tested.
+
+`RectPacker` owns a mutable list of remaining rectangular bins. It processes inputs in caller order, applies padding and a minimum remainder size, and returns positions only. A batch stops at the first failure; order therefore changes the result, and items after the first failure are not attempted. Small discarded remainders do not become available later. The scoped tests cover successful placement, padding, exact fits, multiple batches, and order-sensitive failure.
+
+<table tabindex="0" role="region" aria-label="Data utility ownership and failure summary">
+  <thead><tr><th>Family</th><th>Owned result or state</th><th>Caller obligation and observed failure boundary</th></tr></thead>
+  <tbody>
+    <tr><td>File and directory</td><td>Returned bytes, text, or paths</td><td>Handle <code>Expected&lt;T&gt;</code>; failures collapse to <code>FAILED_TO_OPEN</code>.</td></tr>
+    <tr><td>String views</td><td>Borrowed slices</td><td>Keep the original string alive; validate malformed external UTF before unchecked conversion.</td></tr>
+    <tr><td>Color and cache</td><td>Value or cache-owned map</td><td>Clamp when packing and resolve names through <code>ColorCache</code>, not <code>Color::fromString</code>.</td></tr>
+    <tr><td>RectPacker</td><td>Mutable remaining bins</td><td>Choose order deliberately and handle the first failed item before continuing.</td></tr>
+  </tbody>
+</table>
+
+## Test and stability boundary
+
+`T.String.cpp`, `T.Justify.cpp`, and `T.RectPacker.cpp` support only their asserted cases. `tests/Core/src/utils/Utils.h` is test support with no independent assertions. File I/O, IDs, RNG, flags, hash, stopwatch, and color behavior are source-observed. Lua registration and Client/renderer call sites demonstrate use, not stable public API commitments. The [Utilities overview](/MLEDocs/versions/c1abea3de165/systems/utilities/) owns the shared support boundary.

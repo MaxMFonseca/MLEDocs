@@ -1,0 +1,64 @@
+---
+title: Geometry and intersections
+description: Exact normalization, containment, projection, and intersection semantics for MLE's 2D and 3D geometry.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences:
+  - integrator
+  - contributor
+subsystems:
+  - math
+sourceFiles:
+  - src/mle/math/Types2D.cpp
+  - src/mle/math/Types2D.h
+  - src/mle/math/Types3D.cpp
+  - src/mle/math/Types3D.h
+  - src/mle/math/Intersect2D.cpp
+  - src/mle/math/Intersect2D.h
+testFiles:
+  - tests/Core/src/math/T.Types2D.cpp
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: geometry-and-intersections
+---
+
+MLE's geometry types package frequently repeated engine calculations while retaining a number of implementation-specific edge rules. The reliable contract is the pinned implementation and its tests, especially [`T.Types2D.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Core/src/math/T.Types2D.cpp), not the conventional meaning suggested by a class name.
+
+## Rectangles and inclusive bounds
+
+`Rect<T>` stores a position and a non-negative size. Constructing or setting a negative extent shifts that axis's origin and converts the extent to non-negative form. Crossing an edge with `setLeft`, `setRight`, `setTop`, or `setBottom` similarly swaps the normalized edges. `contains` includes every boundary edge.
+
+Intersection is inclusive as well: rectangles that are merely touching intersect, and their intersection can be a zero-width or zero-height rectangle. Disjoint axes are clamped to zero size at the computed intersection position. Expanding by an empty point range is a no-op, while `fromPoints` requires at least one point. Local/relative coordinate conversion divides by size, so a zero-sized axis needs caller handling.
+
+```cpp
+mle::Rectf bounds{{12.0f, 8.0f}, {-4.0f, 6.0f}};
+// Observed normalized result: position {8, 8}, size {4, 6}.
+// Boundary points at x=8 or x=12 are contained.
+```
+
+## Lines, rays, and segments in 2D
+
+`Line2D` and `Ray2D` constructors assume a normalized direction; `fromPoints` performs normalization. A ray's closest-point projection clamps the parameter to zero, while a line is unbounded. A `LineSegment2D` uses endpoint interpolation and clamps closest-point parameters into `[0, 1]`. Its closest-point implementation divides by squared segment length and has no zero-length guard, although the segment-intersection routine does use an epsilon branch for degenerate segments.
+
+Circle containment and intersection expand the squared-radius comparison by epsilon. `Circle::closestPoint` has an unusual inside case: for every point inside or on the circle, it returns the positive-X boundary, not the radial boundary corresponding to the input point.
+
+## Polygons
+
+`Polygon2f` owns an ordered, open vertex list. Bounding-box calculation requires nonempty vertices. `simplify` applies the Ramer–Douglas–Peucker algorithm as an open polyline; fewer than three points or epsilon at or below zero leaves the polygon unchanged. The test suite covers this simplification path.
+
+`Polygon2f::area`, `Polygon2f::center`, and `Polygon2f::sortCCW` are unimplemented in this snapshot. Debug builds assert; the release branches return zero/empty or do nothing. They must not be treated as completed geometry features.
+
+## Three-dimensional hit semantics
+
+`AABB` and `Sphere` use inclusive comparisons, but their constructors do not normalize reversed bounds or reject a negative radius. `Ray3f::intersect(AABB)` computes a slab `NearFar` interval. It can return a fully negative interval for a box behind the origin. `Ray3f::intersects(Sphere)` checks the quadratic discriminant with a normalized-direction assumption but performs no forward-parameter check: it tests the infinite line, so a sphere wholly behind the origin can still return true.
+
+This mismatch with conventional ray terminology is a known limitation. Callers needing forward-ray semantics must reject a sphere hit when both roots are negative and reject an AABB result whose far distance is below zero. The current sphere method does not expose the roots, so a separate calculation is required.
+
+<pre tabindex="0" role="region" aria-label="Forward ray acceptance example"><code>{`auto hit = ray.intersect(bounds); if (hit && hit->far >= 0.0f) { auto firstForwardDistance = std::max(hit->near, 0.0f); consume(firstForwardDistance); }`}</code></pre>
+
+`Plane::intersect` rejects parallel and behind-origin distances. `RectPlane` adds an inclusive rectangle check and assumes an initialized orthonormal basis. `Polygon3D` uses a Newell normal; degenerate input can normalize a zero vector. Frustum planes are normalized from a clip matrix, and three-plane intersection asserts when the determinant is near zero.
+
+## Test and support boundary
+
+The 2D suite supports its asserted rectangle, line, ray, segment, circle, and simplification cases. It does not establish every degeneracy listed above, and no scoped test covers `Types3D` or the 3D ray limitation. Those statements are implementation-observed. The [Math overview](/MLEDocs/versions/c1abea3de165/systems/math/) owns the shared representations; this page owns their current geometry behavior, not an SDK stability promise.

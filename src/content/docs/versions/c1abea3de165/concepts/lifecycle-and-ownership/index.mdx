@@ -1,0 +1,52 @@
+---
+title: Lifecycle and ownership
+description: Exact initialization, handoff, and teardown responsibilities for MLE's global runtime services.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences:
+  - integrator
+  - contributor
+subsystems:
+  - core
+  - client
+sourceFiles:
+  - src/mle/Entry.inl
+  - src/mle/core/Core.cpp
+  - src/mle/core/Logger.cpp
+  - src/mle/client/Client.cpp
+testFiles:
+  - tests/Client/src/Main.cpp
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: lifecycle-and-ownership
+---
+
+Initialization is ordered because later services read or use earlier ones. [`Core.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/core/Core.cpp) resets the uptime clock, initializes `RuntimeConfig`, registers engine keys, parses arguments, initializes `Logger`, then starts `ThreadPool` and `PerfTracker`. Logger therefore sees parsed log-level settings, and the performance tracker starts only after the worker pool exists.
+
+```text
+Core startup:  RuntimeConfig → parse arguments → Logger → ThreadPool → PerfTracker
+Core shutdown: PerfTracker → ThreadPool
+```
+
+The shutdown order stops the tracker before the shared workers. It is not a complete reverse of startup: Logger is not shut down by `Core::shutdown`, and RuntimeConfig has no explicit shutdown phase.
+
+## Who owns what
+
+The Core services are heap-backed singletons. Their `i()` accessors do not transfer ownership; initialization and shutdown are separate static operations. Built-in configuration listener objects are members of those long-lived singletons. Ordinary `RuntimeConfigListener` and `PerfNewSamplesListener` objects, by contrast, belong to the caller and register raw pointers. Their lifetimes must cover every callback that can already have been copied for dispatch.
+
+Client owns its layer objects and constructs Lua, Window, and Audio in its own startup. Renderer is not owned by Core or implicitly created by the generic entry fragment. The interactive Client executable calls `Renderer::init` after `Client::init`, runs the Client, shuts Renderer down, and finally invokes `Core::shutdown`. The precise observed sequence is in [`tests/Client/src/Main.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/src/Main.cpp).
+
+## Handoff and teardown
+
+Client's loop owns the high-level transition from layer updates to rendering. A layer may queue worker tasks or publish render data, but the object that created a dependent subsystem still owns its shutdown boundary. In particular, a worker callback does not marshal itself back to the Client or UI thread, and a performance listener runs on the tracker thread. See [Threading and synchronization](/MLEDocs/versions/c1abea3de165/concepts/threading-and-synchronization/) before retaining borrowed objects in either callback.
+
+`ThreadPool::shutdown` sets its stop flag, enqueues one wake-up task per worker, joins the threads, and clears the thread list. This wakes blocked workers; it does not guarantee that application jobs already queued ahead of or behind those sentinels have drained. Dependents should finish required work before beginning Core teardown.
+
+## Observed entry-point limitation
+
+The generic `Entry.inl` calls Core initialization, Client initialization, and `Client::run`, but **performs no Core shutdown**. Its only shutdown-shaped line, `// mle::shutdown();`, is commented; the referenced `mle::shutdown()` function is unresolved in the pinned source and must not be treated as `Core::shutdown`. The fragment also contains no Renderer initialization or shutdown. The interactive test Client supplies Renderer and Core shutdown calls independently. These two entry paths must not be combined into an unwritten lifecycle guarantee.
+
+There is a second teardown gap: `Logger::shutdown` exists, but Logger is not shut down by `Core::shutdown`, and the shipped test Client relies only on Core shutdown. This page records the implementation at the pinned commit; it does not normalize that omission into intended behavior.
+
+Finally, header visibility is not stability. Types reachable under `src/mle`, singleton macros, and explicit lifecycle functions describe how this source tree is assembled. They are not a compatibility or SDK stability promise. The [Core runtime](/MLEDocs/versions/c1abea3de165/systems/core/) page identifies the current integration-facing entry points and their limits.

@@ -1,0 +1,59 @@
+---
+title: Events and concurrency
+description: Event listener ownership, blocking queues, and single-producer cross-thread containers in MLE utilities.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences:
+  - integrator
+  - contributor
+subsystems:
+  - utilities
+sourceFiles:
+  - src/mle/utils/EventDispatcher.h
+  - src/mle/utils/LockedData.h
+  - src/mle/utils/containers/AtomicQueue.h
+  - src/mle/utils/containers/AtomicTripleBuffer.h
+  - src/mle/utils/containers/TSQueue.h
+testFiles:
+  - tests/Core/src/core/T.ThreadPool.cpp
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: events-and-concurrency
+---
+
+MLE utilities provide immediate and deferred typed events plus three different data handoff structures. Each has a deliberately narrow ownership or topology contract. [`EventDispatcher.h`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/utils/EventDispatcher.h) owns dispatch policy; the container headers own queue behavior.
+
+## Event listener ownership
+
+`EventDispatcherST` and `EventDispatcherTS` create a heap listener and return a `ListenerHnd` unique handle. The dispatcher stores a raw pointer to that listener. Handle destruction calls `unlisten` through the dispatcher; therefore the dispatcher must outlive the handle, and the handle must outlive every dispatch that can still reference it.
+
+Immediate dispatch copies the current listener pointer list before calling it. Registration changes made inside one callback affect later dispatches, not the copied iteration already in progress. Deferred `queue` copies an event, and `poll` drains queued events in FIFO order through the immediate path.
+
+The thread-safe dispatcher holds a recursive mutex for the event type through its callbacks. This permits same-thread recursive entry but serializes other dispatch or listener changes for that type. The deferred queue uses a separate mutex. `MustBeHandled` is enforced by a debug `assert`, not a release-mode error result.
+
+## Mutex-protected data and FIFO work
+
+`LockedData<T>` pairs a referenced object with a `std::unique_lock`; it owns neither the object nor the mutex, so both must outlive the wrapper. There is no try-lock or timed-lock mode.
+
+`TSQueue<T>` is a mutex-protected FIFO. Nonblocking empty pop returns `std::nullopt`. Blocking `pop` or `popMove` can wait indefinitely: `TSQueue` has no close, timeout, or cancellation operation. A blocked consumer must be released by pushing data or by an owning protocol such as ThreadPool's wake tasks. The const-reference `push` overload also prints the queue size to stdout; the rvalue overload does not.
+
+## Lock-free topology
+
+`AtomicQueue<T>` is a fixed-capacity power-of-two ring. The source has one writer for the head and one for the tail, so its supported observed topology is single producer and single consumer (SPSC). Push/pop are nonblocking boolean operations. Capacity is at least two after successful allocation; an allocation failure leaves zero capacity and makes pushes fail.
+
+`AtomicTripleBuffer<T>` is likewise one-producer/one-consumer. The producer acquires a slot, writes it, and publishes a sequence. The consumer asks for the latest sequence and can skip intermediate publications. Before new data exists, the consumer observes the initial slot. The non-atomic local producer and consumer indices are the reason additional producers or consumers are unsupported.
+
+```text
+producer: acquire → mutate slot → publish ─┐
+                                           ├─ latest sequence wins
+consumer:                 get latest <─────┘
+```
+
+## Test evidence and integration
+
+No scoped test directly asserts EventDispatcher, AtomicQueue, AtomicTripleBuffer, or TSQueue. The ThreadPool suite indirectly exercises TSQueue under worker scheduling, and UI Rendering is a representative triple-buffer consumer. Those call sites do not expand the containers' topology guarantees.
+
+## Limitations
+
+Listener dispatch retains raw pointers, TSQueue lacks a shutdown state, AtomicQueue is not a general MPMC queue, and the triple buffer deliberately drops intermediate states. None catches user callback exceptions. These are internal coordination primitives, not stable general-purpose concurrency APIs. For task futures and Core shutdown, use [Threading and performance](/MLEDocs/versions/c1abea3de165/systems/core/threading-and-performance/).

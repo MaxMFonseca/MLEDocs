@@ -52,32 +52,32 @@ const group = (
 
 const handbookGroupsUnvalidated = [
 	group('concepts-foundations', 'concepts', 'Engine model', 1, [
-		{ pageId: 'architecture', slug: 'concepts/architecture', title: 'Architecture', kind: 'concept', emphasis: 'overview', subsystem: 'core' },
-		{ pageId: 'lifecycle-and-ownership', slug: 'concepts/lifecycle-and-ownership', title: 'Lifecycle and ownership', kind: 'concept', emphasis: 'focused', subsystem: 'core' },
-		{ pageId: 'errors-and-diagnostics', slug: 'concepts/errors-and-diagnostics', title: 'Errors and diagnostics', kind: 'concept', emphasis: 'focused', subsystem: 'core' },
-		{ pageId: 'threading-and-synchronization', slug: 'concepts/threading-and-synchronization', title: 'Threading and synchronization', kind: 'concept', emphasis: 'focused', subsystem: 'core' },
+		{ pageId: 'architecture', slug: 'concepts/architecture', title: 'Architecture', kind: 'concept', emphasis: 'overview', publication: 'published', subsystem: 'core' },
+		{ pageId: 'lifecycle-and-ownership', slug: 'concepts/lifecycle-and-ownership', title: 'Lifecycle and ownership', kind: 'concept', emphasis: 'focused', publication: 'published', subsystem: 'core' },
+		{ pageId: 'errors-and-diagnostics', slug: 'concepts/errors-and-diagnostics', title: 'Errors and diagnostics', kind: 'concept', emphasis: 'focused', publication: 'published', subsystem: 'core' },
+		{ pageId: 'threading-and-synchronization', slug: 'concepts/threading-and-synchronization', title: 'Threading and synchronization', kind: 'concept', emphasis: 'focused', publication: 'published', subsystem: 'core' },
 		{ pageId: 'frame-and-resource-flow', slug: 'concepts/frame-and-resource-flow', title: 'Frame and resource flow', kind: 'concept', emphasis: 'focused', subsystem: 'renderer' },
 		{ pageId: 'cpp-lua-boundary', slug: 'concepts/cpp-lua-boundary', title: 'C++ and Lua boundary', kind: 'concept', emphasis: 'focused', subsystem: 'lua' },
 		{ pageId: 'ui-composition', slug: 'concepts/ui-composition', title: 'UI composition', kind: 'concept', emphasis: 'focused', subsystem: 'ui' },
 		{ pageId: 'audio-and-client-flow', slug: 'concepts/audio-and-client-flow', title: 'Audio and Client flow', kind: 'concept', emphasis: 'focused', subsystem: 'audio' },
 	]),
 	group('core-foundations', 'systems', 'Core runtime', 2, [
-		{ pageId: 'core', slug: 'systems/core', title: 'Core runtime', kind: 'system', emphasis: 'overview', subsystem: 'core' },
-		{ pageId: 'runtime-configuration', slug: 'systems/core/runtime-configuration', title: 'Runtime configuration', kind: 'system', emphasis: 'focused', subsystem: 'core' },
-		{ pageId: 'core-threading-and-performance', slug: 'systems/core/threading-and-performance', title: 'Threading and performance', kind: 'system', emphasis: 'focused', subsystem: 'core' },
+		{ pageId: 'core', slug: 'systems/core', title: 'Core runtime', kind: 'system', emphasis: 'overview', publication: 'published', subsystem: 'core' },
+		{ pageId: 'runtime-configuration', slug: 'systems/core/runtime-configuration', title: 'Runtime configuration', kind: 'system', emphasis: 'focused', publication: 'published', subsystem: 'core' },
+		{ pageId: 'core-threading-and-performance', slug: 'systems/core/threading-and-performance', title: 'Threading and performance', kind: 'system', emphasis: 'focused', publication: 'published', subsystem: 'core' },
 	]),
 	group('math-foundations', 'systems', 'Math', 3, [
-		{ pageId: 'math', slug: 'systems/math', title: 'Math', kind: 'system', emphasis: 'overview', subsystem: 'math' },
-		{ pageId: 'geometry-and-intersections', slug: 'systems/math/geometry-and-intersections', title: 'Geometry and intersections', kind: 'system', emphasis: 'focused', subsystem: 'math' },
-		{ pageId: 'lua-json-and-numerics', slug: 'systems/math/lua-json-and-numerics', title: 'Lua, JSON, and numerics', kind: 'system', emphasis: 'focused', subsystem: 'math' },
+		{ pageId: 'math', slug: 'systems/math', title: 'Math', kind: 'system', emphasis: 'overview', publication: 'published', subsystem: 'math' },
+		{ pageId: 'geometry-and-intersections', slug: 'systems/math/geometry-and-intersections', title: 'Geometry and intersections', kind: 'system', emphasis: 'focused', publication: 'published', subsystem: 'math' },
+		{ pageId: 'lua-json-and-numerics', slug: 'systems/math/lua-json-and-numerics', title: 'Lua, JSON, and numerics', kind: 'system', emphasis: 'focused', publication: 'published', subsystem: 'math' },
 	]),
 	group('utilities-foundations', 'systems', 'Utilities', 4, [
-		{ pageId: 'utilities', slug: 'systems/utilities', title: 'Utilities', kind: 'system', emphasis: 'overview', subsystem: 'utilities' },
-		{ pageId: 'events-and-concurrency', slug: 'systems/utilities/events-and-concurrency', title: 'Events and concurrency', kind: 'system', emphasis: 'focused', subsystem: 'utilities' },
-		{ pageId: 'data-color-and-packing', slug: 'systems/utilities/data-color-and-packing', title: 'Data, color, and packing', kind: 'system', emphasis: 'focused', subsystem: 'utilities' },
+		{ pageId: 'utilities', slug: 'systems/utilities', title: 'Utilities', kind: 'system', emphasis: 'overview', publication: 'published', subsystem: 'utilities' },
+		{ pageId: 'events-and-concurrency', slug: 'systems/utilities/events-and-concurrency', title: 'Events and concurrency', kind: 'system', emphasis: 'focused', publication: 'published', subsystem: 'utilities' },
+		{ pageId: 'data-color-and-packing', slug: 'systems/utilities/data-color-and-packing', title: 'Data, color, and packing', kind: 'system', emphasis: 'focused', publication: 'published', subsystem: 'utilities' },
 	]),
 	group('foundation-reference', 'reference', 'Core, math, and utility reference', 5, [
-		{ pageId: 'core-math-utility-types', slug: 'reference/core-math-utility-types', title: 'Core, math, and utility types', kind: 'reference', emphasis: 'lookup', subsystem: 'core', ownerPageId: 'core' },
+		{ pageId: 'core-math-utility-types', slug: 'reference/core-math-utility-types', title: 'Core, math, and utility types', kind: 'reference', emphasis: 'lookup', publication: 'published', subsystem: 'core', ownerPageId: 'core' },
 	]),
 	group('renderer-system', 'systems', 'Renderer', 6, [
 		{ pageId: 'renderer-overview', slug: 'systems/renderer', title: 'Renderer', kind: 'system', emphasis: 'overview', publication: 'published', subsystem: 'renderer' },

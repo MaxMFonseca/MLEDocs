@@ -1,0 +1,95 @@
+---
+title: Core, math, and utility types
+description: Curated lookup for MLE result values, aliases, enums, policies, and source-specific edge contracts.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences:
+  - integrator
+  - contributor
+subsystems:
+  - core
+  - math
+  - utilities
+sourceFiles:
+  - src/mle/core/Result.h
+  - src/mle/core/Types.h
+  - src/mle/core/Logger.h
+  - src/mle/math/Types.h
+  - src/mle/math/Types2D.h
+  - src/mle/math/Types3D.h
+  - src/mle/math/Utils.h
+  - src/mle/utils/Types.h
+  - src/mle/utils/SystemState.h
+  - src/mle/utils/ID.h
+  - src/mle/utils/Flags.h
+  - src/mle/utils/Color.h
+  - src/mle/utils/Justify.h
+testFiles:
+  - tests/Core/src/core/T.ThreadPool.cpp
+  - tests/Core/src/math/T.Types2D.cpp
+  - tests/Core/src/utils/T.String.cpp
+  - tests/Core/src/utils/T.Justify.cpp
+  - tests/Core/src/utils/T.RectPacker.cpp
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: core-math-utility-types
+---
+
+This is a curated lookup for names that recur across the runtime foundations. It summarizes the pinned definitions rather than reproducing declarations. Each row links to the owner page that explains lifecycle, errors, threading, or edge behavior. Header visibility and inclusion here are **not an API or SDK stability promise**.
+
+The defining status vocabulary is in [`Result.h`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/core/Result.h); the other metadata source links above are equally pinned to this snapshot.
+
+## Results and policies
+
+<table tabindex="0" role="region" aria-label="Core result and policy lookup">
+  <thead><tr><th>Identifier</th><th>Exact contract in this snapshot</th><th>Owner page</th></tr></thead>
+  <tbody>
+    <tr><td><code>Result</code></td><td>Status enum. <code>OK</code> is success; values before <code>NOK</code> are non-error control outcomes under <code>isError</code>; <code>NOK</code> onward are errors.</td><td><a href="/MLEDocs/versions/c1abea3de165/concepts/errors-and-diagnostics/">Errors and diagnostics</a></td></tr>
+    <tr><td><code>Expected&lt;T&gt;</code></td><td>Alias for <code>std::expected&lt;T, Result&gt;</code>. The value and error are explicit; no logging or abort happens merely by returning it.</td><td><a href="/MLEDocs/versions/c1abea3de165/concepts/errors-and-diagnostics/">Errors and diagnostics</a></td></tr>
+    <tr><td><code>LogLevel</code></td><td><code>TRACE</code>, <code>DEBUG</code>, <code>INFO</code>, <code>WARN</code>, <code>ERROR</code>, <code>CRITICAL</code>, and <code>OFF</code>; Logger maps these to sink levels.</td><td><a href="/MLEDocs/versions/c1abea3de165/systems/core/">Core runtime</a></td></tr>
+    <tr><td><code>SystemState</code></td><td>Shared lifecycle vocabulary with <code>UNINITIALIZED</code>, <code>INITIALIZED</code>, <code>RUNNING</code>, and <code>STOPPING</code>.</td><td><a href="/MLEDocs/versions/c1abea3de165/systems/utilities/">Utilities</a></td></tr>
+  </tbody>
+</table>
+
+`unwrap` consumes an rvalue `Expected<T>` and aborts through Core on error. `check` aborts only for statuses where `isError` is true. Assertion macros are debug diagnostics and release invariants, not recoverable result conversion.
+
+## Scalar, geometry, and orientation names
+
+| Identifier | Meaning | Owner page |
+| --- | --- | --- |
+| `f32`, `f64` | `float_t` and `double_t`; MLE's floating scalar vocabulary. | [Math](/MLEDocs/versions/c1abea3de165/systems/math/) |
+| `vec2i`, `vec2u`, `vec2f` | GLM two-component vectors over signed, unsigned, and floating scalars. | [Math](/MLEDocs/versions/c1abea3de165/systems/math/) |
+| `vec3f`, `vec4f`, `mat3f`, `mat4f`, `quat` | GLM vector, column-matrix, and quaternion aliases. JSON and formatting orders are separate contracts. | [Lua, JSON, and numerics](/MLEDocs/versions/c1abea3de165/systems/math/lua-json-and-numerics/) |
+| `Axis` | `X`, `Y`, `Z`, and `W`, with `WIDTH`, `HEIGHT`, and `DEPTH` aliases for the first three values. | [Math](/MLEDocs/versions/c1abea3de165/systems/math/) |
+| `BoxFace` | Six signed box-face directions: left/right, bottom/top, front/back. | [Geometry and intersections](/MLEDocs/versions/c1abea3de165/systems/math/geometry-and-intersections/) |
+| `Rectf`, `Recti` | Position plus normalized non-negative size; bounds are inclusive. | [Geometry and intersections](/MLEDocs/versions/c1abea3de165/systems/math/geometry-and-intersections/) |
+| `NearFar` | Pair of floating distances returned by the AABB slab test. A fully negative interval is possible. | [Geometry and intersections](/MLEDocs/versions/c1abea3de165/systems/math/geometry-and-intersections/) |
+
+`min<T>()` forwards `std::numeric_limits<T>::min()`. For a floating type, that is the smallest positive normal value, not the most negative finite value. `as<T>` is an unchecked `static_cast`.
+
+## Utility names
+
+| Identifier | Meaning and constraints | Owner page |
+| --- | --- | --- |
+| `ID` | `u64` identity type. `genID` starts at zero and is process-local. | [Data, color, and packing](/MLEDocs/versions/c1abea3de165/systems/utilities/data-color-and-packing/) |
+| `INVALID_ID` | Maximum `u64` sentinel. Generator wraparound is not guarded against reaching it. | [Data, color, and packing](/MLEDocs/versions/c1abea3de165/systems/utilities/data-color-and-packing/) |
+| `Bytes`, `BytesHnd`, `BytesRef` | Owned byte vector, unique owner, and non-owning byte-vector pointer. | [Utilities](/MLEDocs/versions/c1abea3de165/systems/utilities/) |
+| `UserPtr` | Unowned `void*` carrier; type and lifetime remain the caller's responsibility. | [Utilities](/MLEDocs/versions/c1abea3de165/systems/utilities/) |
+| `Flags<E>` | Typed bit mask; raw masks may include unnamed bits. | [Data, color, and packing](/MLEDocs/versions/c1abea3de165/systems/utilities/data-color-and-packing/) |
+| `LineMode` | Justification policy: `START`, `CENTER`, `END`, `SPACE_BETWEEN`, `SPACE_AROUND`, or `SPACE_EVENLY`. | [Data, color, and packing](/MLEDocs/versions/c1abea3de165/systems/utilities/data-color-and-packing/) |
+| `Color` | Floating RGBA value with packing and color-space helpers; packing does not clamp. | [Data, color, and packing](/MLEDocs/versions/c1abea3de165/systems/utilities/data-color-and-packing/) |
+| `ListenerHnd` | Unique listener ownership; dispatcher retains a raw pointer and must outlive the handle. | [Events and concurrency](/MLEDocs/versions/c1abea3de165/systems/utilities/events-and-concurrency/) |
+
+## Result categories
+
+The enum ordering makes category boundaries operational. This list is grouped by `isError`, not by how an application might choose to react.
+
+- Non-error results: `OK`, `TIMEOUT`, `SWAPCHAIN_NOT_VISIBLE`, `FRAME_SKIP`, `NOT_READY`, `CURSOR_NOT_INSIDE_WINDOW`, and `DISABLED`.
+- Error results: `NOK`, `INVALID_ARGUMENT`, `OUT_OR_RANGE`, `NOT_FOUND`, `FAILED_TO_OPEN`, `ALLOCATION_FAILED`, `FAILED_TO_CREATE`, `INVALID_TYPE`, and `OAL_ERROR`.
+
+The misspelled `OUT_OR_RANGE` name is the actual identifier in this commit. Keep it unchanged in code and diagnostics.
+
+## Evidence boundary
+
+The ThreadPool, 2D geometry, string, justification, and rectangle-packing test files establish the behaviors they explicitly assert. They do not collectively certify every alias or enum listed here. Items without a matching assertion are source-observed lookup facts. Return to the owner page before relying on lifetime, thread, failure, serialization, or edge semantics.

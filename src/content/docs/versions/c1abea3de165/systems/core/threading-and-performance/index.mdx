@@ -1,0 +1,60 @@
+---
+title: Threading and performance
+description: Core worker tasks, futures, callback threads, performance counters, sampling, and shutdown limits.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences:
+  - integrator
+  - contributor
+subsystems:
+  - core
+sourceFiles:
+  - src/mle/core/ThreadPool.cpp
+  - src/mle/core/ThreadPool.h
+  - src/mle/core/PerfTracker.cpp
+  - src/mle/core/PerfTracker.h
+testFiles:
+  - tests/Core/src/core/T.ThreadPool.cpp
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: core-threading-and-performance
+---
+
+Core provides a shared `ThreadPool` for general tasks and a separate `PerfTracker` thread for aggregated timing samples. They solve different problems: the pool executes queued application work, while the tracker periodically exchanges counters recorded by any thread. Their implementation is pinned by [`ThreadPool.h`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/core/ThreadPool.h) and the corresponding source files.
+
+## Worker-pool lifecycle
+
+`ThreadPool::init` starts the requested number of `std::thread` workers; Core supplies `std::thread::hardware_concurrency()` as its default. Each worker blocks in the internal `TSQueue` until a callable is available. The singleton owns the threads and queue, while a submitter owns any returned future and everything captured by its callable.
+
+```cpp
+auto future = mle::ThreadPool::i().submit([] { return load_or_compute(); });
+// Other work may proceed here. Reading the result can block or rethrow.
+auto value = future.get();
+```
+
+`enqueue` accepts fire-and-forget move-only callables. `submit` wraps work in a packaged task and returns a future; an exception from that callable is stored in the future. `submitWithCallback` runs the work and then its callback in the same queued closure. The callback therefore runs on a worker thread, not on the submitter, Client, render, or UI thread. Non-void work passes its moved result into that callback.
+
+## Shutdown contract
+
+Shutdown sets a stop flag, pushes one wake task for each worker, joins every thread, and clears the thread list. Worker loops test the stop flag after popping a task. Because application tasks and wake tasks share the queue, shutdown does not guarantee a drain of queued work. A packaged task left behind can make its future unusable for the expected result, and the API has no enqueue-rejection result during shutdown.
+
+Owners should stop producing tasks, wait for required futures, and release worker callbacks before Core teardown. The pool itself does not provide cancellation, priorities, affinities, or a completion barrier.
+
+## Performance counters
+
+`registerCounter` assigns a process-local ID for a name, and `record` atomically adds nanoseconds and call counts. `MLE_PERF_SCOPE` registers a function-local static counter and records `steady_clock` duration at scope exit. The tracker thread exchanges the current counters approximately one second at a time, accumulates lifetime totals, and sends each sample vector to listeners.
+
+Sampling is aggregate, not a trace: a sample reports total time and calls collected since the preceding exchange. Scheduling can move the boundary around approximately one second, and concurrent record calls can land on either side of the atomic exchange.
+
+## Listener lifetime
+
+`PerfNewSamplesListener` registers a raw pointer in a set and removes it on destruction. During an update, the tracker copies raw pointer listeners and invokes them on the tracker thread. Destruction does not synchronize with a pointer already copied for that update. The owner must stop dispatch or otherwise guarantee that the listener outlives the callback. Exceptions are not caught.
+
+## Test evidence
+
+[`T.ThreadPool.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Core/src/core/T.ThreadPool.cpp) checks fire-and-forget execution, future values and void tasks, move-only captures and results, nested enqueue, callback ordering, stress, and parallel execution. It does not assert shutdown draining, enqueue-during-shutdown behavior, or any performance-tracker contract. Those limits are source-observed.
+
+## Internal surfaces and limitations
+
+The underlying `TSQueue`, worker vector, and tracker counter storage are implementation details. Private `PerfTracker` update-thread declarations that have no definition or call site are not usable entry points. Neither subsystem makes a performance guarantee, and the header-visible templates are not an SDK stability promise. Use [Events and concurrency](/MLEDocs/versions/c1abea3de165/systems/utilities/events-and-concurrency/) for the queue primitives and [Lifecycle and ownership](/MLEDocs/versions/c1abea3de165/concepts/lifecycle-and-ownership/) for teardown ordering.

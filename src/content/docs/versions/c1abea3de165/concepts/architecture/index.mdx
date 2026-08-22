@@ -1,0 +1,57 @@
+---
+title: Architecture
+description: Runtime ownership, startup flow, and subsystem boundaries in the pinned MLE engine snapshot.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences:
+  - integrator
+  - contributor
+subsystems:
+  - core
+  - client
+  - renderer
+  - lua
+  - ui
+sourceFiles:
+  - src/mle/Entry.inl
+  - src/mle/core/Core.cpp
+  - src/mle/client/Client.cpp
+testFiles:
+  - tests/Client/src/Main.cpp
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: architecture
+---
+
+MLE is organized around process-wide services and a Client loop, not a single object that owns the entire engine. The generic [`Entry.inl`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/Entry.inl) supplies the smallest startup path: **Entry → `Core::init` → `Client::init` → `Client::run`**. Core establishes configuration, logging, worker execution, and performance sampling. Client then creates the Lua, window, and audio services used by its layer-driven loop.
+
+```text
+process entry
+    ├─ Core
+    │   ├─ RuntimeConfig → Logger
+    │   └─ ThreadPool → PerfTracker
+    └─ Client
+        ├─ Lua → Window → Audio
+        └─ active Layer → run loop
+```
+
+This is a relationship map, not a promise that every executable follows `Entry.inl`. The shipped interactive test Client adds Renderer initialization after Client and explicitly shuts Renderer down when the loop ends. That executable is the more complete observed integration path; see its [`Main.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/src/Main.cpp).
+
+## Ownership and boundaries
+
+Core and the services covered here use heap-backed singleton accessors. They remain process-global, and most are initialized and stopped by explicit calls. Client owns its active layers and creates Window and Audio during `Client::init`; Renderer is a separate singleton initialized by an entry point that needs rendering. For exact startup and teardown responsibilities, use [Lifecycle and ownership](/MLEDocs/versions/c1abea3de165/concepts/lifecycle-and-ownership/).
+
+Work does not remain on one thread after startup. `ThreadPool` workers execute general queued jobs, `PerfTracker` owns a sampling thread, and the renderer and audio systems have their own later owner-page contracts. UI rendering demonstrates a cross-thread handoff through a triple buffer, but this page does not infer the complete render thread or audio thread order from that call site. Continue with [Threading and synchronization](/MLEDocs/versions/c1abea3de165/concepts/threading-and-synchronization/) and the [Renderer overview](/MLEDocs/versions/c1abea3de165/systems/renderer/) for the boundaries that are already documented.
+
+## Data and control flow
+
+Configuration enters through registered keys and command-line arguments before Logger starts. Layers then provide the main extension seam: Client activates a game layer, calls its lifecycle hooks, and lets it coordinate subsystem use. Events and render packets move through utility containers rather than through Core itself. Errors either remain explicit `Result`/`Expected<T>` values or cross a fail-fast boundary described in [Errors and diagnostics](/MLEDocs/versions/c1abea3de165/concepts/errors-and-diagnostics/).
+
+The distinction matters when reading source. A header in `src/mle` can be shared across the tree without being a supported integration API. Singleton access, public placement, and formatter availability explain current internal use; they do not establish SDK stability.
+
+## Evidence and limitations
+
+The Core test suite exercises individual math, utility, and worker-pool contracts. The interactive Client main demonstrates startup order, but it is not an automated assertion of the complete frame lifecycle. No scoped test proves generic process teardown.
+
+This snapshot has visible lifecycle gaps. `Entry.inl` does not initialize Renderer and does not perform the explicit shutdown sequence used by the test Client. Core itself also omits Logger shutdown. Treat each executable's entry point as the authority for what it actually owns, and do not use the generic entry fragment as a complete production template.

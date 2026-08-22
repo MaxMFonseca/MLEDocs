@@ -1,0 +1,57 @@
+---
+title: Errors and diagnostics
+description: Result values, expected results, fail-fast helpers, assertions, and logging behavior in MLE Core.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences:
+  - integrator
+  - contributor
+subsystems:
+  - core
+sourceFiles:
+  - src/mle/core/Result.h
+  - src/mle/core/Unwrap.h
+  - src/mle/core/Assert.h
+  - src/mle/core/Core.cpp
+  - src/mle/core/Logger.cpp
+testFiles:
+  - tests/Core/src/utils/T.String.cpp
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: errors-and-diagnostics
+---
+
+MLE uses two different value-level error forms and a separate fail-fast path. [`Result.h`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/core/Result.h) defines a compact `Result` status. `Expected<T>` is an alias for `std::expected<T, Result>` when a successful operation also returns a value. Neither form implies that every non-`OK` result is fatal.
+
+## Results and control outcomes
+
+`isError(result)` compares the enum ordinal with `NOK`. Values before that boundary—including `TIMEOUT`, `NOT_READY`, `FRAME_SKIP`, and `DISABLED`—are control outcomes, not errors according to this helper. `NOK` and the values after it are errors. Code that collapses all non-`OK` values into failure loses this distinction.
+
+Use an `Expected<T>` by checking it and then reading either the value or `.error()`. The string conversion tests demonstrate this style for valid, invalid, and out-of-range numbers. They support the conversion behavior, not a universal recovery policy.
+
+```cpp
+auto parsed = mle::strTo<mle::i32>(text);
+if (!parsed) {
+    return parsed.error();
+}
+use(*parsed);
+```
+
+## Fail-fast helpers
+
+`unwrap(Expected<T>&&)` is deliberately not a recoverable accessor. On error it calls `Core::unrecoverable`; that formats a critical message and terminates with `std::abort`. The `check(Result)` helper has the same fail-fast effect only when `isError` is true, so pre-`NOK` control outcomes pass through.
+
+Assertions form another boundary. In debug builds, `MLE_ASSERT_LOG` logs a critical diagnostic and then executes `assert`; `MLE_ASSERT` supplies the source expression as the message. In release builds the false branch is `std::unreachable`, not a logged error and not a fallback value. A caller must preserve the asserted invariant in every build. `MLE_ASSERT_RESULT` evaluates a result and applies that same rule, while the unreachable/TODO macros have the same debug-versus-release split.
+
+## Logging side effects
+
+Logger constructs a truncating `logs/latest.log` sink and a colored stdout sink. Compile-time log-level selection can remove lower-level macros, while runtime configuration controls sink levels. Logging is synchronous at the MLE call site through the selected spdlog logger; MLE does not add its own diagnostic queue here.
+
+Formatting helpers such as `MLE_1V` through `MLE_6V` are conveniences around those log calls. They should not be relied on for control flow: a compile-time-disabled log has no visible output, and critical logging does not terminate unless the calling macro or Core path explicitly aborts.
+
+## Limits and ownership
+
+No scoped Core test asserts abort behavior or sink shutdown. `T.String.cpp` supports `Expected<T>` parsing behavior, while the abort/assert and Logger descriptions are source-observed. Logger owns its sinks and RuntimeConfig listeners, but [Lifecycle and ownership](/MLEDocs/versions/c1abea3de165/concepts/lifecycle-and-ownership/) records that Core does not call `Logger::shutdown` in this snapshot.
+
+These macros and aliases are internal engine policy, not a stable exception ABI. Consult the [Core, math, and utility types](/MLEDocs/versions/c1abea3de165/reference/core-math-utility-types/) lookup for exact enum categories, then handle value-level results before choosing a fail-fast helper.

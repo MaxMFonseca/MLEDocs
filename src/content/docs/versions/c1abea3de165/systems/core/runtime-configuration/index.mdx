@@ -1,0 +1,54 @@
+---
+title: Runtime configuration
+description: Registered keys, command-line parsing, typed reads, synchronous listeners, and known listener defects.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences:
+  - integrator
+  - contributor
+subsystems:
+  - core
+sourceFiles:
+  - src/mle/core/RuntimeConfig.cpp
+  - src/mle/core/RuntimeConfig.h
+testFiles:
+  - tests/Core/src/utils/T.String.cpp
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: runtime-configuration
+---
+
+`RuntimeConfig` is a process-wide string store for engine keys, command-line values, typed reads, and change callbacks. Core initializes it before Logger, registers the built-in keys, and then parses process arguments. The implementation in [`RuntimeConfig.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/core/RuntimeConfig.cpp) is authoritative where its behavior differs from header comments.
+
+## Registration and command-line flow
+
+`addKey(key, description)` creates or replaces a registered key and resets its value to an empty string. `parseArgs` recognizes an exact `--key` token only when the key was registered. If a following token exists and does not begin with `-`, that token becomes the value; otherwise the bare flag becomes the string `"1"`. Unknown keys are printed to stdout and ignored.
+
+```text
+Core registers key → parse --key [value] → store string → typed getter or listener
+```
+
+A value beginning with `-` cannot be consumed as the argument value, which includes negative numeric spelling. Parsing also operates during startup without taking the key mutex. This page does not extend that observed startup use into a concurrent parse contract.
+
+## Reads and writes
+
+`get` returns a copy under the key lock. Unknown or empty values produce `std::nullopt`. The boolean getter accepts case-insensitive `1`/`0`, `true`/`false`, `y`/`n`, `yes`/`no`, and `on`/`off`. Integer and floating getters use the string conversion helpers; invalid, partially parsed, or out-of-range text becomes `std::nullopt` at the configuration boundary.
+
+`set` stores only a nonempty value for a known key. It still proceeds to listener lookup for an unknown key or an empty value. A successful write synchronously notifies listeners before returning. The implementation copies listener pointers while holding the listener mutex and invokes the callbacks outside that mutex.
+
+## Listener ownership
+
+`RuntimeConfigListener` is a caller-owned RAII registration that stores a raw pointer in RuntimeConfig's listener map. Changing its key or callback first calls `unlisten`; the destructor also calls `unlisten`. A listener must remain alive while its callback can execute, and callback exceptions are not caught by RuntimeConfig.
+
+This is not an event-loop subscription. The callback runs synchronously in whichever thread called `set`. It may therefore run on startup, a worker, or another subsystem thread if that caller writes configuration.
+
+## Known implementation limitation
+
+The header says callbacks run under the listener lock and a callback returning `true` removes itself. At this pinned commit, neither statement matches the implementation. Dispatch is outside the mutex, and **returning true does not unregister**: the code calls `std::ranges::remove` but never erases the returned tail. Use the listener destructor or an explicit `unlisten` as the observed removal path. Do not depend on callback-return removal until the engine source changes and the documentation snapshot advances.
+
+## Test evidence and support boundary
+
+No scoped test directly exercises RuntimeConfig. `T.String.cpp` supports the underlying full-string numeric parsing behavior, but not key locking, callbacks, or command-line parsing. Those contracts are source-observed. Logger's two built-in listeners are representative consumers; their process-long lifetime does not make short-lived listeners safe.
+
+Key registration and access are internal runtime facilities, not a stable public configuration format. The compiled set of keys and their consumers can change. See the [Core runtime](/MLEDocs/versions/c1abea3de165/systems/core/) for startup position and [Threading and synchronization](/MLEDocs/versions/c1abea3de165/concepts/threading-and-synchronization/) for callback lifetime rules.

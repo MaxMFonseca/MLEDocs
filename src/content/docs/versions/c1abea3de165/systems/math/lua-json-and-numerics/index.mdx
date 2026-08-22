@@ -1,0 +1,64 @@
+---
+title: Lua, JSON, and numerics
+description: Math bindings, serialization component order, tolerant comparisons, and numerical helper edge cases.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences:
+  - integrator
+  - contributor
+subsystems:
+  - math
+  - lua
+sourceFiles:
+  - src/mle/math/LuaUTMathTypes.h
+  - src/mle/math/Json.h
+  - src/mle/math/Utils.cpp
+  - src/mle/math/Utils.h
+testFiles:
+  - tests/Core/src/math/T.Types2D.cpp
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: lua-json-and-numerics
+---
+
+MLE exposes selected math values at three boundaries: C++ formatting, nlohmann JSON conversion, and Lua usertype registration. Those boundaries cover different sets of types and do not share one universal component order. [`Json.h`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/math/Json.h) and `LuaUTMathTypes.h` are the exact contracts for this snapshot.
+
+## JSON representation
+
+The JSON serializers are array-based and bidirectional for four types:
+
+| Type | JSON array order |
+| --- | --- |
+| `vec3f` | `[x, y, z]` |
+| `quat` | `[w, x, y, z]` |
+| `vec2u` | `[x, y]` |
+| `vec2i` | `[x, y]` |
+
+JSON quaternion order is `w, x, y, z`, while the formatter order is `x, y, z, w`. Do not copy a diagnostic quaternion string into JSON or interpret a stored JSON array using the display order. Deserialization uses indexed `.at()` and typed `.get()`, so missing elements and incompatible JSON values propagate nlohmann exceptions rather than MLE `Result` values.
+
+## Lua math values
+
+`makeUTMathTypes` installs constructor/component usertypes named `Vec2i`, `Vec3i`, `Vec4i`, `Vec2f`, `Vec3f`, and `Vec4f` in Lua. Their C++ backing aliases are the corresponding lower-case `vec*` types, and their components are writable. `Recti` and `Rectf` expose constructors plus `pos` and `size` methods that return their current values.
+
+Lua initialization calls this registration function, but the binding file does not provide a complete GLM operator surface or every geometry method. Treat it as a curated value bridge. Full Lua runtime ownership and error propagation belong to the later Lua owner pages.
+
+## Floating comparisons
+
+`FloatTolerance` defaults relative tolerance to eight times machine epsilon and absolute tolerance to `1e-6`. Equality uses the larger of the scale-adjusted relative tolerance and that absolute floor. The `feq`, `flt`, `fgt`, `fle`, `fge`, and `fcmp` aliases forward to the named helpers; the non-strict comparisons are expressed as negations of the tolerance-aware strict comparisons.
+
+The absolute floor of `1e-6` dominates near zero. At larger magnitudes, the relative term may dominate. Each helper accepts both relative and absolute tolerance arguments, so callers that override the policy should pass both values deliberately.
+
+## Small numerical helpers
+
+`as<T>` is a plain `static_cast`, so normal narrowing and truncation rules apply. `roundUpToPow2` maps zero to one and rounds representable unsigned inputs upward, but it does not guard a next power that would require shifting by the type width. `roughSqrt` is a bit-level `f32` approximation with an explicit exact-zero path; MLE does not specify its behavior for negative or nonfinite inputs.
+
+## Data flow and ownership
+
+These conversions create value objects. JSON arrays own their elements, Lua owns its userdata, and the numeric helpers retain no global state. The binding registration modifies a caller-supplied Lua state and therefore must happen during Lua initialization before scripts use the names.
+
+## Test evidence and limitations
+
+The scoped `T.Types2D.cpp` tests exercise tolerant comparisons indirectly through geometry assertions; they do not establish independent tolerance boundaries. There are no scoped tests for JSON ordering, Lua registration, power-of-two overflow, or `roughSqrt`. All of those are source-observed.
+
+Only the listed JSON and Lua types are registered here. Formatter availability and aliases are implementation vocabulary rather than a serialization-compatibility or SDK promise. For spatial edge rules, return to [Geometry and intersections](/MLEDocs/versions/c1abea3de165/systems/math/geometry-and-intersections/); for a compact name lookup, use [Core, math, and utility types](/MLEDocs/versions/c1abea3de165/reference/core-math-utility-types/).

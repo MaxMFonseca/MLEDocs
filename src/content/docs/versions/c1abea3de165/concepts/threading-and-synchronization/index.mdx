@@ -1,0 +1,58 @@
+---
+title: Threading and synchronization
+description: Thread ownership, callback execution, locks, queues, and cross-thread handoffs in MLE.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences:
+  - integrator
+  - contributor
+subsystems:
+  - core
+  - utilities
+  - renderer
+  - ui
+sourceFiles:
+  - src/mle/core/ThreadPool.cpp
+  - src/mle/core/ThreadPool.h
+  - src/mle/core/PerfTracker.cpp
+  - src/mle/core/PerfTracker.h
+  - src/mle/utils/EventDispatcher.h
+  - src/mle/utils/containers/TSQueue.h
+  - src/mle/utils/containers/AtomicTripleBuffer.h
+  - src/mle/renderer/SyncManager.cpp
+  - src/mle/ui/systems/Rendering.cpp
+testFiles:
+  - tests/Core/src/core/T.ThreadPool.cpp
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: threading-and-synchronization
+---
+
+MLE uses several narrow concurrency mechanisms rather than one universal scheduler. Core supplies a shared worker pool and a dedicated performance-sampling thread. Utilities provide blocking and lock-free containers. Renderer and UI call sites add subsystem-specific handoffs whose complete lifecycle belongs to their owner pages.
+
+```text
+caller ── enqueue/submit ──> TSQueue ──> ThreadPool worker
+threads ── record timing ──────────────> PerfTracker sampling thread ──> listeners
+UI update producer ── publish latest ──> AtomicTripleBuffer ──> render consumer
+```
+
+[`ThreadPool.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/core/ThreadPool.cpp) creates the worker threads. A queued callable executes on whichever worker pops it. `submitWithCallback` runs the callback in that same worker closure; it does not post back to the submitting, Client, or UI thread. The Core tests cover task execution, futures, move-only values, nested enqueue, callbacks, and observed parallelism.
+
+## Lock and callback boundaries
+
+`RuntimeConfig` copies its listener pointers while holding the listener mutex, then invokes callbacks after releasing it. `EventDispatcherTS`, by contrast, holds a recursive per-event-type mutex through immediate callbacks. Its deferred queue has a separate lock. These are materially different reentrancy rules; code shared between the two callback systems must not assume one common lock boundary.
+
+`PerfTracker` periodically copies raw listener pointers and invokes them from its tracker thread. Destroying a listener removes it from the registered set but does not synchronize with a pointer already copied for the current dispatch. Listener owners must arrange quiescence before destruction when callbacks can race.
+
+## Queues and handoffs
+
+`TSQueue` offers blocking and nonblocking pops. A blocking pop waits indefinitely until data arrives; there is no close, timeout, or cancellation operation. ThreadPool shutdown wakes workers with queued no-op tasks. The atomic ring queue is source-implemented for one producer and one consumer, while the triple buffer also requires one producer and one consumer and intentionally permits the consumer to skip intermediate publications in favor of the latest sequence.
+
+The UI rendering system is a concrete triple-buffer user: the update side publishes a render packet and the render side consumes a newer sequence when available. That proves a handoff pattern, not the entire render thread order. Use the [Renderer overview](/MLEDocs/versions/c1abea3de165/systems/renderer/) for renderer ownership and the later UI owner pages for UI scheduling detail.
+
+## Shutdown and limitations
+
+Core stops `PerfTracker` before `ThreadPool`. ThreadPool sets a stop flag, wakes and joins workers, but shutdown does not guarantee that queued application work will drain. Enqueueing during shutdown has no explicit rejection contract. Finish required jobs and stop callback producers before tearing down borrowed state.
+
+The concurrency containers are internal building blocks with caller-held invariants, not general multi-producer/multi-consumer APIs. `TSQueue`'s const-reference `push` also prints the queue size to stdout in this snapshot, unlike its rvalue overload. Detailed contracts are in [Threading and performance](/MLEDocs/versions/c1abea3de165/systems/core/threading-and-performance/) and [Events and concurrency](/MLEDocs/versions/c1abea3de165/systems/utilities/events-and-concurrency/).
