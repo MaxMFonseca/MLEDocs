@@ -43,6 +43,6 @@ Focusing registers text, editing, selection, clipboard, Enter, Tab, and Escape l
 - **Escape** blurs the box. A higher-level always-call Escape listener can then observe the same key event.
 - Multiline mode inserts newline on Enter. With `ctrl_enter_newline`, the implementation inserts only when Ctrl is held; it does not submit on plain Enter.
 
-Focus, edits, and programmatic set/clear request internal bounds updates because the displayed glyphs and caret can change size. Destroying the renderable destroys the `TextBox`; its RAII listener members unregister. The planned **Handle input, focus, and text** guide will own the end-to-end form workflow.
+Focus, edits, and programmatic set/clear request internal bounds updates because the displayed glyphs and caret can change size. Destroying the renderable destroys the `TextBox`; its RAII listener members unregister. [Handle input, focus, and text](../../../guides/handle-input-focus-and-text/) follows the complete form workflow.
 
 Evidence: [`Text.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/ui/renderable/Text.cpp), [`TextBox.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/window/TextBox.cpp), and [`T.Text.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Core/src/ui/T.Text.cpp).

@@ -1,0 +1,55 @@
+---
+title: Experimental server
+description: Delimit MLE's header-only local queue and fixed-loop server scaffolding from the networking, protocol, safety, and lifecycle work it does not implement.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: experimental
+audiences: [integrator, contributor]
+subsystems: [server]
+sourceFiles: [src/mle/server/Server.h, src/mle/server/ServerConnection.h, src/mle/server/ServerCommunicationProtocol.h, src/mle/server/Types.h]
+testFiles: []
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: server
+---
+
+> **Experimental, non-production boundary.** The implemented code is header-only in-process queue and loop scaffolding. The stubbed or absent side includes remote transport, sockets, serialization, connection establishment, multi-client ownership, security, cancellation, and production lifecycle guarantees. No reviewed executable constructs it, and no automated server test exercises it.
+
+The four files under `src/mle/server` sketch how a derived server and a client-side connection might exchange variant values through a replaceable communication protocol. They do not constitute a network server.
+
+## Implemented pieces
+
+<table tabindex="0" role="region" aria-label="Implemented server scaffolding">
+<thead><tr><th>Piece</th><th>Implemented behavior</th><th>Boundary</th></tr></thead>
+<tbody>
+<tr><td><code>ClientId</code></td><td>Alias for <code>u64</code></td><td>No allocator, registry, authentication, or lifecycle</td></tr>
+<tr><td><code>ServerCommunicationProtocol</code></td><td>Abstract move-push, try-pop, and <code>pump</code> interface for events and commands</td><td>No framing or error result</td></tr>
+<tr><td><code>LocalServerCommunicationProtocol</code></td><td>Two public capacity-100 <code>AtomicQueue</code>s; move-push and try-pop; <code>pump</code> is a no-op</td><td>Ignores <code>tryPush</code> failure, so a full queue drops without caller feedback</td></tr>
+<tr><td><code>ServerConnection</code></td><td>Push a command; poll any or typed event every 10 ms until timeout</td><td>Typed wait logs and discards unexpected alternatives; no cancellation</td></tr>
+<tr><td><code>Server</code></td><td>Atomic state, fixed-step <code>std::jthread</code>, derived <code>init</code>/<code>update</code>, stop request, conditional event push</td><td>Base loop does not pump or consume commands</td></tr>
+</tbody>
+</table>
+
+## Loop and derived ownership
+
+A derived class receives a protocol by reference, must implement `init` and `update`, and may call the protected `run`. The worker runs a 16,666,667 ns fixed step with the same five-update catch-up cap used by Client. `requestStop` stores `STOPPING`; after the loop observes it, the base calls virtual `shutdown`, whose default behavior only logs elapsed time.
+
+The base `runLoop` never calls `scp_.pump`, never pops a command, and never invokes `handleCommand`. The template `handleCommand` itself only warns. A derived implementation would have to define command draining, variant dispatch, validation, player state, and error policy.
+
+`pushEvent` sends only while the temporary `player_connected_` flag is true; that flag defaults false and is left for derived code. `pushConnectingEvent` bypasses it. The source explicitly marks multi-client handling as unfinished.
+
+## Connection waits
+
+`ServerConnection::waitForEvent` repeatedly calls `pump`, attempts a pop, sleeps 10 ms, and returns `Result::TIMEOUT` when the stopwatch reaches the caller's deadline. The typed overload keeps waiting when it receives another variant alternative, which removes that event from the queue. There is no stop token, wake-up primitive, connection-loss result, or preservation queue for unmatched events.
+
+## Lifetime hazard
+
+`Server` owns a `std::jthread`, but its loop checks the separate atomic `SystemState`, not the jthread stop token. The default jthread destructor requests stop and joins; because the loop does not observe that request, destroying a still-`RUNNING` server can block indefinitely.
+
+Calling `requestStop` avoids that particular condition only by changing the atomic state. It returns immediately: it is not a completion signal, join, or teardown barrier. C++ destroys the derived portion before the base members, so the owned jthread does not join until after derived destruction has begun. In that interval the worker can still enter the virtual `update` or `shutdown` path while derived-state teardown is underway. The base never publishes `STOPPED`, and exposes no public completion wait or join. Consequently, this snapshot has no safe public teardown surface for a running derived server; `requestStop` alone does not establish safe object lifetime.
+
+## What is not here
+
+No sockets, IP addresses, ports, serialization, message framing, protocol versioning, authentication, authorization, encryption, rate limiting, malformed-input handling, reconnect behavior, or portability layer exists in this subsystem. There is also no support guarantee or compatibility promise for these templates. Use them only as source scaffolding to evaluate or replace—not as a production networking API.
+
+Evidence: [`Server.h`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/server/Server.h), [`ServerConnection.h`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/server/ServerConnection.h), and [`ServerCommunicationProtocol.h`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/server/ServerCommunicationProtocol.h).

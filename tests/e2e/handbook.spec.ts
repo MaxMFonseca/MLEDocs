@@ -46,6 +46,14 @@ for (const pageCase of [
 	{ path: 'guides/use-audio-playback/', title: 'Use audio playback' },
 	{ path: 'reference/audio-contracts/', title: 'Audio contracts' },
 	{ path: 'tools/audio-test/', title: 'Audio Test' },
+	{ path: 'concepts/audio-and-client-flow/', title: 'Audio and Client flow' },
+	{ path: 'systems/client/', title: 'Client' },
+	{ path: 'systems/window/', title: 'Window and input' },
+	{ path: 'systems/server/', title: 'Experimental server' },
+	{ path: 'guides/create-a-client-layer/', title: 'Create a Client layer' },
+	{ path: 'guides/handle-input-focus-and-text/', title: 'Handle input, focus, and text' },
+	{ path: 'reference/window-and-input-contracts/', title: 'Window and input contracts' },
+	{ path: 'tools/interactive-client/', title: 'Interactive Client' },
 ] as const) {
 	test(`${pageCase.title} renders as a pinned handbook page`, async ({ page }) => {
 		await page.goto(url(`/versions/${versionId}/${pageCase.path}`));
@@ -264,6 +272,57 @@ test('Pagefind discovers Audio Test in the pinned English scope', async ({ page 
 	const dialog = page.getByRole('dialog', { name: 'Search' });
 	await dialog.locator('.pagefind-ui__search-input').fill('PENDING USER PLAYTEST');
 	const result = dialog.locator('.pagefind-ui__result').filter({ hasText: 'Audio Test' }).first();
+	await expect(result).toBeVisible({ timeout: 15_000 });
+	await expect(result).toHaveAttribute('data-mle-search-version', versionId);
+	await expect(result).toHaveAttribute('data-mle-search-locale', 'en');
+});
+
+test('Client, Window, and Server pages expose their pinned lifecycle boundaries', async ({ page }) => {
+	await page.goto(url(`/versions/${versionId}/systems/client/`));
+	await expect(page.locator('main')).toContainText('16,666,667 ns');
+	await expect(page.locator('main')).toContainText('no event hook');
+	await expect(page.locator('main')).toContainText('does not call Window::shutdown');
+
+	await page.goto(url(`/versions/${versionId}/systems/window/`));
+	await expect(page.locator('main')).toContainText('newest-first');
+	await expect(page.locator('main')).toContainText('declared but not dispatched');
+
+	await page.goto(url(`/versions/${versionId}/systems/server/`));
+	await expect(page.locator('main')).toContainText('Experimental, non-production boundary');
+	await expect(page.locator('main')).toContainText('No sockets');
+	await expect(page.locator('main [aria-label="Page context"]')).toContainText('Experimental');
+});
+
+test('latest Client alias is permanent and Portuguese Window reference stays on the same commit', async ({ page }) => {
+	await page.goto(url('/latest/systems/client/'));
+	await expect(page).toHaveURL(new RegExp(`/MLEDocs/versions/${versionId}/systems/client/$`));
+	await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', new RegExp(`/versions/${versionId}/systems/client/$`));
+
+	await page.goto(url(`/pt-br/versions/${versionId}/reference/window-and-input-contracts/`));
+	await expect(page.getByRole('heading', { level: 1 })).toHaveText('Window and input contracts');
+	await expect(page.locator('main')).toHaveAttribute('lang', 'en');
+	await expect(page.locator('[data-mle-translation-status="fallback"]')).toContainText(`Commit fixado: ${versionId}.`);
+	expect(await page.locator('meta[data-pagefind-filter="mleVersion"]').getAttribute('content')).toBe(versionId);
+	expect(await page.locator('meta[data-pagefind-filter="mleLocale"]').getAttribute('content')).toBe('pt-br');
+});
+
+test('Window/input reference is keyboard reachable and Pagefind finds the Interactive Client in active scope', async ({ page }) => {
+	await page.setViewportSize({ width: 360, height: 800 });
+	await page.goto(url(`/versions/${versionId}/reference/window-and-input-contracts/`));
+	const table = page.getByRole('region', { name: 'Window and input contracts' });
+	await expect(table).toBeVisible();
+	await table.focus();
+	await expect(table).toBeFocused();
+	expect(await table.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
+	await page.keyboard.press('ArrowRight');
+	await expect.poll(() => table.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
+
+	await page.goto(url(`/versions/${versionId}/systems/client/`));
+	await expect(page.locator('#starlight__search .pagefind-ui__search-input')).toHaveCount(1, { timeout: 15_000 });
+	await page.keyboard.press('Control+k');
+	const dialog = page.getByRole('dialog', { name: 'Search' });
+	await dialog.locator('.pagefind-ui__search-input').fill('Ctrl+M TerminalLayer');
+	const result = dialog.locator('.pagefind-ui__result').filter({ hasText: 'Interactive Client' }).first();
 	await expect(result).toBeVisible({ timeout: 15_000 });
 	await expect(result).toHaveAttribute('data-mle-search-version', versionId);
 	await expect(result).toHaveAttribute('data-mle-search-locale', 'en');

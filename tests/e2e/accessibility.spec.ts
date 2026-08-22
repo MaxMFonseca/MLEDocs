@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { handbookPages } from '../../src/data/handbook';
 
 const siteOrigin = process.env.MLE_DOCS_E2E_ORIGIN ?? 'http://127.0.0.1:4321';
 const versionId = 'c1abea3de165';
@@ -677,15 +678,20 @@ for (const width of responsiveWidths) {
           breadcrumb.getByText(locale.sectionLabel, { exact: true }),
         ).toHaveAttribute('aria-current', 'page');
 
-        const plannedStatus = page
-          .locator('[data-mle-navigation-availability="planned"]')
-          .first();
-        await expect(plannedStatus).toHaveAttribute(
-          'data-mle-navigation-availability',
-          'planned',
+        const expectedPlannedPages = handbookPages.filter(
+          ({ publication, sectionId }) =>
+            publication === 'planned' && sectionId === 'systems',
         );
-        await expect(plannedStatus).toContainText(locale.plannedLabel);
-        await expect(plannedStatus.locator('a')).toHaveCount(0);
+        const plannedStatuses = page.locator(
+          '[data-mle-navigation-availability="planned"]',
+        );
+        await expect(plannedStatuses).toHaveCount(expectedPlannedPages.length);
+        for (const plannedPage of expectedPlannedPages) {
+          const plannedStatus = plannedStatuses.filter({ hasText: plannedPage.title });
+          await expect(plannedStatus).toHaveCount(1);
+          await expect(plannedStatus).toContainText(locale.plannedLabel);
+          await expect(plannedStatus.locator('a')).toHaveCount(0);
+        }
 
         const visibleThemePicker = page.getByRole('combobox', {
           name: locale.themeLabel,
@@ -1004,6 +1010,24 @@ for (const handbookCase of [
 		path: `/versions/${versionId}/guides/use-audio-playback/`,
 		theme: 'light',
 		selector: 'main pre',
+	},
+	{
+		name: 'Client layer guide code in Light',
+		path: `/versions/${versionId}/guides/create-a-client-layer/`,
+		theme: 'light',
+		selector: 'main pre',
+	},
+	{
+		name: 'window and input reference in Dark',
+		path: `/versions/${versionId}/reference/window-and-input-contracts/`,
+		theme: 'dark',
+		selector: 'main table',
+	},
+	{
+		name: 'experimental Server table in Dark',
+		path: `/versions/${versionId}/systems/server/`,
+		theme: 'dark',
+		selector: 'main table',
 	},
 ] as const) {
   test(`runtime handbook accessibility: ${handbookCase.name} reflows locally and is axe-clean`, async ({

@@ -1,0 +1,101 @@
+---
+title: Handle input, focus, and text
+description: Route SDL keyboard, mouse, focus, and UTF-8 text through UserInputManager and a safely guarded Lua TextBox workflow.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [window, ui]
+sourceFiles: [src/mle/window/Window.cpp, src/mle/window/UserInputManager.cpp, src/mle/window/TextBox.cpp, src/mle/ui/renderable/Text.cpp, tests/Client/res/lua/ui/ui_tests/FormPanel.lua]
+testFiles: [tests/Core/src/window/T.UserInputManager.cpp, tests/Core/src/window/T.TextBox.cpp, tests/Core/src/ui/T.Text.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: handle-input-focus-and-text
+---
+
+## Outcome
+
+Build a Lua text field, give exactly one field focus, receive submit and completion callbacks, and keep surrounding keyboard/mouse behavior consistent with MLE's listener priority.
+
+## Prerequisites
+
+- A Client layer with an initialized `UI` root.
+- A `text` renderable whose `text.input` value is `true` or a table; this construction creates the owned C++ `TextBox`.
+- A focus controller that remembers which field was active. MLE focus is not exclusive by itself.
+- Familiarity with the exact key names in [Window and input contracts](../../reference/window-and-input-contracts/).
+
+## Construct an input
+
+This Lua fragment follows the shipped `FormPanel.lua` shape:
+
+```lua
+local function make_input(name, placeholder)
+  return {
+    name = name,
+    text = {
+      text = placeholder,
+      height = "18px",
+      input = {
+        on_submit = function(element, value)
+          element:parent():call("submit", value)
+        end,
+        on_complete = function(element, value)
+          element:parent():call("complete", value)
+        end,
+      },
+    },
+  }
+end
+```
+
+The static `text` string is a placeholder while the value is empty and unfocused. Focused display inserts a caret marker at the selection end. Callback arguments are the element wrapper and current UTF-8 string.
+
+## Make focus exclusive in your controller
+
+Because focus is not exclusive, disable the previous field—or all known fields—before enabling the selected field:
+
+```lua
+local function focus_field(form, selected)
+  for _, name in ipairs({ "name_input", "email_input", "notes_input" }) do
+    form:getChild(name):apply("text_input_disable")
+  end
+  form:getChild(selected):apply("text_input_enable")
+end
+```
+
+`text_input_enable` focuses; boolean `false` also disables. `text_input_disable` blurs, `text_input_clear` empties, and `text_input_set` requires a string, preserves the current focus state, and moves the caret to the end.
+
+Only call disable/clear/set on input-configured text. The pinned enable path checks for a missing `TextBox` and warns, but `text_input_disable` has a missing-handle dereference asymmetry. Construct `text.input` first and keep that invariant for the element's lifetime.
+
+## Understand routing
+
+The Client first translates SDL events, then `UserInputManager::update` dispatches them, then your layer/UI updates. Key and scroll listeners are newest-first: all `always_call` listeners, then the first eligible regular listener. Text codepoints are different: all registered text listeners receive them in oldest-first registration order.
+
+While a `TextBox` is focused, ordinary printable key listeners are suppressed. Mouse, non-printable, and Ctrl/Alt bindings can still run. This lets mouse UI remain active and lets Ctrl+A/C/V/X reach the TextBox. It also means focus does not block every outer shortcut automatically.
+
+- Enter submits a single-line box only if `on_submit` exists.
+- Tab invokes `on_complete` only if configured.
+- Escape blurs and removes the TextBox listeners. Because newest listeners win, the first Escape can blur before an older regular terminal shortcut sees a later press.
+- Multiline Enter inserts `\n`; `ctrl_enter_newline` changes this to Ctrl+Enter insertion and does not turn plain Enter into submit.
+
+## Add pointer handling without stealing text
+
+Poll `UserInputManager::getCursorPos`, `isPressed(Key::MOUSE_LEFT)`, and scroll values in the layer, or use UI hover/scroll callbacks. Cursor getters return `CURSOR_NOT_INSIDE_WINDOW` after SDL mouse leave. Do not replace that error with a meaningful position. Model Test demonstrates blocking orbit/pan/zoom while a UI element captures the pointer or any text input is focused.
+
+## Success signal
+
+Clicking or otherwise selecting a field leaves one focused caret. Typed SDL text updates only that field. Enter passes its UTF-8 value to `on_submit`; Tab passes it to `on_complete`; Escape removes focus without clearing the value. The automated TextBox and Text tests cover those transitions, and `FormPanel.lua` demonstrates the full visual workflow.
+
+## Cleanup
+
+Apply `text_input_disable` before removing an input when practical, then let UI destruction release the owned `TextBox`. RAII key listeners unregister on destruction. Avoid destroying or restructuring raw text listeners from inside text dispatch; unlike key/scroll dispatch, it has no lifetime-token snapshot.
+
+## Limitations
+
+- Focus is explicit but not globally exclusive.
+- SDL text input is started for the Window lifetime, not toggled with field focus.
+- Releasing one side of Ctrl/Shift/Alt clears the shared modifier boolean even if the other side remains held.
+- Multiple wheel events before one update overwrite rather than accumulate.
+- Window `Focus` and `Iconify` event types are declared but not emitted by `Window::poolEvents`.
+
+Evidence: [`TextBox.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/window/TextBox.cpp), [`Text.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/ui/renderable/Text.cpp), and [`FormPanel.lua`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/res/lua/ui/ui_tests/FormPanel.lua).

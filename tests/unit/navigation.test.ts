@@ -536,6 +536,34 @@ describe('section index model', () => {
 		expect(planned.every((item) => !('href' in item))).toBe(true);
 	});
 
+	it('derives zero planned Systems rows from the published handbook registry while retaining planned Tools rows', () => {
+		const systemPages = [
+			page(currentVersion.id, 'en', 'systems', 'systems', 'canonical'),
+			...handbookPages
+				.filter(({ publication, sectionId }) => publication === 'published' && sectionId === 'systems')
+				.map(({ pageId, slug }) => page(currentVersion.id, 'en', pageId, slug, 'canonical')),
+		];
+		const systems = buildSectionIndexModel({ sectionId: 'systems', version: currentVersion, locale: 'en', pages: systemPages });
+		const tools = buildSectionIndexModel({
+			sectionId: 'tools',
+			version: currentVersion,
+			locale: 'en',
+			pages: [
+				page(currentVersion.id, 'en', 'tools', 'tools', 'canonical'),
+				...handbookPages
+					.filter(({ publication, sectionId }) => publication === 'published' && sectionId === 'tools')
+					.map(({ pageId, slug }) => page(currentVersion.id, 'en', pageId, slug, 'canonical')),
+			],
+		});
+
+		expect(systems.plannedGroups).toEqual([]);
+		expect(tools.plannedGroups.flatMap(({ children }) => children.map(({ pageId, label, availability }) => ({ pageId, label, availability })))).toEqual(
+			handbookPages
+				.filter(({ publication, sectionId }) => publication === 'planned' && sectionId === 'tools')
+				.map(({ pageId, title }) => ({ pageId, label: title, availability: 'planned' })),
+		);
+	});
+
 	it('throws a deterministic registry/page mismatch when the physical locale hub is missing', () => {
 		expect(() =>
 			buildSectionIndexModel({

@@ -1,0 +1,72 @@
+---
+title: Audio and Client flow
+description: Follow one Client frame from SDL input through layers and rendering, then across the asynchronous audio mailbox and ordered teardown.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [audio, client]
+sourceFiles: [src/mle/client/Client.cpp, src/mle/client/ShutdownSequence.h, src/mle/audio/AudioEngine.cpp, src/mle/renderer/FrameRenderer.cpp]
+testFiles: [tests/Core/shutdown/T.AudioShutdown.cpp, tests/Client/src/Main.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: audio-and-client-flow
+---
+
+The Client update loop and audio worker meet at a mailbox, not at an OpenAL call. The Client owns startup and teardown; game, debug, and Lua code produce audio commands; the audio thread consumes accepted commands and owns the backend state. Rendering is a second, separately synchronized consumer of the active layers.
+
+```text
+Client fixed update                     Renderer thread
+──────────────────                     ───────────────
+switch pending game layer ───────────── pause / device-idle boundary
+Window::poolEvents()                    Client::render()
+UserInputManager::update()                 game Layer::render()
+game Layer::update()                       debug Layer::renderTo()
+debug Layer::update()
+UserInputManager::lateUpdate()
+          │
+          └─ enqueue audio::Cmd ──► mailbox ──► Audio thread / OpenAL
+```
+
+## Startup joins the systems
+
+The demonstrated Client executable initializes Core, Client, then Renderer. Inside `Client::init`, the order is Lua and UI registration, `Window::init`, `AudioEngine::init`, then audio Lua binding. The audio initializer blocks until its worker publishes a startup result; ordinary playback commands after that point remain asynchronous.
+
+`Client::run` supplies an empty game layer when none was queued, then installs the built-in performance and terminal debug layers. The interactive executable instead queues `InitLayer`, which presents Model Test, UI Test, and Audio Test choices.
+
+## A request crosses ownership
+
+A layer or Lua callback calls `AudioEngine::enqueueCmd`. Acceptance only means the value entered the 128-entry mailbox. Decoding, cache lookup, voice selection, stream preflight, and OpenAL calls happen later on the audio thread. This concept does not redefine those outcomes; use [Lifecycle and command flow](../../systems/audio/lifecycle-and-command-flow/) for the exact mailbox contract and [Audio contracts](../../reference/audio-contracts/) for command fields.
+
+The game layer can enqueue during its fixed update. A debug layer can do the same during its later update. Audio work is therefore ordered by mailbox admission, not by when sound becomes audible. There is no per-frame completion barrier between the Client and audio worker.
+
+## Layer replacement is a render boundary
+
+At the start of an update, `checkNextGameLayer` pauses the frame renderer and waits for device idle. Under the game-layer render mutex it shuts down the old layer, clears global `G`, transfers the pending `unique_ptr`, creates a fresh `G` with `G.window.getCursorPos`, and calls the new layer's `init`. Rendering resumes only after that handoff.
+
+The pending slot holds one layer. Calling `pushGameLayer` again before the next check replaces the earlier pending object. The operation has no documented cross-thread synchronization; the shipped calls originate from Client/Lua interaction on the update path.
+
+## Shutdown preserves final audio requests
+
+The Client first stops and joins the Renderer. It then performs the tested sequence:
+
+```text
+game layer shutdown
+→ debug layers shutdown
+→ AudioEngine::shutdown
+   → close command admission
+   → drain accepted commands
+   → release OpenAL sources/context/device
+→ Client shutdown callbacks
+```
+
+The Core shutdown test demonstrates that a layer can enqueue `StopStream` during teardown and that the audio worker consumes it before backend destruction. Commands racing after mailbox closure are rejected. The Client sequence does **not** call `Window::shutdown` in this snapshot; the interactive `Main.cpp` later shuts Renderer and Core down, but likewise contains no Window teardown call.
+
+## Evidence boundary
+
+- **Test-backed:** game and debug layer teardown happens before audio teardown, including final queued stream-stop consumption.
+- **Source-observed:** fixed-update ordering, layer switching, render composition, and Client callbacks.
+- **Demonstrated:** the interactive Init, Model, UI, and Audio layers.
+- **Incomplete:** generic `Entry.inl` does not initialize or shut down Renderer and retains an unresolved commented shutdown call.
+
+Evidence: [`Client.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/client/Client.cpp), [`ShutdownSequence.h`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/client/ShutdownSequence.h), and [`T.AudioShutdown.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Core/shutdown/T.AudioShutdown.cpp).

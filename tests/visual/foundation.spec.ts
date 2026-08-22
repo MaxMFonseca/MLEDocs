@@ -443,6 +443,27 @@ for (const handbookVisual of [
 		theme: 'light',
 		width: 390,
 	},
+	{
+		name: 'Client layer flow desktop Dark',
+		path: 'concepts/audio-and-client-flow/',
+		file: 'handbook-client-layer-flow-desktop-dark.png',
+		theme: 'dark',
+		width: 1280,
+	},
+	{
+		name: 'dense window input reference phone Light',
+		path: 'reference/window-and-input-contracts/',
+		file: 'handbook-window-input-reference-phone-light.png',
+		theme: 'light',
+		width: 390,
+	},
+	{
+		name: 'experimental Server desktop Dark',
+		path: 'systems/server/',
+		file: 'handbook-experimental-server-desktop-dark.png',
+		theme: 'dark',
+		width: 1280,
+	},
 ] as const) {
 	test(handbookVisual.name, async ({ page }) => {
 		await page.setViewportSize({

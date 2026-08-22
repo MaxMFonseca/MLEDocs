@@ -76,29 +76,31 @@ const isPortuguese = locale === 'pt-br';
 			}
 		</ul>
 	</div>
-	<div class="planned-block" data-mle-section-planned>
-		<h2>{isPortuguese ? 'Documentação planejada' : 'Planned documentation'}</h2>
-		<p>
-			{isPortuguese
-				? 'Estes rótulos descrevem a cobertura documental planejada, não a disponibilidade nem a estabilidade do produto.'
-				: 'These labels describe planned documentation coverage, not product availability or stability.'}
-		</p>
-		{
-			model.plannedGroups.map((plannedGroup) => (
-				<section aria-labelledby={`planned-${section.pageId}-${plannedGroup.id}`}>
-					<h3 id={`planned-${section.pageId}-${plannedGroup.id}`}>{plannedGroup.label}</h3>
-					<ul>
-						{plannedGroup.children.map((item) => (
-							<li data-mle-navigation-availability="planned">
-								<span>{item.label}</span>
-								<small>{isPortuguese ? 'Página planejada' : 'Page planned'}</small>
-							</li>
-						))}
-					</ul>
-				</section>
-			))
-		}
-	</div>
+	{
+		model.plannedGroups.length > 0 && (
+			<div class="planned-block" data-mle-section-planned>
+				<h2>{isPortuguese ? 'Documentação planejada' : 'Planned documentation'}</h2>
+				<p>
+					{isPortuguese
+						? 'Estes rótulos descrevem a cobertura documental planejada, não a disponibilidade nem a estabilidade do produto.'
+						: 'These labels describe planned documentation coverage, not product availability or stability.'}
+				</p>
+				{model.plannedGroups.map((plannedGroup) => (
+					<section aria-labelledby={`planned-${section.pageId}-${plannedGroup.id}`}>
+						<h3 id={`planned-${section.pageId}-${plannedGroup.id}`}>{plannedGroup.label}</h3>
+						<ul>
+							{plannedGroup.children.map((item) => (
+								<li data-mle-navigation-availability="planned">
+									<span>{item.label}</span>
+									<small>{isPortuguese ? 'Página planejada' : 'Page planned'}</small>
+								</li>
+							))}
+						</ul>
+					</section>
+				))}
+			</div>
+		)
+	}
 </section>
 
 <style>

@@ -59,7 +59,7 @@ const handbookGroupsUnvalidated = [
 		{ pageId: 'frame-and-resource-flow', slug: 'concepts/frame-and-resource-flow', title: 'Frame and resource flow', kind: 'concept', emphasis: 'focused', publication: 'published', subsystem: 'renderer' },
 		{ pageId: 'cpp-lua-boundary', slug: 'concepts/cpp-lua-boundary', title: 'C++ and Lua boundary', kind: 'concept', emphasis: 'focused', publication: 'published', subsystem: 'lua' },
 		{ pageId: 'ui-composition', slug: 'concepts/ui-composition', title: 'UI composition', kind: 'concept', emphasis: 'focused', publication: 'published', subsystem: 'ui' },
-		{ pageId: 'audio-and-client-flow', slug: 'concepts/audio-and-client-flow', title: 'Audio and Client flow', kind: 'concept', emphasis: 'focused', subsystem: 'audio' },
+		{ pageId: 'audio-and-client-flow', slug: 'concepts/audio-and-client-flow', title: 'Audio and Client flow', kind: 'concept', emphasis: 'focused', publication: 'published', subsystem: 'audio' },
 	]),
 	group('core-foundations', 'systems', 'Core runtime', 2, [
 		{ pageId: 'core', slug: 'systems/core', title: 'Core runtime', kind: 'system', emphasis: 'overview', publication: 'published', subsystem: 'core' },
@@ -147,23 +147,23 @@ const handbookGroupsUnvalidated = [
 		{ pageId: 'audio-test', slug: 'tools/audio-test', title: 'Audio Test', kind: 'tool', emphasis: 'focused', publication: 'published', subsystem: 'audio' },
 	]),
 	group('client-system', 'systems', 'Client', 19, [
-		{ pageId: 'client-system', slug: 'systems/client', title: 'Client', kind: 'system', emphasis: 'overview', subsystem: 'client' },
+		{ pageId: 'client-system', slug: 'systems/client', title: 'Client', kind: 'system', emphasis: 'overview', publication: 'published', subsystem: 'client' },
 	]),
 	group('window-system', 'systems', 'Window and input', 20, [
-		{ pageId: 'window', slug: 'systems/window', title: 'Window and input', kind: 'system', emphasis: 'overview', subsystem: 'window' },
+		{ pageId: 'window', slug: 'systems/window', title: 'Window and input', kind: 'system', emphasis: 'overview', publication: 'published', subsystem: 'window' },
 	]),
 	group('server-system', 'systems', 'Experimental server', 21, [
-		{ pageId: 'server', slug: 'systems/server', title: 'Experimental server', kind: 'system', emphasis: 'overview', subsystem: 'server' },
+		{ pageId: 'server', slug: 'systems/server', title: 'Experimental server', kind: 'system', emphasis: 'overview', publication: 'published', subsystem: 'server' },
 	]),
 	group('client-guides', 'guides', 'Client and input guides', 22, [
-		{ pageId: 'create-a-client-layer', slug: 'guides/create-a-client-layer', title: 'Create a Client layer', kind: 'guide', emphasis: 'focused', subsystem: 'client' },
-		{ pageId: 'handle-input-focus-and-text', slug: 'guides/handle-input-focus-and-text', title: 'Handle input, focus, and text', kind: 'guide', emphasis: 'focused', subsystem: 'window' },
+		{ pageId: 'create-a-client-layer', slug: 'guides/create-a-client-layer', title: 'Create a Client layer', kind: 'guide', emphasis: 'focused', publication: 'published', subsystem: 'client' },
+		{ pageId: 'handle-input-focus-and-text', slug: 'guides/handle-input-focus-and-text', title: 'Handle input, focus, and text', kind: 'guide', emphasis: 'focused', publication: 'published', subsystem: 'window' },
 	]),
 	group('window-reference', 'reference', 'Window and input reference', 23, [
-		{ pageId: 'window-and-input-contracts', slug: 'reference/window-and-input-contracts', title: 'Window and input contracts', kind: 'reference', emphasis: 'lookup', subsystem: 'window', ownerPageId: 'window' },
+		{ pageId: 'window-and-input-contracts', slug: 'reference/window-and-input-contracts', title: 'Window and input contracts', kind: 'reference', emphasis: 'lookup', publication: 'published', subsystem: 'window', ownerPageId: 'window' },
 	]),
 	group('platform-tools', 'tools', 'Client and test tools', 24, [
-		{ pageId: 'interactive-client', slug: 'tools/interactive-client', title: 'Interactive Client', kind: 'tool', emphasis: 'focused', subsystem: 'client' },
+		{ pageId: 'interactive-client', slug: 'tools/interactive-client', title: 'Interactive Client', kind: 'tool', emphasis: 'focused', publication: 'published', subsystem: 'client' },
 		{ pageId: 'core-test-suite', slug: 'tools/core-test-suite', title: 'Core test suite', kind: 'tool', emphasis: 'focused', subsystem: 'core' },
 		{ pageId: 'model-test', slug: 'tools/model-test', title: 'Model Test', kind: 'tool', emphasis: 'focused', subsystem: 'models' },
 		{ pageId: 'test-fixtures', slug: 'tools/test-fixtures', title: 'Test fixtures', kind: 'tool', emphasis: 'focused', subsystem: 'tools' },

@@ -133,6 +133,17 @@ const audioContracts = [
 	['audio-test', 'tools/audio-test', ['audio', 'client', 'ui']],
 ] as const;
 
+const clientPlatformContracts = [
+	['audio-and-client-flow', 'concepts/audio-and-client-flow', ['audio', 'client'], 'in-development'],
+	['client-system', 'systems/client', ['client'], 'in-development'],
+	['window', 'systems/window', ['window'], 'in-development'],
+	['server', 'systems/server', ['server'], 'experimental'],
+	['create-a-client-layer', 'guides/create-a-client-layer', ['client'], 'in-development'],
+	['handle-input-focus-and-text', 'guides/handle-input-focus-and-text', ['window', 'ui'], 'in-development'],
+	['window-and-input-contracts', 'reference/window-and-input-contracts', ['window', 'ui'], 'in-development'],
+	['interactive-client', 'tools/interactive-client', ['client', 'window', 'ui'], 'in-development'],
+] as const;
+
 const ownership: Readonly<Record<string, { sourceFiles: readonly string[]; testFiles: readonly string[] }>> = {
 	architecture: {
 		sourceFiles: ['src/mle/Entry.inl', 'src/mle/core/Core.cpp', 'src/mle/client/Client.cpp'],
@@ -221,7 +232,7 @@ describe('runtime foundations handbook content', () => {
 				.filter(({ publication }) => publication === 'published')
 				.map(({ pageId }) => pageId)
 				.sort(),
-		).toEqual([...contracts.map(([pageId]) => pageId), ...rendererContracts.map(([pageId]) => pageId), ...luaUiFoundationContracts.map(([pageId]) => pageId), ...luaUiAdvancedContracts.map(([pageId]) => pageId), ...audioContracts.map(([pageId]) => pageId)].sort());
+		).toEqual([...contracts.map(([pageId]) => pageId), ...rendererContracts.map(([pageId]) => pageId), ...luaUiFoundationContracts.map(([pageId]) => pageId), ...luaUiAdvancedContracts.map(([pageId]) => pageId), ...audioContracts.map(([pageId]) => pageId), ...clientPlatformContracts.map(([pageId]) => pageId)].sort());
 	});
 
 	it.each(contracts)('%s has pinned, canonical technical metadata', (pageId, slug, subsystems) => {
@@ -636,9 +647,8 @@ describe('audio handbook content', () => {
 		expect(text).not.toMatch(/\b(?:TBD|lorem ipsum|Doxygen)\b/i);
 	});
 
-	it('publishes exactly seven audio records without advancing Client', () => {
+	it('publishes exactly seven audio records', () => {
 		for (const [pageId] of audioContracts) expect(handbookPages.find((page) => page.pageId === pageId)?.publication).toBe('published');
-		expect(handbookPages.find((page) => page.pageId === 'client-system')?.publication).not.toBe('published');
 	});
 
 	it('states lifecycle, mailbox outcomes, and shutdown order without implying synchronous command results', () => {
@@ -712,5 +722,107 @@ describe('audio handbook content', () => {
 		expect(tool).toContain('AudioTest.cpp');
 		expect(tool).not.toContain('AudioTestLayer.cpp');
 		expect(tool).toMatch(/Space.*protected.*UI.*cue/is);
+	});
+});
+
+describe('Client and platform-shell handbook content', () => {
+	it.each(clientPlatformContracts)('%s has canonical pinned evidence and its exact publication contract', (pageId, slug, subsystems, maturity) => {
+		const text = source(slug);
+		const metadata = technicalPageMetadataSchema.parse(parseFrontmatter(text).frontmatter);
+		expect(metadata).toMatchObject({ mleCommit: commit, maturity, pageId, translationStatus: 'canonical' });
+		expect(metadata.audiences).toEqual(expect.arrayContaining(['integrator', 'contributor']));
+		expect(metadata.subsystems).toEqual(subsystems);
+		expect(metadata.sourceFiles.length).toBeGreaterThan(0);
+		if (pageId === 'server') expect(metadata.testFiles).toEqual([]);
+		else expect(metadata.testFiles.length).toBeGreaterThan(0);
+		expect(metadata.lastVerified).toBe('2026-08-21');
+		expect(handbookPages.find((page) => page.pageId === pageId)).toMatchObject({ slug, publication: 'published' });
+		expect(text).toContain(`github.com/MaxMFonseca/MLE/blob/${commit}/`);
+		expect(text).not.toMatch(/\b(?:TBD|lorem ipsum|Doxygen)\b/i);
+	});
+
+	it('publishes exactly the eight Task 7 records', () => {
+		expect(clientPlatformContracts).toHaveLength(8);
+		for (const [pageId] of clientPlatformContracts) {
+			expect(handbookPages.find((page) => page.pageId === pageId)?.publication).toBe('published');
+		}
+	});
+
+	it('states real Client phase, layer, and audio teardown ownership', () => {
+		const concept = source('concepts/audio-and-client-flow');
+		expect(concept).toMatch(/Client::init.*Window.*AudioEngine/is);
+		expect(concept).toMatch(/game layer.*debug layers.*AudioEngine::shutdown/is);
+		expect(concept).toMatch(/asynchronous.*mailbox|mailbox.*audio thread/is);
+		const client = source('systems/client');
+		expect(client).toMatch(/pollEvents|poolEvents.*UserInputManager::update.*game layer.*debug layers.*lateUpdate/is);
+		expect(client).toMatch(/fixed.*16,666,667.*five.*catch-up/is);
+		expect(client).toMatch(/Layer.*no.*event.*hook/is);
+		expect(client).toMatch(/does not.*Window::shutdown/is);
+	});
+
+	it('keeps Window event declarations separate from implemented SDL routing', () => {
+		const window = source('systems/window');
+		expect(window).toMatch(/SDL_EVENT_QUIT.*Close/is);
+		expect(window).toMatch(/SDL_EVENT_WINDOW_RESIZED.*Resize/is);
+		expect(window).toMatch(/Iconify.*Focus.*declared.*not.*dispatch/is);
+		expect(window).toMatch(/newest-first.*always_call.*first (?:eligible )?regular/is);
+		expect(window).toMatch(/text.*oldest-first.*all/is);
+	});
+
+	it('leads the Server page with an experimental non-production boundary', () => {
+		const server = source('systems/server');
+		const body = parseFrontmatter(server).content.trimStart();
+		expect(body.slice(0, 700)).toMatch(/experimental.*non-production.*implemented.*stubbed/is);
+		expect(server).toMatch(/capacity-100.*AtomicQueue|AtomicQueue.*100/is);
+		expect(server).toMatch(/no.*socket.*serialization.*authentication/is);
+		expect(server).toMatch(/pump.*no-op.*runLoop.*never.*command/is);
+		expect(server).toMatch(/jthread.*(?:not.*stop token|stop token.*not.*observe)/is);
+		expect(server).toMatch(/requestStop.*(?:not|no).*(?:completion|join|barrier)/is);
+		expect(server).toMatch(/derived.*destruct.*(?:before|while).*jthread.*join|jthread.*join.*after.*derived.*destruct/is);
+		expect(server).toMatch(/virtual.*(?:update|shutdown).*(?:teardown|destruct)|(?:teardown|destruct).*virtual.*(?:update|shutdown)/is);
+		expect(server).toMatch(/no safe public.*teardown|no public.*(?:join|completion|STOPPED).*barrier/is);
+		expect(server).toMatch(/no.*automated.*test/is);
+	});
+
+	it('gives both guides prerequisites, success, cleanup, and source-observed limits', () => {
+		for (const slug of ['guides/create-a-client-layer', 'guides/handle-input-focus-and-text']) {
+			const guide = source(slug);
+			for (const heading of ['Outcome', 'Prerequisites', 'Success signal', 'Cleanup', 'Limitations']) {
+				expect(guide).toContain(`## ${heading}`);
+			}
+		}
+		expect(source('guides/create-a-client-layer')).toMatch(/unique_ptr.*pushGameLayer.*init.*update.*render.*shutdown/is);
+		const input = source('guides/handle-input-focus-and-text');
+		expect(input).toMatch(/text\.input.*text_input_disable.*text_input_enable/is);
+		expect(input).toMatch(/not.*exclusive.*disable.*previous/is);
+		expect(input).toMatch(/disable.*without.*TextBox.*dereference|missing.*handle/is);
+		expect(input.match(/element:parent\(\)/g)).toHaveLength(2);
+		expect(input).not.toContain('element:getParent()');
+	});
+
+	it('links the text-input owner page to the published workflow and removes stale Systems roadmap copy', () => {
+		const input = source('systems/ui/text-input-and-focus');
+		expect(input).toContain('[Handle input, focus, and text](../../../guides/handle-input-focus-and-text/)');
+		expect(input).not.toMatch(/planned.*Handle input, focus, and text/is);
+
+		const englishHub = source('systems');
+		const portugueseHub = readFileSync(resolve('src/content/docs/pt-br/versions/c1abea3de165/systems/index.mdx'), 'utf8');
+		expect(englishHub).not.toMatch(/planned labels below/i);
+		expect(portugueseHub).not.toMatch(/rótulos planejados abaixo/i);
+
+		const uiTest = source('tools/ui-test');
+		expect(uiTest).toContain('[Interactive Client](../interactive-client/)');
+		expect(uiTest).not.toMatch(/planned Interactive Client|unpublished route/i);
+	});
+
+	it('ships a keyboard-reachable dense reference and honest Interactive Client evidence', () => {
+		const reference = source('reference/window-and-input-contracts');
+		expect(reference).toMatch(/<table tabindex="0" role="region" aria-label="Window and input contracts">/);
+		expect(reference).toMatch(/PRESSED.*DOWN.*RELEASED.*UP/is);
+		expect(reference).toMatch(/CURSOR_NOT_INSIDE_WINDOW/is);
+		const tool = source('tools/interactive-client');
+		expect(tool).toMatch(/interactive demonstration.*not.*automated|demonstrated.*not.*assert/is);
+		for (const layer of ['InitLayer', 'ModelTestLayer', 'UITestLayer', 'AudioTestLayer', 'PerfLayer', 'TerminalLayer']) expect(tool).toContain(layer);
+		for (const control of ['F3', 'Ctrl+M']) expect(tool).toContain(control);
 	});
 });

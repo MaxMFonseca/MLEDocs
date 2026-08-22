@@ -1,0 +1,71 @@
+---
+title: Client
+description: Understand MLE's fixed-step Client shell, layer ownership and replacement, render composition, diagnostics, and incomplete teardown boundary.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [client]
+sourceFiles: [src/mle/client/Client.cpp, src/mle/client/Client.h, src/mle/client/Layer.cpp, src/mle/client/Layer.h, src/mle/client/layers/PerfLayer.cpp, src/mle/client/layers/TerminalLayer.cpp, tests/Client/src/Main.cpp]
+testFiles: [tests/Core/shutdown/T.AudioShutdown.cpp, tests/Client/src/Main.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: client-system
+---
+
+`Client` is MLE's application shell. It owns the authoring Lua state, one active game layer, one pending replacement, named debug layers, the color cache, and the Window close listener. It coordinates Window and Audio startup, while the interactive executable initializes Renderer separately.
+
+## Initialization
+
+`Client::init` is guarded by a function-local one-time flag. It initializes Lua, builds the color tables and global `C`, registers UI bindings, creates the SDL Window, starts Audio, exposes `C.Audio`, and subscribes to `window::ev::Close`. A close event calls `requestStop`; Lua can do the same through `C.stop()`.
+
+The generic `Entry.inl` and interactive Client entry are not equivalent. The interactive path calls Core → Client → Renderer, queues `InitLayer`, runs, then shuts Renderer and Core down. Generic Entry calls Core → Client, queues an empty layer, and runs without Renderer setup; its shutdown line remains commented. Treat the interactive entry as the demonstrated integration path.
+
+## Fixed update order
+
+The loop uses a fixed **16,666,667 ns** step, permits at most **five catch-up** updates, and discards excess whole-step backlog after the cap. It sleeps toward the next step with a 200,000 ns spin guard.
+
+Each fixed update runs in this order:
+
+1. Adopt a pending game layer.
+2. `Window::poolEvents()` translates queued SDL events.
+3. `UserInputManager::update()` dispatches key, text, scroll, and cursor state.
+4. Call the active game layer's `update()`.
+5. Update debug layers in lexical name order and apply deferred removals.
+6. `UserInputManager::lateUpdate()` changes `PRESSED` to `DOWN` and removes `RELEASED` keys.
+
+`Layer` has **no event hook**. A layer polls `UserInputManager`, retains RAII listeners, or lets its `UI` own input listeners. This is why event polling and input dispatch precede layer updates.
+
+## Game-layer ownership and replacement
+
+`pushGameLayer(std::unique_ptr<Layer>&&)` transfers ownership into one pending slot. At the next update, Client pauses the frame renderer and waits for device idle. It shuts down and destroys the old game layer under the render mutex, clears the old `G` Lua table, installs the new layer, creates a fresh `G` plus `G.window.getCursorPos`, and calls `init` before resuming rendering.
+
+A second push before the switch overwrites the first pending object. The pending slot is not a queue and has no general cross-thread contract. Keep layer selection on the Client interaction/update path.
+
+## Rendering and debug layers
+
+`FrameRenderer` calls `Client::render` from its rendering path. Client locks the game slot, asks the game layer for an `ImageRef`, then blends each debug layer onto that image under a separate mutex. A null game image ends composition; debug layers do not render independently in that case.
+
+`addDebugLayer` owns a named `unique_ptr` and immediately initializes a newly inserted name. The `std::map` gives lexical update/render order. `removeDebugLayer` records a name; shutdown and erasure happen after the current debug update pass. `Client::run` always attempts to add:
+
+| Layer | Control | Purpose | Evidence |
+| --- | --- | --- | --- |
+| `PerfLayer` | F3 | Toggle CPU/GPU performance text | Source-observed interactive overlay |
+| `TerminalLayer` | Ctrl+M | Toggle a UI text input that writes `RuntimeConfig` values | Source-observed interactive overlay |
+
+## Exit and shutdown
+
+`requestStop` moves the state away from `RUNNING`; the loop then calls `shutdown`. Renderer is stopped first. Game and debug layers shut down before Audio so their final commands can be drained. Registered shutdown callbacks run only after `AudioEngine::shutdown` returns.
+
+The pinned Client shutdown does not call `Window::shutdown`. Neither `tests/Client/src/Main.cpp` nor Core shutdown fills that gap. Integrators must account for this incomplete SDL lifetime boundary rather than assuming the singleton is torn down.
+
+## Threading and failure limits
+
+- Game render and replacement synchronize through `game_layer_render_mutex_`; debug composition/addition/removal use a separate render mutex only in some paths.
+- `next_game_layer_` assignment and `debug_layers_to_remove_` insertion are not generally synchronized for arbitrary producer threads.
+- Audio initialization errors pass through `Core::check` and abort through the unrecoverable path.
+- Layer virtual methods return no `Result`; layers surface ordinary failure through logs, null render images, or their own state.
+
+Continue with [Create a Client layer](../../guides/create-a-client-layer/), [Window and input](../window/), [Audio and Client flow](../../concepts/audio-and-client-flow/), or [Interactive Client](../../tools/interactive-client/).
+
+Evidence: [`Client.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/client/Client.cpp), [`Layer.h`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/client/Layer.h), and [`tests/Client/src/Main.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/src/Main.cpp).

@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import { handbookPages } from '../../src/data/handbook';
+import { navigationSections } from '../../src/data/navigation';
 
 const siteOrigin = process.env.MLE_DOCS_E2E_ORIGIN ?? 'http://127.0.0.1:4321';
 const versionId = 'c1abea3de165';
@@ -183,6 +185,28 @@ for (const localeCase of [
         await expect(page.locator('[data-mle-translation-status="current"]')).toBeVisible();
       }
       await expect(page.locator('[data-mle-section-planned] a')).toHaveCount(0);
+
+      if (section.pageId === 'systems') {
+        await expect(page.locator('[data-mle-section-planned]')).toHaveCount(0);
+      }
+      if (section.pageId === 'tools' || section.pageId === 'contributing') {
+        const registrySection = navigationSections.find(({ pageId }) => pageId === section.pageId);
+        if (!registrySection) throw new Error(`Missing registry section ${section.pageId}.`);
+        const expectedPageIds = handbookPages
+          .filter(({ publication, sectionId }) => publication === 'planned' && sectionId === section.pageId)
+          .map(({ pageId }) => pageId);
+        const expectedLabels = registrySection.plannedGroups
+          .flatMap(({ children }) => children)
+          .filter(({ pageId }) => expectedPageIds.includes(pageId))
+          .map(({ labels }) => labels[localeCase.prefix === '/pt-br' ? 'pt-br' : 'en']);
+        const plannedBlock = page.locator('[data-mle-section-planned]');
+        await expect(plannedBlock).toHaveCount(1);
+        const plannedRows = plannedBlock.locator('[data-mle-navigation-availability="planned"]');
+        await expect(plannedRows).toHaveCount(expectedLabels.length);
+        for (const label of expectedLabels) {
+          await expect(plannedRows.filter({ hasText: label })).toHaveCount(1);
+        }
+      }
 
       const reload = await page.reload();
       expect(reload?.ok(), `reload ${path}`).toBe(true);

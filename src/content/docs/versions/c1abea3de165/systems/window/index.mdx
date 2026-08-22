@@ -1,0 +1,56 @@
+---
+title: Window and input
+description: Map SDL window ownership to MLE events, transient keyboard and mouse state, listener priority, cursor errors, and TextBox routing.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [window]
+sourceFiles: [src/mle/window/Window.cpp, src/mle/window/Window.h, src/mle/window/Events.h, src/mle/window/UserInputManager.cpp, src/mle/window/Types.h, src/mle/window/KeyUtils.cpp, src/mle/window/TextBox.cpp]
+testFiles: [tests/Core/src/window/T.UserInputManager.cpp, tests/Core/src/window/T.TextBox.cpp, tests/Core/src/ui/T.Text.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: window
+---
+
+The Window singleton owns one SDL3 Vulkan window and translates selected SDL events into either typed Window events or mutable `UserInputManager` state. The Client polls it once per fixed update before layers run.
+
+## SDL ownership
+
+`Window::init` sets the application ID, initializes SDL video when necessary, enumerates displays, and creates a 1366×768 resizable Vulkan window titled `MLE APP`. It starts SDL text input immediately and shows the window. Text capture is therefore gated inside MLE by registered `TextListener`s, not by starting and stopping SDL text input as focus changes.
+
+`Window::shutdown` destroys the window, quits the video subsystem, then calls `SDL_Quit`. The Client does not invoke that method in its current teardown path. Surface creation and instance-extension discovery are SDL/Vulkan backend boundaries; failures use assertion or unrecoverable logging rather than returned recoverable errors.
+
+## Implemented Window events
+
+`Window::poolEvents` handles `SDL_EVENT_QUIT` as `window::ev::Close` and `SDL_EVENT_WINDOW_RESIZED` as `window::ev::Resize{vec2i}`. The Renderer subscribes to both: Close stops its frame loop, while Resize marks the swapchain dirty. Client also retains a Close listener that requests its own stop.
+
+`window::ev::Iconify` and `window::ev::Focus` are **declared but not dispatched** by the SDL switch. Do not rely on either event in this commit. Per-window close-request handling is likewise not shown; the implemented close route is specifically `SDL_EVENT_QUIT`.
+
+## Per-frame input state
+
+SDL key and mouse-button down/up events become `PRESSED` and `RELEASED`. After listener dispatch, `lateUpdate` changes `PRESSED` to `DOWN` and removes a released key, so an absent key reads as `UP`. Key repeat is internal: after a held `DOWN` key passes 0.5 seconds, repeat-enabled pressed listeners run on each later update.
+
+Mouse motion stores a cursor position. The manager derives delta and normalized coordinates by dividing that position by `Window::getSize()` in pixels. There is no explicit high-DPI conversion in this path. Before the first motion, an inside-window cursor result can contain NaNs; after mouse leave, cursor and scroll getters return `Result::CURSOR_NOT_INSIDE_WINDOW` until re-entry and motion restore state.
+
+Multiple wheel events before `UserInputManager::update` overwrite `scroll_offset_next_`; they are not accumulated. Mouse-button numbers are converted arithmetically to the eight MLE mouse keys without an explicit range check.
+
+## Listener priority and lifetime
+
+Key listeners for one key/state are copied into a snapshot and traversed **newest-first**. Every live `always_call` listener runs first; then the first eligible regular listener runs and consumes that binding for the pass. Scroll uses the same newest-first shape: all always-call listeners, then one regular listener. Lifetime tokens let an earlier callback destroy a later snapshotted key/scroll listener safely.
+
+Text differs. `pushChar` visits the live text-listener vector **oldest-first and calls all** registered listeners, without the key/scroll snapshot token. Focus is nonexclusive, so multiple focused `TextBox` instances all receive the same codepoints.
+
+While any text listener is active, ordinary printable key listeners are suppressed. Ctrl/Alt combinations, mouse keys, and non-printable keys can still route. `always_call` changes priority but does not bypass those eligibility rules.
+
+## Modifiers and key values
+
+`SHIFT`, `CTRL`, and `ALT` are shared booleans updated by either left or right modifier. Releasing either side clears the boolean even if the other side remains held. `NONE` requires no active modifiers; `ANY` accepts every modifier state. Key strings are lowercased, then resolved through the exact canonical names and aliases in [Window and input contracts](../../reference/window-and-input-contracts/).
+
+## TextBox and UI focus
+
+A focused `TextBox` registers UTF-32 text, editing, selection, clipboard, Escape, and conditional Enter/Tab listeners. Escape blurs. Single-line Enter submits only when a callback exists; multiline Enter inserts a newline. Tab completes only when configured. The UI owner creates a `TextBox` from `text.input` and exposes `text_input_enable`, `text_input_disable`, `text_input_set`, and `text_input_clear`.
+
+Enabling another input does not blur the first. A form must disable the previous field explicitly. The pinned `text_input_enable` path warns when no `TextBox` exists, while `text_input_disable` lacks that guard and dereferences the missing handle. The [input, focus, and text guide](../../guides/handle-input-focus-and-text/) shows the safe sequence.
+
+Evidence: [`Window.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/window/Window.cpp), [`UserInputManager.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/window/UserInputManager.cpp), and [`T.UserInputManager.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Core/src/window/T.UserInputManager.cpp).

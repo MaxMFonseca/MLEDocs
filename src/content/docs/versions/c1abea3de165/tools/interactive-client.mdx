@@ -1,0 +1,66 @@
+---
+title: Interactive Client
+description: Run and interpret MLE's Init, Model, UI, Audio, performance, and terminal layers without confusing demonstrations with automated guarantees.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [client, window, ui]
+sourceFiles: [tests/Client/src/Main.cpp, tests/Client/src/layers/Init.cpp, tests/Client/src/layers/ModelTest.cpp, tests/Client/src/layers/UITest.cpp, tests/Client/src/layers/AudioTest.cpp, src/mle/client/layers/PerfLayer.cpp, src/mle/client/layers/TerminalLayer.cpp]
+testFiles: [tests/Core/src/window/T.UserInputManager.cpp, tests/Core/src/window/T.TextBox.cpp, tests/Core/src/ui/T.Text.cpp, tests/Core/shutdown/T.AudioShutdown.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: interactive-client
+---
+
+The `tests/Client` executable is MLE's integrated interactive demonstration. It starts the real Core, Client, Renderer, Window, Lua/UI, and Audio paths, then uses layer replacement to move between focused test surfaces. It is not an automated pass/fail harness and does not turn every visible behavior into a stable API guarantee.
+
+## Entry and layer catalog
+
+| Layer | Entry | What it demonstrates | Evidence class |
+| --- | --- | --- | --- |
+| `InitLayer` | Initial game layer | Lua menu, layer replacement, basic UI/audio controls | Interactive demonstration |
+| `ModelTestLayer` | Init screen model action | Model loading, materials, animation, camera, cubemap, render composition | Interactive demonstration with separate focused tests |
+| `UITestLayer` | Init screen UI action | Catalog of shipped Lua UI pages and callbacks | Interactive demonstration with Core UI tests |
+| `AudioTestLayer` | Init screen audio action | One-shots, streams, bus policy, voice pressure, fixture scenarios | Interactive demonstration with separate Core audio tests |
+| `PerfLayer` | Added by `Client::run` | CPU sample text and Vulkan performance string overlay | Source-observed diagnostic overlay |
+| `TerminalLayer` | Added by `Client::run` | UI TextBox, command history, and `RuntimeConfig::set` | Source-observed diagnostic overlay |
+
+`InitLayer` publishes `G.init_model_test`, `G.init_ui_test`, and `G.init_audio_test` to Lua. Each selected layer publishes `G.return_to_init`, so its screen can queue a new Init layer. A change does not occur immediately inside the callback; Client adopts the pending layer at the start of its next fixed update.
+
+## Global controls
+
+| Control | Behavior | Input boundary |
+| --- | --- | --- |
+| F3 | Toggle `PerfLayer` | Regular pressed listener; non-printable, so text focus does not suppress it |
+| Ctrl+M | Toggle `TerminalLayer` | Ctrl-modified printable key remains eligible during text focus |
+| Escape | Blur terminal TextBox or clear the command on a later eligible press | Newest-first listener precedence matters |
+| Enter | Submit a nonempty terminal command to `RuntimeConfig` | Terminal listener is installed only while enabled |
+| Up / Down | Navigate terminal command history | Active only while terminal input is enabled |
+
+## Model Test pointer controls
+
+Model Test polls `UserInputManager`: mouse-left drag orbits, mouse-middle drag pans, and wheel input zooms when the cursor lies in the model viewport. Capture begins only on a pressed edge inside the viewport. UI capture or any focused text input blocks acquisition and actions. Losing a held button clears that capture.
+
+The tool also exposes Lua controls for model, held item, animation, attachment, cubemap, shader, projection, sun, ambient, and camera reset operations. The dedicated renderer/model handbook pages own those contracts; this page records only how the integrated Client reaches them.
+
+## UI and Audio Test boundaries
+
+UI Test loads `i/ui/ui_tests/Layer`, which indexes Animation, FilterableList, FormPanel, Inventory, Layer, NineSlice, PopupStack, Scrollable, SpriteProgressBar, and TextDropdownSelector pages. Use [UI Test](../ui-test/) for that catalog.
+
+Audio Test invokes real `AudioEngine` commands and deterministic generated fixtures. Core tests assert mailbox, stream, voice, and shutdown mechanics; the Client surface is still an interactive demonstration, not an automated audible or visual assertion. Use [Audio Test](../audio-test/) for controls and recorded playtest status.
+
+## Running and interpreting results
+
+Build from the repository root with the documented Client target and keep the working directory such that `res/` and `tests/Client/res/` resource IDs resolve. A successful session shows the Init screen, permits switching to each layer, and returns without validation errors. Logs remain essential: many Client, renderer, audio, and resource operations return no user-visible status.
+
+Do not use a rendered screen alone to claim correctness. Pair it with the corresponding Core tests and pinned implementation. Conversely, a Core unit test does not prove Vulkan presentation, SDL platform integration, audible output, or a particular GPU/driver combination.
+
+## Known integration limits
+
+- Generic `Entry.inl` is not the same path and omits Renderer initialization.
+- Client shutdown does not invoke `Window::shutdown`.
+- Window Focus/Iconify declarations are not dispatched.
+- The interactive executable assumes a working SDL video driver and Vulkan environment.
+
+Evidence: [`tests/Client/src/Main.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/src/Main.cpp), [`Init.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/src/layers/Init.cpp), and [`ModelTest.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/src/layers/ModelTest.cpp).

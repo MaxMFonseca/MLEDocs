@@ -1,0 +1,108 @@
+---
+title: Create a Client layer
+description: Add an owned game layer to the demonstrated Client entry with the correct fixed-update, render-target, replacement, and teardown sequence.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [client]
+sourceFiles: [src/mle/client/Layer.h, src/mle/client/Layer.cpp, src/mle/client/Client.cpp, tests/Client/src/layers/Init.cpp, tests/Client/src/layers/UITest.cpp]
+testFiles: [tests/Client/src/Main.cpp, tests/Core/shutdown/T.AudioShutdown.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: create-a-client-layer
+---
+
+## Outcome
+
+Create a game layer whose `init`, fixed `update`, Renderer-thread `render`, and `shutdown` methods are called by `Client`, then transfer it into the one pending game-layer slot.
+
+## Prerequisites
+
+- Initialize Core, Client, and Renderer in the order used by `tests/Client/src/Main.cpp`.
+- Derive from `mle::client::Layer` and transfer ownership with `std::unique_ptr`.
+- Keep update-owned state synchronized with anything read by the render path.
+- Decide whether the layer returns a full-window image or deliberately returns null.
+
+## Define the layer
+
+The following is a focused fragment based on `InitLayer`; includes and application error handling are omitted.
+
+```cpp
+class MenuLayer final : public mle::client::Layer {
+  public:
+    void init() override {
+        ui_.setRoot("i/ui/MenuLayer");
+    }
+
+    void update() override {
+        ui_.update();
+    }
+
+    mle::ImageRef render() override {
+        auto* target = target_.getImage();
+        if (auto* overlay = ui_.render()) {
+            target->blend(mle::Renderer::i().frameRenderer().cmd(), *overlay);
+        }
+        return target;
+    }
+
+    void shutdown() override {
+        ui_.shutdown();
+    }
+
+  private:
+    mle::UI ui_;
+    mle::client::WindowSizedRenderTarget target_;
+};
+```
+
+`WindowSizedRenderTarget` owns one HDR image per frame-in-flight slot. `getImage` creates or replaces the current image when the Window pixel extent changes, schedules the old image for deletion after the frame, and clears the target before returning it.
+
+## Transfer ownership
+
+Queue the initial layer after all three runtime owners are initialized:
+
+```cpp
+mle::Core::i().init(core_info);
+mle::Client::i().init();
+mle::Renderer::i().init();
+
+mle::Client::i().pushGameLayer(std::make_unique<MenuLayer>());
+mle::Client::i().run();
+```
+
+For a later transition, a UI or layer callback can use the same ownership transfer:
+
+```cpp
+mle::Client::i().getGameLayerTable()["open_editor"] = [] {
+    mle::Client::i().pushGameLayer(std::make_unique<EditorLayer>());
+};
+```
+
+The next fixed update pauses rendering, waits for device idle, calls the old layer's `shutdown`, clears global `G`, moves the pending layer into the active slot, creates a new `G`, calls `init`, then resumes rendering. Do not enqueue two replacements before that check: the pending slot is not a queue, so the later `unique_ptr` replaces the earlier one.
+
+## Work in the correct phase
+
+`Window::poolEvents` and `UserInputManager::update` run before `Layer::update`; transient key states advance only afterward. `Layer` has no event callback. Poll input in `update`, own RAII input listeners, or let `UI` manage listeners.
+
+`render` is called through `Client::render` from the Renderer path under the game-layer mutex. Avoid mutating update-owned data from render without your own synchronization. Return null only when the entire frame, including debug overlays, should be absent.
+
+## Success signal
+
+The Client log reports `Switching game layer`, the layer's `init` log appears once, and its returned image reaches the swapchain. On replacement, the old layer's shutdown log must precede the new layer's init log. Interactive `InitLayer` → `UITestLayer` demonstrates this sequence; it is a demonstration, not an automated assertion of every render result.
+
+## Cleanup
+
+Release UI, listeners, renderer resources, and final audio requests from `shutdown`. Client shuts game layers down before `AudioEngine::shutdown`, so accepted final stop commands can drain. After `Client::run` returns, the interactive entry explicitly shuts Renderer and Core down. The current shell does not shut Window down.
+
+## Limitations
+
+- `pushGameLayer` exposes no returned status and no general cross-thread guarantee.
+- `init`, `update`, `render`, and `shutdown` return no `Result`; define and log failures inside the layer.
+- The generic `Entry.inl` does not initialize Renderer and is not a complete template for a rendered application.
+- Debug layers use a separate API and composition path; do not use `pushGameLayer` for overlays.
+
+See [Client](../../systems/client/) for the full loop and [Interactive Client](../../tools/interactive-client/) for shipped layer entry points.
+
+Evidence: [`Layer.h`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/client/Layer.h), [`Client::checkNextGameLayer`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/client/Client.cpp), and [`Init.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/src/layers/Init.cpp).

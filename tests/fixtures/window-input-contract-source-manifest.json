@@ -1,0 +1,53 @@
+{
+  "mleCommit": "c1abea3de165032fe064300340807b7a6af388f8",
+  "groups": [
+    {
+      "kind": "window-event",
+      "ownerPageId": "window-and-input-contracts",
+      "sourceFiles": ["src/mle/window/Events.h", "src/mle/window/Window.cpp"],
+      "names": ["Close", "Resize", "Iconify", "Focus"]
+    },
+    {
+      "kind": "sdl-route",
+      "ownerPageId": "window-and-input-contracts",
+      "sourceFiles": ["src/mle/window/Window.cpp"],
+      "names": ["SDL_EVENT_QUIT", "SDL_EVENT_KEY_DOWN", "SDL_EVENT_KEY_UP", "SDL_EVENT_MOUSE_BUTTON_DOWN", "SDL_EVENT_MOUSE_BUTTON_UP", "SDL_EVENT_MOUSE_MOTION", "SDL_EVENT_MOUSE_WHEEL", "SDL_EVENT_TEXT_INPUT", "SDL_EVENT_WINDOW_MOUSE_ENTER", "SDL_EVENT_WINDOW_MOUSE_LEAVE", "SDL_EVENT_WINDOW_RESIZED"]
+    },
+    {
+      "kind": "key-state",
+      "ownerPageId": "window-and-input-contracts",
+      "sourceFiles": ["src/mle/window/Types.h", "src/mle/window/UserInputManager.cpp"],
+      "names": ["UP", "PRESSED", "DOWN", "RELEASED"]
+    },
+    {
+      "kind": "key-modifier",
+      "ownerPageId": "window-and-input-contracts",
+      "sourceFiles": ["src/mle/window/Types.h", "src/mle/window/UserInputManager.cpp"],
+      "names": ["SHIFT", "CTRL", "ALT", "NONE", "ANY"]
+    },
+    {
+      "kind": "key-enum",
+      "ownerPageId": "window-and-input-contracts",
+      "sourceFiles": ["src/mle/window/Types.h"],
+      "names": ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "ZERO", "SPACE", "GRAVE_ACCENT", "MINUS", "EQUAL", "LEFT_BRACKET", "RIGHT_BRACKET", "SEMICOLON", "APOSTROPHE", "COMMA", "PERIOD", "SLASH", "BACKSLASH", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12", "RIGHT", "LEFT", "DOWN", "UP", "LEFT_SHIFT", "LEFT_CONTROL", "LEFT_ALT", "LEFT_SUPER", "RIGHT_SHIFT", "RIGHT_CONTROL", "RIGHT_ALT", "RIGHT_SUPER", "ESCAPE", "ENTER", "TAB", "BACKSPACE", "INSERT", "DELETE", "PAGE_UP", "PAGE_DOWN", "HOME", "END", "CAPS_LOCK", "SCROLL_LOCK", "NUM_LOCK", "PRINT_SCREEN", "PAUSE", "MENU", "MOUSE_ONE", "MOUSE_LEFT", "MOUSE_MIDDLE", "MOUSE_RIGHT", "MOUSE_FOUR", "MOUSE_FIVE", "MOUSE_SIX", "MOUSE_SEVEN", "MOUSE_EIGHT", "COUNT", "UNKNOWN", "LAST_PRINTABLE_CHAR"]
+    },
+    {
+      "kind": "key-token",
+      "ownerPageId": "window-and-input-contracts",
+      "sourceFiles": ["src/mle/window/KeyUtils.cpp"],
+      "names": ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "alt", "apostrophe", "apps", "b", "back", "backslash", "backslash_key", "backspace", "bksp", "c", "caps", "capslock", "closebracket", "cmd", "comma", "comma_key", "ctrl", "d", "dash", "del", "delete", "deletekey", "dot", "down", "e", "end", "endkey", "enter", "enterkey", "equal", "equalsign", "esc", "escape", "f", "f1", "f10", "f11", "f12", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9", "forwardslash", "g", "grave", "graveaccent", "h", "home", "homekey", "i", "ins", "insert", "j", "k", "l", "lalt", "lbracket", "left", "lmb", "lwin", "m", "menu", "minus", "mmb", "mouse_eight", "mouse_five", "mouse_four", "mouse_left", "mouse_middle", "mouse_right", "mouse_seven", "mouse_six", "mouse1", "mouse2", "mouse3", "mouse4", "mouse5", "mouse6", "mouse7", "mouse8", "n", "num", "numlock", "o", "openbracket", "option", "p", "pagedown", "pageup", "pause", "pausebreak", "period", "period_key", "pgdn", "pgup", "print", "printscreen", "prtsc", "q", "quote", "r", "ralt", "rbracket", "rctrl", "return", "right", "rmb", "rshift", "rsuper", "rwin", "s", "scroll", "scrolllock", "semi", "semicolon", "shift", "slash", "space", "spacebar", "super", "t", "tab", "tabkey", "u", "up", "v", "w", "win", "x", "y", "z"]
+    },
+    {
+      "kind": "input-contract",
+      "ownerPageId": "window-and-input-contracts",
+      "sourceFiles": ["src/mle/window/KeyUtils.cpp", "src/mle/window/UserInputManager.cpp"],
+      "names": ["keybinding-colon-grammar", "state-token-p", "state-token-r", "state-token-u", "state-token-d", "modifier-none-grammar", "modifier-any-grammar", "modifier-flags-grammar", "key-priority", "key-always-call", "key-repeat", "key-text-suppression", "scroll-priority", "scroll-last-value", "cursor-pixel", "cursor-normalized", "cursor-delta", "cursor-outside-error", "mouse-inside-state", "modifier-side-collapse"]
+    },
+    {
+      "kind": "text-focus-contract",
+      "ownerPageId": "window-and-input-contracts",
+      "sourceFiles": ["src/mle/window/TextBox.cpp", "src/mle/ui/renderable/Text.cpp"],
+      "names": ["focus-nonexclusive", "text-oldest-first-all", "text-input-enable", "text-input-disable", "text-input-set", "text-input-clear", "enter-submit", "enter-multiline", "ctrl-enter-newline", "tab-complete", "escape-blur", "selection-clipboard", "changed-callback", "disable-missing-handle"]
+    }
+  ]
+}

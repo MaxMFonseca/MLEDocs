@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { handbookPages } from '../../src/data/handbook';
 import { getNavigationSection } from '../../src/data/navigation';
 
 const siteOrigin = process.env.MLE_DOCS_E2E_ORIGIN ?? 'http://127.0.0.1:4321';
@@ -169,21 +170,55 @@ for (const [pageId, slug] of pages) {
 test('section hubs expose every finished page while unrelated reference groups remain planned', async ({
   page,
 }) => {
-  await page.goto(pageUrl(`/versions/${versionId}/start-here/`));
-  await expect(page.locator('[data-mle-section-available] a')).toHaveCount(8);
-  await expect(page.locator('[data-mle-navigation-availability="planned"]')).toHaveCount(0);
+  for (const sectionId of ['start', 'contributing', 'reference'] as const) {
+    const section = getNavigationSection(sectionId);
+    const navigationChildren = section.plannedGroups.flatMap(({ children }) => children);
+    const expected = navigationChildren.map((child) => {
+      const handbookPage = handbookPages.find(({ pageId }) => pageId === child.pageId);
+      const published = sectionId === 'start'
+        || pages.some(([pageId]) => pageId === child.pageId)
+        || handbookPage?.publication === 'published';
+      return {
+        label: child.labels.en,
+        published,
+        href: published
+          ? `/MLEDocs/versions/${versionId}/${handbookPage?.slug ?? `${section.segment}/${child.pageId}`}/`
+          : undefined,
+      };
+    });
 
-  await page.goto(pageUrl(`/versions/${versionId}/contributing/`));
-  await expect(page.locator('[data-mle-section-available] a')).toHaveCount(5);
-  const contributingPlanned = page.locator('[data-mle-navigation-availability="planned"]');
-  await expect(contributingPlanned).toHaveCount(1);
-  await expect(contributingPlanned).toContainText([
-    'Tests and interactive pagesPage planned',
-  ]);
+    await page.goto(pageUrl(`/versions/${versionId}/${section.segment}/`));
+    const actualPublished = await page
+      .locator('[data-mle-section-available] a')
+      .evaluateAll((links) => links.map((link) => ({
+        label: link.textContent?.trim() ?? '',
+        href: link.getAttribute('href') ?? '',
+      })).sort((left, right) => left.label.localeCompare(right.label)));
+    expect(actualPublished).toEqual(
+      expected
+        .filter(({ published }) => published)
+        .map(({ label, href }) => ({ label, href: href ?? '' }))
+        .sort((left, right) => left.label.localeCompare(right.label)),
+    );
+
+    const actualPlanned = (await page
+      .locator('[data-mle-navigation-availability="planned"]')
+      .allTextContents())
+      .map((text) => text.replace(/\s+/g, ' ').trim())
+      .sort();
+    expect(actualPlanned).toEqual(
+      expected
+        .filter(({ published }) => !published)
+        .map(({ label }) => `${label}Page planned`)
+        .sort(),
+    );
+    await expect(
+      page.locator('[data-mle-navigation-availability="planned"] a'),
+    ).toHaveCount(0);
+  }
 
   await page.goto(pageUrl(`/versions/${versionId}/reference/`));
   const available = page.locator('[data-mle-section-available]');
-  await expect(available.getByRole('link')).toHaveCount(10);
   await expect(available.getByRole('link', { name: 'Build options' })).toHaveAttribute(
     'href',
     `/MLEDocs/versions/${versionId}/reference/build-options/`,
@@ -224,9 +259,6 @@ test('section hubs expose every finished page while unrelated reference groups r
     'href',
     `/MLEDocs/versions/${versionId}/reference/ui-layout-values/`,
   );
-  const planned = page.locator('[data-mle-navigation-availability="planned"]');
-  await expect(planned).toHaveCount(1);
-  await expect(planned).toContainText(['Window and input contractsPage planned']);
 });
 
 for (const sectionId of orderedSections) {
