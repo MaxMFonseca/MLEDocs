@@ -1,0 +1,37 @@
+---
+title: UI events and callbacks
+description: Exact UI event triggers, payloads, routing, phase order, registration, removal, lifetime, and reentrancy limits.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [ui, lua, window]
+sourceFiles: [src/mle/ui/systems/Events.cpp, src/mle/ui/systems/Hover.cpp, src/mle/ui/components/Animation.cpp, src/mle/ui/renderable/Text.cpp, src/mle/window/UserInputManager.cpp]
+testFiles: [tests/Core/src/ui/T.Animation.cpp, tests/Core/src/ui/T.Text.cpp, tests/Core/src/window/T.TextBox.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: ui-events-and-callbacks-reference
+---
+
+Event order in the UI update is animation, hover, `on_update`, queued events, bounds, rendering, then destroy. Callbacks execute in the Lua state in which their component/table was created.
+
+<table tabindex="0" role="region" aria-label="UI event and callback contracts">
+<thead><tr><th>Event</th><th>Lua callback</th><th>Trigger and payload</th><th>Routing / lifetime boundary</th></tr></thead>
+<tbody>
+<tr><td>custom dispatch</td><td><code>listen[name]</code></td><td><code>ew:dispatch(name, payload)</code></td><td>Queued for events phase; enqueue into the same vector while range-iterating is unsafe.</td></tr>
+<tr data-contract-row="hover-callbacks"><td>hover in / hover / hover out</td><td><code>on_hover_in(ew)</code>, <code>on_hover(ew)</code>, <code>on_hover_out(ew)</code></td><td>pointer enters, remains over, or leaves the routed entity; callbacks receive only <code>ew</code></td><td>Read the current component with <code>ew:get("hovered")</code>. Missing <code>Hovered</code> asserts. Relationship/layer priority and boolean-removal asymmetry still apply.</td></tr>
+<tr><td>key</td><td><code>on_key</code> / <code>on_keys[key]</code></td><td>input-manager key action</td><td>No exclusive focus guarantee; boolean removal includes wrong-field behavior.</td></tr>
+<tr><td>scroll</td><td><code>on_scroll(ew, delta)</code></td><td>wheel movement on routed entity</td><td>Removal branch is asymmetric.</td></tr>
+<tr><td>cursor drag begin</td><td><code>fn.onCursorDragBegin(ew)</code></td><td><code>beginCursorDrag()</code></td><td>Application function convention.</td></tr>
+<tr><td>cursor drag</td><td><code>fn.onCursorDrag(ew, relative)</code></td><td>cursor movement during drag</td><td>Relative position used by sliders; hit test may ignore dragged entity.</td></tr>
+<tr><td>cursor drag end</td><td><code>fn.onCursorDragEnd(ew)</code></td><td>input release/end</td><td>Reparent/cleanup explicitly.</td></tr>
+<tr><td>resized</td><td><code>on_resized(ew)</code></td><td>resolved bounds changed</td><td>May request another pass; avoid uncontrolled invalidation loops.</td></tr>
+<tr><td>text submit</td><td><code>text.input.on_submit</code></td><td>Enter according to multiline config</td><td>Text input focus is not globally exclusive.</td></tr>
+<tr><td>text complete</td><td><code>text.input.on_complete</code></td><td>Tab/completion path</td><td>Input handle must exist.</td></tr>
+<tr><td>animation finished</td><td><code>animation.on_finished(ew)</code></td><td>all finite modes complete</td><td>Once only; looped mode prevents it.</td></tr>
+</tbody>
+</table>
+
+Additional phase callbacks are `on_create`, `on_update`, and `on_destroy`; named functions under `fn` execute only through `call` or application conventions. Raw C++ `EventListener` lifetime/unlisten semantics are separate from the retained Lua tables.
+
+Do not treat `false` as a universally symmetric “remove callback” operation in this commit. Prefer building the intended callback table once, or replace/destroy the owning entity. Source identity: [`Events.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/ui/systems/Events.cpp).

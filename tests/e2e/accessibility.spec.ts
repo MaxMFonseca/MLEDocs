@@ -975,6 +975,24 @@ for (const handbookCase of [
 		theme: 'dark',
 		selector: 'main pre',
 	},
+	{
+		name: 'UI key reference table in Dark',
+		path: `/versions/${versionId}/reference/ui-element-keys/`,
+		theme: 'dark',
+		selector: 'main table',
+	},
+	{
+		name: 'UI Test catalog in Light',
+		path: `/versions/${versionId}/tools/ui-test/`,
+		theme: 'light',
+		selector: 'main table',
+	},
+	{
+		name: 'Portuguese UI reference fallback in Dark',
+		path: `/pt-br/versions/${versionId}/reference/ui-components/`,
+		theme: 'dark',
+		selector: 'main table',
+	},
 ] as const) {
   test(`runtime handbook accessibility: ${handbookCase.name} reflows locally and is axe-clean`, async ({
     page,

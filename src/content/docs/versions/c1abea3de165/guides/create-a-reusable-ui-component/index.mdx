@@ -1,0 +1,46 @@
+---
+title: Create a reusable UI component
+description: Author a validated Lua factory with copied inputs, retained state, named children, functions, and invalidation.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [ui, lua]
+sourceFiles: [res/lua/ui/comp/filterable_list.lua, res/lua/ui/comp/scrollable_with_bar.lua, src/mle/lua/Lua.cpp]
+testFiles: [tests/Core/res/lua/FilterableListUT.lua, tests/Client/res/lua/ui/ui_tests/FilterableList.lua]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: create-a-reusable-ui-component
+---
+
+## Outcome
+
+Create a factory that accepts named row tables, validates them, retains an independent copy, and rebuilds a scrollable results child when its text query changes.
+
+## Preconditions
+
+The factory runs in the Client Lua state and depends on `table.deep_copy`, `Utils.partial_word_match`, colors, text input, and `mle.ui.comp.scrollable_with_bar`. Resolve those globals and resource paths before constructing an instance, and use [Reusable components](../../systems/ui/reusable-components/) for module execution and retained-state boundaries.
+
+## Construct the entities and components
+
+Return a function `(rows, options)`. Reject non-table arguments, non-table rows, empty/non-string `row.name`, and duplicates with `error`. Deep-copy valid rows. Return a root fragment with state under `table`, functions under `fn`, `on_update`, a vertical `list`, and named `query_input` and `results` children. Attach the returned factory table with `comp` on a sized host element.
+
+## Configure layout and visuals
+
+Expose narrow option tables (`input_text`, `input_border`, scrollbar choices), merge copies rather than mutating defaults, and give results `size_y = "1f"`. Keep the query a fixed-height child. The scroll driver owns result rows and needs a layout request after rebuilding them.
+
+## Connect state and interaction
+
+The query's `lmb` callback applies `text_input_enable`. Root `on_update` reads the query text; only a changed value calls `applyFilter`. That function destroys existing result children, adds deep copies of matching rows, records `last_query`, requests internal bounds, and resets scroll offset through `setOffset`.
+
+## Verify the result
+
+Instantiate with names such as `High Wind Damage`; typing `hwd` should retain it through partial-word matching. The Core Lua fixture verifies validation, copying, matching, and reset behavior. UI Test demonstrates the visible list.
+
+## Cleanup and failure modes
+
+Destroy the root to remove its copied children. Do not retain stale child wrappers after a filter rebuild. Module loading re-executes the file because engine `require` uses `script_file`, not `package.loaded`; module globals would be shared only for that execution's closures. Existing-file errors are not protected by `tryRequire`.
+
+## Authoritative example
+
+[`res/lua/ui/comp/filterable_list.lua`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/res/lua/ui/comp/filterable_list.lua) is the complete factory; [`FilterableList.lua`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/res/lua/ui/ui_tests/FilterableList.lua) is its shipped screen.

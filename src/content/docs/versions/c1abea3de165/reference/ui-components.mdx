@@ -1,0 +1,46 @@
+---
+title: UI components
+description: Normalized retained UI ECS components, their relationships, construction keys, dependencies, and owners.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [ui, lua]
+sourceFiles: [src/mle/ui/components/Base.h, src/mle/ui/components/Bounds.h, src/mle/ui/components/Renderable.h, src/mle/ui/components/Animation.h, src/mle/ui/systems/LuaElementOps.cpp]
+testFiles: [tests/Core/src/ui/T.Bounds.cpp, tests/Core/src/ui/T.Animation.cpp, tests/Core/src/ui/T.RenderingScissor.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: ui-components
+---
+
+Lua usually constructs these through [element keys](../ui-element-keys/), not direct component constructors. An entity needs `Relationship` to participate in the retained tree. Bounds are derived in phases; rendering consumes a separate packet, and only one `Renderable` implementation belongs to an entity.
+
+<table tabindex="0" role="region" aria-label="Retained UI component catalog">
+<thead><tr><th>Components</th><th>Role and relationship</th><th>Lua construction / dependency</th></tr></thead>
+<tbody>
+<tr><td><code>Relationship</code>, <code>ChildrenBase</code></td><td>parent/child/sibling graph and child base</td><td><code>c</code>/<code>children</code>; no circular/self parent.</td></tr>
+<tr><td><code>Name</code>, <code>ID</code>, <code>Tags</code></td><td>local traversal name, UI lookup, classification</td><td><code>name</code>, <code>id</code>, <code>tags</code>/<code>remove_tags</code>.</td></tr>
+<tr><td><code>Table</code>, <code>Functions</code></td><td>retained Lua state and named callables</td><td><code>table</code>, <code>fn</code>; bound to originating Lua state.</td></tr>
+<tr><td><code>Layer</code></td><td>render and hit priority input</td><td><code>layer</code>; render ascending, hover relationship order descending.</td></tr>
+<tr><td><code>OnUpdate</code>, <code>OnCreate</code>, <code>OnDestroy</code></td><td>phase callbacks</td><td>corresponding keys; destruction deferred.</td></tr>
+<tr><td><code>ListenEvents</code></td><td>named-event callback vectors</td><td><code>listen</code>; same-event mutation during dispatch unsafe.</td></tr>
+<tr><td><code>RenderScale</code>, <code>Background</code></td><td>visual transform and quad colors</td><td><code>render_scale</code>, <code>background</code>.</td></tr>
+<tr><td><code>DisabledFlag</code>, <code>ForceFitFlag</code>, <code>EscapeParentScissorFlag</code></td><td>state/layout/render switches</td><td><code>disabled</code>/<code>active</code>, <code>force_fit</code>, scissor keys.</td></tr>
+<tr><td><code>RequestInternalBoundsUpdateFlag</code>, <code>RequestExternalBoundsUpdateFlag</code></td><td>queued layout invalidation</td><td>entity request methods; internal propagation is broad in this snapshot.</td></tr>
+<tr><td><code>DestroyFlag</code>, <code>CursorDragFlag</code>, <code>ResizedFlag</code>, <code>IgnoreHoverFlag</code></td><td>deferred destroy/input/resize/hover phase signals</td><td>entity methods and internal systems; not stable storage APIs.</td></tr>
+<tr><td><code>OnResized</code>, <code>ContentOverflow</code>, <code>PopupRoot</code></td><td>post-layout callback/measurement and popup ownership</td><td><code>on_resized</code>, <code>overflow</code> getter, <code>createPopup</code>.</td></tr>
+<tr><td><code>TargetSize</code>, <code>TargetPosition</code>, <code>TargetPadding</code>, <code>TargetMargin</code></td><td>unresolved layout targets</td><td>size/position/padding/margin keys and TargetBound values.</td></tr>
+<tr><td><code>TargetBorder</code>, <code>TargetOrigin</code>, <code>TargetAspectRatio</code></td><td>remaining unresolved geometry</td><td>border/origin/aspect keys.</td></tr>
+<tr><td><code>Bounds</code>, <code>Border</code></td><td>resolved rectangles and renderable border</td><td>produced from targets; read only after layout.</td></tr>
+<tr><td><code>SizeProvider</code>, <code>Dependency</code></td><td>fit sizing and axis dependency graph</td><td>derived from renderable/container and <code>*_dep</code> keys.</td></tr>
+<tr><td><code>ListContainer</code>, <code>FreeContainer</code></td><td>ordered flow vs positioned/scrollable children</td><td><code>list</code> / <code>free</code>; require relationships and bounds.</td></tr>
+<tr><td><code>Hoverable</code>, <code>Hovered</code></td><td>hit participation and current hover payload</td><td><code>hoverable</code> / <code>hovered</code>.</td></tr>
+<tr><td><code>Renderable</code>, <code>Shader</code></td><td>type-erased visual and optional effect</td><td>one of text/sprite/nine-slice/render-image plus blur/shader.</td></tr>
+<tr><td><code>Animation</code></td><td>tracks, sprite frames, typewriter, completion</td><td><code>animation</code>; fixed 1/60 system tick.</td></tr>
+<tr><td><code>RootImage</code>, <code>BlitExternalImage</code></td><td>root/UI target images and external blit state</td><td>renderer-owned; synchronization/lifetime must outlive packets.</td></tr>
+<tr data-contract-row="renderable-ownership"><td><code>Text</code>, <code>Sprite</code>, <code>NineSlice</code>, <code>RenderImage</code></td><td>concrete mutually exclusive renderables</td><td>Matching keys create or update the same kind. Applying an incompatible kind logs, returns, and preserves the existing implementation.</td></tr>
+<tr><td><code>Blur</code>, <code>LuaShader</code></td><td>render effects</td><td><code>blur</code>/<code>shader</code>; require effect resources and rendering context.</td></tr>
+</tbody>
+</table>
+
+The 52 normalized component identities above include internal flag/phase types because they explain observable lifetime and invalidation. They are not promises of direct Lua construction. See [`Base.h`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/ui/components/Base.h) and the focused system pages for sequencing.

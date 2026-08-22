@@ -1,0 +1,46 @@
+---
+title: Animate and style UI
+description: Apply native tracks, sprite and typewriter animation, colors, borders, scale, and explicit restart/removal.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [ui, renderer]
+sourceFiles: [tests/Client/res/lua/ui/ui_tests/Animation.lua, src/mle/ui/components/Animation.cpp, src/mle/ui/components/Renderable.cpp]
+testFiles: [tests/Core/src/ui/T.Animation.cpp, tests/Client/src/layers/UITest.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: animate-and-style-ui
+---
+
+## Outcome
+
+Animate position, scale, size, and color; advance a sprite sheet; reveal text; then restart or remove the animation explicitly.
+
+## Preconditions
+
+The entity must already have the component a mode targets: Sprite for sprite frames and Text for typewriter. Texture resources must resolve. Bound tracks should use compatible units. [Animation and effects](../../systems/ui/animation-and-effects/) defines the fixed-step lifecycle and completion boundary.
+
+## Construct the entities and components
+
+Add `animation = { tracks = {...} }` to an element. Each track supplies `target`, `from`, `to`, `duration`, optional `delay`, `ease`, `loop`, and `yoyo`. Add `sprite = { frame_size = {32,32}, frames = 4, fps = 6, loop = true }` beside tracks for a Sprite, or `typewriter = { cps = 18, start_delay = 0.25 }` for Text.
+
+## Configure layout and visuals
+
+Use `render_scale` for visual scaling without relayout. Position/size animation changes TargetBounds and requests external layout. `background` and `border_color` interpolate colors and store linear values. Sprite `frame_size` is pixels within the resolved source extent.
+
+## Connect state and interaction
+
+Set `on_finished = function(ew) ... end` only for finite modes. To restart, reapply the text's initial `visible_chars` if needed and reapply `animation`; this clears prior animation state. To stop, call `destroyAnimation()`.
+
+## Verify the result
+
+The shipped screen shows a yoyo position tween, scale/color pulse, width tween, four-frame atlas, and typewriter reveal. Core tests prove easing, track application, disabled behavior, sprite UVs, visible characters, and single completion callback.
+
+## Cleanup and failure modes
+
+Looping modes never finish. Unknown targets are dropped; unknown easing becomes linear with a warning. Invalid sprite geometry and missing renderable/text dependencies are no-ops. The implementation advances by fixed `1/60`, not real caller delta. Destruction requested inside callbacks is deferred with normal UI cleanup.
+
+## Authoritative example
+
+[`tests/Client/res/lua/ui/ui_tests/Animation.lua`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/res/lua/ui/ui_tests/Animation.lua) contains each complete pattern and its reset control.

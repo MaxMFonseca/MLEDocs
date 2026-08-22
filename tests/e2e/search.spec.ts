@@ -45,9 +45,11 @@ async function openSearch(page: Page, dialogLabel: string) {
 	return { dialog, opener };
 }
 
-async function searchForRenderer(dialog: ReturnType<Page['getByRole']>) {
+const crossLocaleFixtureQuery = 'ranges remove returned tail';
+
+async function searchForPinnedPhrase(dialog: ReturnType<Page['getByRole']>) {
 	const input = dialog.locator('.pagefind-ui__search-input');
-	await input.fill('renderer');
+	await input.fill(crossLocaleFixtureQuery);
 	const results = dialog.locator('.pagefind-ui__result');
 	await expect(results.first()).toBeVisible({ timeout: 15_000 });
 	return { input, results };
@@ -120,9 +122,9 @@ test('keeps all scope chosen before Pagefind finishes loading', async ({ page })
 	const pagefindInput = dialog.locator('.pagefind-ui__search-input');
 	await expect(pagefindInput).toHaveCount(1, { timeout: 15_000 });
 	await expect(pagefindInput).toBeFocused();
-	const { input, results } = await searchForRenderer(dialog);
+	const { input, results } = await searchForPinnedPhrase(dialog);
 	await expect(all).toBeChecked();
-	expect(await input.inputValue()).toBe('renderer');
+	expect(await input.inputValue()).toBe(crossLocaleFixtureQuery);
 	expect(chunkRequestCount).toBe(1);
 	await expect
 		.poll(async () =>
@@ -157,7 +159,7 @@ for (const searchCase of searchCases) {
 		const active = scopeGroup.getByRole('radio', { name: searchCase.activeScope });
 		await expect(active).toBeChecked();
 
-		const { results } = await searchForRenderer(dialog);
+		const { results } = await searchForPinnedPhrase(dialog);
 		await expect(results).not.toHaveCount(0);
 		const resultLocales = await results.evaluateAll((items) =>
 			items.map((item) => item.getAttribute('data-mle-search-locale')),
@@ -175,14 +177,14 @@ for (const searchCase of searchCases) {
 	}) => {
 		await page.goto(pageUrl(searchCase.path));
 		const { dialog } = await openSearch(page, searchCase.dialogLabel);
-		const { input, results } = await searchForRenderer(dialog);
+		const { input, results } = await searchForPinnedPhrase(dialog);
 		const all = dialog.getByRole('radio', { name: searchCase.allScope });
 
 		await all.focus();
 		await page.keyboard.press('Space');
 		await expect(all).toBeChecked();
 		await expect(all).toBeFocused();
-		expect(await input.inputValue()).toBe('renderer');
+		expect(await input.inputValue()).toBe(crossLocaleFixtureQuery);
 
 		await expect
 			.poll(async () => results.count(), { timeout: 15_000 })
@@ -244,7 +246,7 @@ test('the scoped search dialog is axe-clean in both themes and reflows at 360 pi
 		await themePicker.selectOption(theme, { force: true });
 		await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
 		const { dialog } = await openSearch(page, 'Pesquisar');
-		await searchForRenderer(dialog);
+		await searchForPinnedPhrase(dialog);
 
 		const all = dialog.getByRole('radio', { name: 'Todos os commits e idiomas' });
 		const active = dialog.getByRole('radio', { name: 'Commit e idioma atuais' });
@@ -269,4 +271,20 @@ test('the scoped search dialog is axe-clean in both themes and reflows at 360 pi
 		await page.keyboard.press('Escape');
 		await expect(dialog).not.toBeVisible();
 	}
+});
+
+test('Pagefind returns the pinned UI key reference in active and all scopes', async ({ page }) => {
+	await page.goto(pageUrl('/versions/c1abea3de165/reference/ui-element-keys/'));
+	const { dialog } = await openSearch(page, 'Search');
+	const input = dialog.locator('.pagefind-ui__search-input');
+	await input.fill('text_input_disable');
+	const result = dialog.locator('.pagefind-ui__result').filter({ hasText: 'UI element keys' }).first();
+	await expect(result).toBeVisible({ timeout: 15_000 });
+	await expect(result).toHaveAttribute('data-mle-search-version', 'c1abea3de165');
+	await expect(result).toHaveAttribute('data-mle-search-locale', 'en');
+	const all = dialog.getByRole('radio', { name: 'All commits and languages' });
+	await all.check();
+	await expect(all).toBeChecked();
+	expect(await input.inputValue()).toBe('text_input_disable');
+	await expect.poll(async () => dialog.locator('.pagefind-ui__result').count()).toBeGreaterThan(1);
 });

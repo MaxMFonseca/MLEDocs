@@ -1,0 +1,46 @@
+---
+title: Use sprites, images, and nine-slice
+description: Choose texture or image sources, define atlas UVs, preserve panel corners, and respect renderable ownership.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [ui, renderer]
+sourceFiles: [tests/Client/res/lua/ui/ui_tests/NineSlice.lua, tests/Client/res/lua/ui/ui_tests/SpriteProgressBar.lua, src/mle/ui/renderable/Sprite.cpp, src/mle/ui/renderable/NineSlice.cpp, src/mle/ui/renderable/RenderImage.cpp]
+testFiles: [tests/Core/src/ui/T.Sprite.cpp, tests/Core/src/ui/T.NineSlice.cpp, tests/Client/src/layers/UITest.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: use-sprites-images-and-nine-slice
+---
+
+## Outcome
+
+Render a texture-backed sprite, select an atlas region, stretch a bordered panel without distorting its corners, and understand when `render_image` is appropriate.
+
+## Preconditions
+
+The renderer and texture cache must be initialized. A texture path must resolve through resource directories, or an `mle_Image` pointer must remain valid. Review [Rendering and visuals](../../systems/ui/rendering-and-visuals/) before choosing an entity boundary. Each entity supports one `Renderable`; a matching key creates it or updates the same kind. Applying an incompatible renderable key logs and returns without replacing the existing implementation.
+
+## Construct the entities and components
+
+For a sprite, use `sprite = "path.png"` or a table with `texture`/`image`, optional `uv`, `uv_size`, `uv_px`, `uv_size_px`, `color`, flips, and `fit`. For a panel, use `nine_slice` with the same source/UV choices plus `slice = "12px"` or `{t,b,l,r}`. `render_image` addresses an engine image intended for direct blitting rather than texture-cache lookup.
+
+## Configure layout and visuals
+
+Normalized UVs are fractions. Pixel UV fields are divided by the resolved source extent and override normalized fields when both exist. `uv_size` changes calculated aspect when not fitting. Nine-slice defaults its cut to one third when no slice is provided; explicit pixel cuts are clearer. Set `fit = true` when the renderable should fill host bounds.
+
+## Connect state and interaction
+
+Update a sprite or panel by reapplying its key; the implementation versions the renderable packet. A sprite-sheet `animation` updates Sprite UVs. Shipped `sprite_progress_bar` updates fill `size_x`, reapplies Sprite UV size, and moves an optional sparkle.
+
+## Verify the result
+
+UI Test's NineSlice page shows compact, wide, tall, atlas-region, and default-cut panels. The progress-bar page connects a range slider to `set_value`. Core tests verify parsing priority, packet copying, slice values, fitting, and aspect calculation.
+
+## Cleanup and failure modes
+
+A missing texture uses the texture cache's fallback behavior where implemented; do not present it as successful asset loading. Pixel conversion requires a nonzero available extent. Renderer-owned images must outlive packet use and obey renderer synchronization. An incompatible renderable apply preserves the previous implementation; use a different entity when the visual kind must change.
+
+## Authoritative example
+
+[`tests/Client/res/lua/ui/ui_tests/NineSlice.lua`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/res/lua/ui/ui_tests/NineSlice.lua) is the complete panel example; [`SpriteProgressBar.lua`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/res/lua/ui/ui_tests/SpriteProgressBar.lua) shows a composed, mutable sprite widget.

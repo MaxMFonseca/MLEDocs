@@ -1,5 +1,9 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { parseFrontmatter } from 'astro/markdown';
 import { describe, expect, it } from 'vitest';
 import { handbookPages } from '../../src/data/handbook';
+import { pinnedMleCommit, uiGuideSourceManifest } from '../fixtures/ui-guide-source-manifest';
 
 export interface UiContractRecord {
 	readonly kind: 'usertype' | 'callable' | 'key' | 'component' | 'event' | 'callback' | 'layout-value';
@@ -10,7 +14,10 @@ export interface UiContractRecord {
 interface UiContractDiff {
 	readonly missing: readonly string[];
 	readonly extra: readonly string[];
+	readonly discoveredDuplicates: readonly string[];
 	readonly duplicates: readonly string[];
+	readonly invalidOwners: readonly string[];
+	readonly ownerDisagreements: readonly string[];
 }
 
 const keyOf = ({ kind, name }: Pick<UiContractRecord, 'kind' | 'name'>) => `${kind}:${name}`;
@@ -21,12 +28,22 @@ export function compareUiContracts(
 ): UiContractDiff {
 	const discoveredKeys = new Set(discovered.map(keyOf));
 	const documentedKeys = new Set(documented.map(keyOf));
+	const discoveredCounts = new Map<string, number>();
+	for (const record of discovered) discoveredCounts.set(keyOf(record), (discoveredCounts.get(keyOf(record)) ?? 0) + 1);
 	const counts = new Map<string, number>();
 	for (const record of documented) counts.set(keyOf(record), (counts.get(keyOf(record)) ?? 0) + 1);
+	const validOwners = new Set(handbookPages.map(({ pageId }) => pageId));
+	const discoveredOwners = new Map(discovered.map((record) => [keyOf(record), record.ownerPageId]));
 	return {
 		missing: [...discoveredKeys].filter((key) => !documentedKeys.has(key)).sort(),
 		extra: [...documentedKeys].filter((key) => !discoveredKeys.has(key)).sort(),
+		discoveredDuplicates: [...discoveredCounts].filter(([, count]) => count > 1).map(([key]) => key).sort(),
 		duplicates: [...counts].filter(([, count]) => count > 1).map(([key]) => key).sort(),
+		invalidOwners: documented.filter(({ ownerPageId }) => !validOwners.has(ownerPageId)).map(keyOf).sort(),
+		ownerDisagreements: documented
+			.filter((record) => discoveredOwners.has(keyOf(record)) && discoveredOwners.get(keyOf(record)) !== record.ownerPageId)
+			.map(keyOf)
+			.sort(),
 	};
 }
 
@@ -194,15 +211,47 @@ describe('Lua/UI contract comparator', () => {
 			{ kind: 'key', name: 'gamma', ownerPageId: 'ui-element-keys' },
 			baseline[0],
 		];
-		expect(compareUiContracts(baseline, documented)).toEqual({
+			expect(compareUiContracts(baseline, documented)).toEqual({
 			missing: ['key:beta'],
 			extra: ['key:gamma'],
+			discoveredDuplicates: [],
 			duplicates: ['key:alpha'],
+			invalidOwners: [],
+			ownerDisagreements: [],
 		});
 	});
 
 	it('has zero unexplained gaps for the manually verified pinned inventory', () => {
-		expect(compareUiContracts(discoveredRecords, documentedRecords)).toEqual({ missing: [], extra: [], duplicates: [] });
+		expect(compareUiContracts(discoveredRecords, documentedRecords)).toEqual({
+			missing: [], extra: [], discoveredDuplicates: [], duplicates: [], invalidOwners: [], ownerDisagreements: [],
+		});
+	});
+
+	it('detects duplicate identities on the discovered side independently', () => {
+		const duplicatedDiscovery = [...discoveredRecords, discoveredRecords[0]];
+		expect(compareUiContracts(duplicatedDiscovery, documentedRecords).discoveredDuplicates).toEqual([
+			keyOf(discoveredRecords[0]),
+		]);
+	});
+
+	it('detects an invalid owner and an owner swap independently', () => {
+		const invalidOwner = documentedRecords.map((record, index) => index === 0 ? { ...record, ownerPageId: 'missing-page' } : record);
+		const ownerSwap = documentedRecords.map((record, index) => index === 0 ? { ...record, ownerPageId: 'ui-element-keys' } : record);
+		expect(compareUiContracts(discoveredRecords, invalidOwner).invalidOwners).toEqual([keyOf(documentedRecords[0])]);
+		expect(compareUiContracts(discoveredRecords, ownerSwap).ownerDisagreements).toEqual([keyOf(documentedRecords[0])]);
+	});
+
+	it('maps each practical guide to shipped Lua and an accepted system owner', () => {
+		for (const { pageId, sourcePath, ownerPageId, ownerSlug } of uiGuideSourceManifest) {
+			const guideFile = resolve('src/content/docs/versions/c1abea3de165/guides', pageId, 'index.mdx');
+			const guideText = readFileSync(guideFile, 'utf8');
+			const frontmatter = parseFrontmatter(guideText).frontmatter;
+			expect(frontmatter.sourceFiles).toContain(sourcePath);
+			expect(guideText).toContain(`github.com/MaxMFonseca/MLE/blob/${pinnedMleCommit}/${sourcePath}`);
+			expect(guideText).toContain(`../../${ownerSlug}`);
+			expect(handbookPages.find((page) => page.pageId === pageId)?.kind).toBe('guide');
+			expect(handbookPages.find((page) => page.pageId === ownerPageId)?.publication).toBe('published');
+		}
 	});
 
 	it('exposes one-sided fixture deletions as genuine missing and extra records', () => {

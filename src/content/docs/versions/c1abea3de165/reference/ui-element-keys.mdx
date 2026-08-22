@@ -1,0 +1,72 @@
+---
+title: UI element keys
+description: All normalized Lua element-table keys, accepted value families, effects, getters, invalidation, and failure boundaries.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [ui, lua]
+sourceFiles: [src/mle/ui/systems/LuaElementOps.cpp, src/mle/ui/components/Base.cpp, src/mle/ui/components/Bounds.cpp, src/mle/ui/components/Renderable.cpp]
+testFiles: [tests/Core/src/ui/T.Bounds.cpp, tests/Core/src/ui/T.Text.cpp, tests/Core/src/ui/T.Sprite.cpp, tests/Core/src/ui/T.NineSlice.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: ui-element-keys
+---
+
+The table covers all 101 normalized keys found in the pinned handler and structural branches. “Get” means `ew:get(key)` has a meaningful branch; absence means application-only unless a component-specific page proves otherwise. Invalid types generally log and leave prior state, but some nested parsers assert or Lua-error; validate reusable factory inputs before application.
+
+<table tabindex="0" role="region" aria-label="All Lua UI element keys">
+<thead><tr><th>Key(s)</th><th>Accepted Lua value</th><th>Effect/default</th><th>Get / invalidation / failure</th></tr></thead>
+<tbody>
+<tr data-contract-row="getter-registry"><td><code>ew:get</code> registry</td><td><code>table</code>, <code>hovered</code>, <code>fn</code>, <code>text</code>, <code>scroll</code>, <code>overflow</code>, or <code>tags</code></td><td>These are the only registered getter names.</td><td>Every other key logs “No handler” and returns an invalid object.</td></tr>
+<tr><td><code>children_base</code>, <code>style</code>, <code>comp</code>, <code>styles</code></td><td>table</td><td>structural merge/application</td><td>No component getter; merge order matters.</td></tr>
+<tr><td><code>name</code>, <code>idx</code></td><td>string / integer</td><td>relationship identity/index</td><td><code>name</code> is readable through <code>ew:name()</code>, not <code>ew:get</code>; duplicate conventions remain caller-owned.</td></tr>
+<tr><td><code>c</code>, <code>children</code>, <code>add_child</code>, <code>child</code></td><td>child table(s)</td><td>construct descendants</td><td>Relationship mutation; circular/self parents rejected.</td></tr>
+<tr><td><code>container</code>, <code>list</code>, <code>list_container</code></td><td>table</td><td>ListContainer configuration</td><td>Bounds invalidation; see layout values.</td></tr>
+<tr><td><code>free</code>, <code>free_container</code></td><td>table</td><td>FreeContainer and scroll state</td><td><code>scroll</code> getter exposes offsets.</td></tr>
+<tr><td><code>size</code>, <code>size_x</code>, <code>size_y</code></td><td>bound scalar/pair</td><td>TargetSize</td><td>No getter; external bounds update.</td></tr>
+<tr><td><code>size_x_dep</code>, <code>size_y_dep</code></td><td>dependency value</td><td>axis dependency</td><td>Layout update; invalid spellings are rejected/logged.</td></tr>
+<tr><td><code>pos</code>, <code>pos_x</code>, <code>pos_y</code></td><td>bound scalar/pair</td><td>TargetPosition</td><td>No getter; external bounds update.</td></tr>
+<tr><td><code>pos_x_dep</code>, <code>pos_y_dep</code></td><td>dependency value</td><td>axis dependency</td><td>Layout update.</td></tr>
+<tr><td><code>padding</code>, <code>padding_t</code>, <code>padding_b</code>, <code>padding_l</code>, <code>padding_r</code>, <code>padding_x</code>, <code>padding_y</code></td><td>bound scalar/table</td><td>TargetPadding, zero when absent</td><td>Internal/external layout propagation.</td></tr>
+<tr><td><code>margin</code>, <code>margin_t</code>, <code>margin_b</code>, <code>margin_l</code>, <code>margin_r</code>, <code>margin_x</code>, <code>margin_y</code></td><td>bound scalar/table</td><td>TargetMargin</td><td>External layout update.</td></tr>
+<tr><td><code>border</code></td><td>table</td><td>thickness/color/roundness aggregate</td><td>Layout for thickness; render invalidation for color.</td></tr>
+<tr><td><code>border_thickness</code>, <code>border_t</code>, <code>border_b</code>, <code>border_l</code>, <code>border_r</code>, <code>border_x</code>, <code>border_y</code></td><td>bound scalar/table</td><td>border sides</td><td>Bounds update.</td></tr>
+<tr><td><code>border_color</code></td><td>Color-compatible</td><td>linear stored color</td><td>Renderable packet update.</td></tr>
+<tr><td><code>border_round</code>, <code>border_round_lt</code>, <code>border_round_rt</code>, <code>border_round_lb</code>, <code>border_round_rb</code></td><td>bound scalar/table</td><td>corner roundness</td><td>Render update.</td></tr>
+<tr><td><code>origin</code>, <code>origin_x</code>, <code>origin_y</code></td><td>origin spelling/vector</td><td>TargetOrigin</td><td>External layout update.</td></tr>
+<tr><td><code>aspect_ratio</code></td><td>number</td><td>TargetAspectRatio</td><td>Nonpositive/invalid values are not useful; layout update.</td></tr>
+<tr><td><code>background</code></td><td>Color or corner-color table</td><td>Background quad</td><td>No getter; packet invalidation.</td></tr>
+<tr><td><code>hoverable</code></td><td>boolean/table</td><td>Hoverable component</td><td>Hover routing changes.</td></tr>
+<tr><td><code>on_hover</code>, <code>on_hover_in</code>, <code>on_hover_out</code></td><td>function or boolean removal</td><td>hover callbacks</td><td>Removal is asymmetric in pinned code; consult events reference.</td></tr>
+<tr><td><code>on_key</code>, <code>on_keys</code></td><td>function / key-function table</td><td>key callbacks</td><td>Boolean removal branch has wrong-field behavior.</td></tr>
+<tr><td><code>on_scroll</code></td><td>function or boolean</td><td>wheel callback</td><td>Removal asymmetry; payload is wheel delta.</td></tr>
+<tr><td><code>table</code></td><td>table</td><td>arbitrary retained Lua state</td><td><code>get("table")</code> creates and returns an empty table when the component is absent; lifetime is tied to the component/Lua state.</td></tr>
+<tr><td><code>render_scale</code></td><td>number</td><td>visual scale, clamped to at least 0.01</td><td>No getter; no bounds relayout.</td></tr>
+<tr><td><code>on_update</code>, <code>on_create</code>, <code>on_destroy</code></td><td>function or removal form</td><td>phase callbacks</td><td>Creation/destruction order matters.</td></tr>
+<tr><td><code>animation</code></td><td>animation table</td><td>creates/resets Animation</td><td>Fixed 1/60 tick; use <code>destroyAnimation</code> to remove.</td></tr>
+<tr><td><code>listen</code></td><td>event-function table</td><td>named-event listeners</td><td>Unsafe to mutate same event vector during dispatch.</td></tr>
+<tr><td><code>id</code></td><td>string</td><td>UI-wide lookup ID</td><td>No getter; use <code>mle_UI.getElementById</code> for lookup. Collisions and cleanup are caller concerns.</td></tr>
+<tr><td><code>tags</code>, <code>remove_tags</code></td><td>string/table</td><td>add/remove tags</td><td><code>get("tags")</code> returns a new list, or Lua <code>nil</code> when absent.</td></tr>
+<tr><td><code>layer</code></td><td>integer</td><td>render/input order layer</td><td>Rendering ascends; hover relationship traversal descends.</td></tr>
+<tr><td><code>fn</code></td><td>name-function table</td><td>functions invoked by <code>call</code></td><td><code>get("fn", name)</code> requires the component, a string name, and an existing function; failures log and return an invalid object.</td></tr>
+<tr><td><code>active</code>, <code>enabled</code></td><td>boolean</td><td>remove/add DisabledFlag</td><td>Aliases with positive sense.</td></tr>
+<tr><td><code>disabled</code></td><td>boolean</td><td>add/remove DisabledFlag</td><td>Opposite sense; disabled animations do not tick.</td></tr>
+<tr><td><code>force_fit</code></td><td>boolean</td><td>ForceFitFlag</td><td>Bounds invalidation.</td></tr>
+<tr><td><code>escape_parent_scissor</code>, <code>ignore_parent_scissor</code></td><td>boolean</td><td>scissor escape flags</td><td>Can render beyond viewport clipping.</td></tr>
+<tr><td><code>render_outside_parent</code></td><td>boolean</td><td>outside-parent render flag</td><td>Changes culling/clipping expectation.</td></tr>
+<tr><td><code>add_scroll_y</code></td><td>number</td><td>adds/clamps FreeContainer offset</td><td>Request internal bounds after application.</td></tr>
+<tr><td><code>scroll_sensitivity</code></td><td>number</td><td>wheel scaling</td><td>Free-container behavior.</td></tr>
+<tr><td><code>on_resized</code></td><td>function</td><td>bounds-resized callback</td><td>Used to synchronize overflow; avoid recursive mutation loops.</td></tr>
+<tr data-contract-row="renderable-keys"><td><code>sprite</code>, <code>nine_slice</code>, <code>render_image</code>, <code>text</code></td><td>matching path/image/table/string forms</td><td>Create the entity's one Renderable implementation, or update an existing implementation of the same kind.</td><td>An incompatible kind logs, returns, and preserves the previous renderable. Only <code>get("text")</code> exists; it logs and returns an invalid object without a Text renderable.</td></tr>
+<tr data-contract-row="text-input-keys"><td><code>text_input_enable</code>, <code>text_input_disable</code>, <code>text_input_clear</code>, <code>text_input_set</code></td><td>trigger / trigger / trigger / string</td><td><code>text.input</code> constructs the TextBox; enable only focuses it and warns then returns when absent.</td><td>Disable lacks the missing-TextBox guard and dereferences the handle. Clear/set do guard and warn. The prerequisite is an existing <code>text.input</code> TextBox, not a prior enable.</td></tr>
+<tr><td><code>blur</code></td><td>table/value</td><td>Blur shader component</td><td>Requires render-target/effect resources.</td></tr>
+<tr><td><code>shader</code></td><td>shader specification</td><td>LuaShader component</td><td>Auxiliary Lua state is not Client global state.</td></tr>
+<tr><td><code>shader_params</code></td><td>table</td><td>updates Lua shader parameters</td><td>Shader must exist; current context-Lua integration is limited.</td></tr>
+<tr data-contract-row="hovered-getter"><td><code>hovered</code></td><td>getter key</td><td>current <code>uiHovered</code> component</td><td>Missing <code>Hovered</code> asserts; it does not return nil.</td></tr>
+<tr><td><code>scroll</code></td><td>getter key</td><td>current/max Y offsets</td><td>Without <code>FreeContainer</code>, logs and returns an invalid object.</td></tr>
+<tr><td><code>overflow</code></td><td>getter key</td><td>content overflow X/Y</td><td>Without measured <code>ContentOverflow</code>, returns an invalid object without logging.</td></tr>
+</tbody>
+</table>
+
+Source identity: [`LuaElementOps.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/ui/systems/LuaElementOps.cpp). Structural keys execute in table-application order; when two aliases target the same component, the later applied value wins.

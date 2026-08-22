@@ -1,0 +1,46 @@
+---
+title: Add scrolling and popups
+description: Wrap dynamic content in retained scrolling and create anchored or stacked popups with explicit cleanup.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [ui, lua]
+sourceFiles: [tests/Client/res/lua/ui/ui_tests/Scrollable.lua, tests/Client/res/lua/ui/ui_tests/PopupStack.lua, res/lua/ui/comp/scrollable_with_bar.lua]
+testFiles: [tests/Core/src/ui/T.ScrollState.cpp, tests/Core/res/lua/ScrollableWithBarUT.lua, tests/Client/src/layers/UITest.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: add-scrolling-and-popups
+---
+
+## Outcome
+
+Display dynamic rows inside a clipped viewport with an optional scrollbar, and open a nested popup stack that can close from any level.
+
+## Preconditions
+
+Load `mle.ui.comp.scrollable` or `mle.ui.comp.scrollable_with_bar`. The content table passed to legacy `scrollable` must not already have a name. Popup triggers need `on_keys.lmb` and access to their `Entt`. Read [Scrolling and popups](../../systems/ui/scrolling-and-popups/) for the retained-state and popup-stack boundary.
+
+## Construct the entities and components
+
+Create content as a vertical list, wrap it, then size and position the returned table. For a bar, the returned root exposes named `viewport`, `scroll_driver`, `scrollbar`, and `thumb` descendants. To create a popup, call `ew:createPopup(content)`; nested popup controls can call it again. Close the current popup root with `destroy()`.
+
+## Configure layout and visuals
+
+The viewport must have constrained height so content can overflow. Keep children within parent scissor unless escape is intentional. Configure `bar_width`, `min_thumb_px`, `wheel_speed`, colors, and optional left placement. Popups use root-normalized positions or other valid TargetBound values and should set their own background, border, padding, and list/free container.
+
+## Connect state and interaction
+
+After `addChild`/`destroyAllChildren`, call `requestInternalBoundsUpdate()` on `scroll_driver`. Wheel input changes clamped integer offset. `scrollable_with_bar` also pages on the track and drags the thumb. Popup buttons create a deeper level or destroy their parent. If a popup contains text input, coordinate focus explicitly with the underlying screen.
+
+## Verify the result
+
+Add rows until overflow becomes positive: the bar should appear, wheel/track/thumb should move content, and clearing rows should reset the offset and hide the bar. Open several popup levels and close them individually; `on_destroy` prints each level in the demonstration.
+
+## Cleanup and failure modes
+
+Destroy popup roots and release stored owners/children. A negative wheel speed or `min_thumb_px < 1` throws. `valid()` only detects a null entity ID, not a stale registry wrapper; never reuse a wrapper after popup destruction, UI clear, or root replacement. Broad invalidation may relayout ancestors. Popup routing is ordinary layer/relationship routing, not a modal focus guarantee.
+
+## Authoritative example
+
+[`Scrollable.lua`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/res/lua/ui/ui_tests/Scrollable.lua) and [`PopupStack.lua`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/res/lua/ui/ui_tests/PopupStack.lua) are complete interactive examples. Core tests automate state, clamping, and component geometry—not modal behavior.

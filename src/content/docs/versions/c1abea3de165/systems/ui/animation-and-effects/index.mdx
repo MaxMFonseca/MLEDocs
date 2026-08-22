@@ -1,0 +1,40 @@
+---
+title: Animation and effects
+description: Native UI tracks, sprite and typewriter animation, shader effects, invalidation, completion, and removal.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [ui, renderer]
+sourceFiles: [src/mle/ui/components/Animation.cpp, src/mle/ui/renderable/Sprite.cpp, src/mle/ui/renderable/RenderImage.cpp, src/mle/ui/shader/Blur.cpp, src/mle/ui/shader/LuaShader.cpp, src/mle/ui/systems/Events.cpp]
+testFiles: [tests/Core/src/ui/T.Animation.cpp, tests/Core/src/ui/T.Sprite.cpp, tests/Core/src/ui/T.NineSlice.cpp, tests/Client/res/lua/ui/ui_tests/Animation.lua]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: animation-and-effects
+---
+
+The `animation` key creates or resets one `Animation` component. A table may contain property `tracks`, a `sprite` sequence, a `typewriter` reveal, a component-level `loop`, and `on_finished`. Reapplying the key resets elapsed time, clears old tracks and modes, and replaces the callback.
+
+## Tracks and time
+
+Track targets are exactly `pos_x`, `pos_y`, `size_x`, `size_y`, `render_scale`, `background`, and `border_color`. Easing accepts `linear`, `in_quad`, `out_quad`, and `in_out_quad`; an unknown ease warns and uses linear, while an unknown target logs an error and drops that track. A nonpositive duration completes immediately. Per-track `delay`, `loop`, and `yoyo` change progress. Bound targets retain the `TargetBound` unit from `from` while interpolating its numeric value, so pair like units.
+
+Position and size tracks request external bounds updates. Scale, background, and border mutate render components; color input is converted to linear space. These changes flow through normal render-packet invalidation. Disabled entities do not tick.
+
+The UI update loop currently calls `tick(1.0F / 60.0F)`: animation uses a fixed `1/60` step, not caller or wall-clock delta. Timing therefore follows UI update count, not real elapsed time.
+
+## Sprite and typewriter modes
+
+`sprite = { frame_size, frames, fps, loop }` selects an atlas frame from the entity's existing `Sprite`. Invalid/zero frame geometry, nonpositive FPS, a missing Sprite renderable, or an unavailable extent makes the tick a no-op. Pixel frames become normalized `uv`/`uv_size`, then `versionUp()` invalidates the packet.
+
+`typewriter = { cps, start_delay }` changes `Text.visible_chars` without changing its stored text. Missing Text or nonpositive CPS is a no-op. The stored text is a `std::u32string`, so completion and reveal count UTF-32 code points rather than UTF-8 bytes. That still is not grapheme-aware: a visible grapheme may contain multiple code points.
+
+## Completion and removal
+
+`on_finished(ew)` runs once when all non-looping tracks, sprite frames, and typewriter text complete. Any looping track/mode prevents completion. Calling `ew:destroyAnimation()` removes the component immediately; reapplying `animation` restarts it. A callback may request destruction, but normal entity destruction still completes in the later destroy phase. Avoid same-event collection mutation. `valid()` cannot detect a stale wrapper; never reuse `ew` after its destruction completes, a UI clear, or root replacement.
+
+## Blur, Lua shaders, and rendered images
+
+`blur` and `shader` are renderer-backed components, not general Lua graphics APIs. Blur depends on the UI render target/composition path. `LuaShader` records Lua parameters for its shader implementation, but each rendering system owns an auxiliary Lua state and current shader/renderable code does not read `CompRenderingCtx::lua`; do not rely on Client globals being present there. `render_image` blits an engine image and inherits that image's lifetime and synchronization constraints.
+
+[`Animation.lua`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/res/lua/ui/ui_tests/Animation.lua) demonstrates tracks, a sprite sheet, and typewriter text. The precise behavior is automated in `T.Animation.cpp`; the page itself is only a visual demonstration.

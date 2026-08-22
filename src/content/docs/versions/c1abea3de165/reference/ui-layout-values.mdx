@@ -1,0 +1,41 @@
+---
+title: UI layout values
+description: Accepted bound units, origin, direction, justification, cross alignment, and wrapping spellings.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [ui, lua]
+sourceFiles: [src/mle/ui/Types.cpp, src/mle/ui/components/Bounds.cpp, src/mle/ui/components/ListContainer.cpp, src/mle/ui/components/FreeContainer.cpp]
+testFiles: [tests/Core/src/ui/T.Bounds.cpp, tests/Core/src/ui/T.ScrollState.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: ui-layout-values
+---
+
+Bare numeric values and the spellings below are parsed in the context of a target property. Dependencies and container pass order still determine the final rectangle; a valid spelling does not make a circular layout dependency valid.
+
+<table tabindex="0" role="region" aria-label="UI layout value spellings">
+<thead><tr><th>Normalized value</th><th>Accepted context / meaning</th><th>Dependency and failure boundary</th></tr></thead>
+<tbody>
+<tr><td><code>TargetBound.default</code></td><td>unset/default bound behavior</td><td>Owner/component default.</td></tr>
+<tr><td><code>TargetBound.px</code></td><td><code>"12px"</code>, absolute pixels</td><td>Independent of parent fraction.</td></tr>
+<tr><td><code>TargetBound.flex</code></td><td><code>"1f"</code>, list flex share</td><td>Meaningful in container allocation.</td></tr>
+<tr><td><code>TargetBound.fit</code></td><td><code>"fit"</code>, measured content/renderable</td><td>Introduces size-provider dependency.</td></tr>
+<tr><td><code>TargetBound.%</code></td><td>fraction/bare normalized number</td><td>Context-relative target.</td></tr>
+<tr data-contract-row="target-bound-root"><td><code>TargetBound.%r</code></td><td><code>"5%r"</code>, five percent of the UI root's corresponding width or height</td><td>Specifically ROOT-relative; it is not a generic parser-context reference.</td></tr>
+<tr><td><code>TargetBound.%w</code></td><td>width-relative fraction</td><td>Depends on reference width.</td></tr>
+<tr><td><code>TargetBound.%h</code></td><td>height-relative fraction</td><td>Depends on reference height.</td></tr>
+<tr><td><code>origin.l</code>, <code>origin.t</code>, <code>origin.r</code>, <code>origin.b</code></td><td>left/top/right/bottom anchors, combinable forms such as <code>lt</code>/<code>lb</code></td><td>Unknown spellings are invalid.</td></tr>
+<tr><td><code>origin.x</code></td><td>axis-center spelling</td><td>Context-dependent axis.</td></tr>
+<tr><td><code>origin.c</code></td><td>center</td><td>Common with <code>pos = "c"</code>.</td></tr>
+<tr data-contract-row="list-direction"><td><code>list.horizontal</code>, <code>list.vertical</code>, and reversed variants</td><td>Horizontal: <code>horizontal</code>, <code>h</code>, <code>row</code>. Vertical: <code>vertical</code>, <code>v</code>, <code>column</code>, <code>col</code>. Horizontal reversed: <code>horizontal_reversed</code>, <code>h_r</code>, <code>row_reversed</code>, <code>row_r</code>. Vertical reversed: <code>vertical_reversed</code>, <code>v_r</code>, <code>column_reversed</code>, <code>col_reversed</code>, <code>col_r</code>.</td><td>Invalid input logs and falls back to vertical. Reversal changes layout order, not relationship identity.</td></tr>
+<tr data-contract-row="list-justify"><td><code>justify.start</code>, <code>center</code>, <code>end</code>, and space modes</td><td>Start: <code>start</code>, <code>s</code>, <code>b</code>. Center: <code>center</code>, <code>centre</code>, <code>c</code>. End: <code>end</code>, <code>e</code>. Space modes: <code>space_between</code>/<code>sb</code>, <code>space_around</code>/<code>sa</code>, <code>space_evenly</code>/<code>se</code>.</td><td>Invalid input logs and falls back to start.</td></tr>
+<tr data-contract-row="list-cross-align"><td><code>cross_align.start</code>, <code>center</code>, <code>end</code>, <code>stretch</code></td><td>Start: <code>start</code>, <code>s</code>, <code>b</code>. Center: <code>center</code>, <code>centre</code>, <code>c</code>. End: <code>end</code>, <code>e</code>. Stretch: <code>stretch</code>.</td><td>Invalid input logs and falls back to start; stretch interacts with explicit cross size.</td></tr>
+<tr data-contract-row="list-wrap"><td><code>wrap.no</code>, <code>wrap.wrap</code>, <code>wrap.wrap_reversed</code></td><td>No: <code>n</code>, <code>no</code>. Wrap: <code>y</code>, <code>yes</code>, <code>wrap</code>. Reversed: <code>y_r</code>, <code>yes_reversed</code>, <code>wrap_reversed</code>, <code>wrap_r</code>.</td><td>Invalid input logs and falls back to no wrap. Reversed wrapping does not reverse relationship order.</td></tr>
+</tbody>
+</table>
+
+For `TargetBound`, an unrecognized suffix becomes `DEFAULT`: a numeric prefix is retained, while a nonnumeric spelling receives the implicit value `1`; this branch does not log. Origin strings longer than two characters assert, and an unexpected origin character logs and contributes `0` on that axis.
+
+The pinned `Entt::hasFitSize()` returns true on every path, so every internal bounds request currently propagates externally rather than selectively. Source identity: [`Types.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/ui/Types.cpp).

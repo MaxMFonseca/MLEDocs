@@ -26,6 +26,19 @@ for (const pageCase of [
 	{ path: 'systems/ui/rendering-and-visuals/', title: 'Rendering and visuals' },
 	{ path: 'systems/ui/text-input-and-focus/', title: 'Text input and focus' },
 	{ path: 'systems/ui/events-and-callbacks/', title: 'Events and callbacks' },
+	{ path: 'systems/ui/scrolling-and-popups/', title: 'Scrolling and popups' },
+	{ path: 'systems/ui/animation-and-effects/', title: 'Animation and effects' },
+	{ path: 'systems/ui/reusable-components/', title: 'Reusable components' },
+	{ path: 'guides/build-a-form-and-handle-input/', title: 'Build a form and handle input' },
+	{ path: 'guides/add-scrolling-and-popups/', title: 'Add scrolling and popups' },
+	{ path: 'guides/animate-and-style-ui/', title: 'Animate and style UI' },
+	{ path: 'guides/use-sprites-images-and-nine-slice/', title: 'Use sprites, images, and nine-slice' },
+	{ path: 'reference/lua-api/', title: 'Lua API' },
+	{ path: 'reference/ui-element-keys/', title: 'UI element keys' },
+	{ path: 'reference/ui-components/', title: 'UI components' },
+	{ path: 'reference/ui-events-and-callbacks/', title: 'UI events and callbacks' },
+	{ path: 'reference/ui-layout-values/', title: 'UI layout values' },
+	{ path: 'tools/ui-test/', title: 'UI Test' },
 ] as const) {
 	test(`${pageCase.title} renders as a pinned handbook page`, async ({ page }) => {
 		await page.goto(url(`/versions/${versionId}/${pageCase.path}`));
@@ -81,6 +94,12 @@ test('latest UI overview resolves to the permanent commit route', async ({ page 
 	await expect(page.getByRole('heading', { level: 1 })).toHaveText('UI');
 });
 
+test('latest UI guide resolves to the permanent commit route', async ({ page }) => {
+	await page.goto(url('/latest/guides/build-a-form-and-handle-input/'));
+	await expect(page).toHaveURL(new RegExp(`/MLEDocs/versions/${versionId}/guides/build-a-form-and-handle-input/$`));
+	await expect(page.getByRole('heading', { level: 1 })).toHaveText('Build a form and handle input');
+});
+
 test('Portuguese geometry route is a same-commit English fallback', async ({ page }) => {
 	await page.goto(url(`/pt-br/versions/${versionId}/systems/math/geometry-and-intersections/`));
 	await expect(page.getByRole('heading', { level: 1 })).toHaveText('Geometry and intersections');
@@ -110,6 +129,14 @@ test('Portuguese UI hierarchy is a same-commit English fallback', async ({ page 
 	expect(await page.locator('meta[data-pagefind-filter="mleLocale"]').getAttribute('content')).toBe('pt-br');
 });
 
+test('Portuguese dense UI reference is a same-commit English fallback', async ({ page }) => {
+	await page.goto(url(`/pt-br/versions/${versionId}/reference/ui-element-keys/`));
+	await expect(page.getByRole('heading', { level: 1 })).toHaveText('UI element keys');
+	await expect(page.locator('main')).toHaveAttribute('lang', 'en');
+	await expect(page.locator('[data-mle-translation-status="fallback"]')).toContainText(`Commit fixado: ${versionId}.`);
+	expect(await page.locator('meta[data-pagefind-filter="mleLocale"]').getAttribute('content')).toBe('pt-br');
+});
+
 test('Lua and UI foundation pages occupy their registry order in the systems sidebar', async ({ page }) => {
 	await page.goto(url(`/versions/${versionId}/systems/ui/`));
 	const labels = (await page.locator('#starlight__sidebar').getByRole('link').allTextContents()).map((label) => label.trim());
@@ -118,9 +145,22 @@ test('Lua and UI foundation pages occupy their registry order in the systems sid
 	expect(luaIndex).toBeGreaterThanOrEqual(0);
 	expect(labels.slice(luaIndex, luaIndex + 2)).toEqual(['Lua runtime', 'Runtime calls and bindings']);
 	expect(uiIndex).toBeGreaterThan(luaIndex);
-	expect(labels.slice(uiIndex, uiIndex + 5)).toEqual([
+	expect(labels.slice(uiIndex, uiIndex + 8)).toEqual([
 		'UI', 'Entities, hierarchy, and layout', 'Rendering and visuals', 'Text input and focus', 'Events and callbacks',
+		'Scrolling and popups', 'Animation and effects', 'Reusable components',
 	]);
+});
+
+test('UI guides expose the complete practical sequence', async ({ page }) => {
+	for (const path of [
+		'build-a-ui-screen', 'create-a-reusable-ui-component', 'build-a-form-and-handle-input',
+		'add-scrolling-and-popups', 'animate-and-style-ui', 'use-sprites-images-and-nine-slice',
+	]) {
+		await page.goto(url(`/versions/${versionId}/guides/${path}/`));
+		for (const name of ['Outcome', 'Preconditions', 'Construct the entities and components', 'Configure layout and visuals', 'Connect state and interaction', 'Verify the result', 'Cleanup and failure modes', 'Authoritative example']) {
+			await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
+		}
+	}
 });
 
 test('renderer guides expose the practical sequence and source boundary', async ({ page }) => {

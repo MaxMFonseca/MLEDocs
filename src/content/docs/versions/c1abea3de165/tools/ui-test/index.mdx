@@ -1,0 +1,44 @@
+---
+title: UI Test
+description: Catalog of the Client UI Test shell, every shipped page, its contracts, evidence strength, controls, and resources.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [ui, lua]
+sourceFiles: [tests/Client/src/layers/UITest.cpp, tests/Client/res/lua/ui/ui_tests/Layer.lua, tests/Client/res/lua/ui/InitLayer.lua]
+testFiles: [tests/Core/src/ui/T.Animation.cpp, tests/Core/src/ui/T.ScrollState.cpp, tests/Core/src/ui/T.NineSlice.cpp, tests/Client/src/layers/UITest.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: ui-test
+---
+
+UI Test is the Client's interactive catalog for retained UI behavior. Its pages are demonstrated, not a guarantee of automated support. The table distinguishes them from related Core assertions: a page can visually exercise integration that no automated test asserts end-to-end.
+
+## Enter and navigate
+
+The Client layer initializes the UI, loads the UI Test Lua shell, and renders it through the normal Client/render path. `Layer.lua` composes a one-active `multipanel`. Left and Right change pages; Escape invokes the application-owned return callback. The exact build/run entry will be covered by the planned Interactive Client page; this snapshot does not link to an unpublished route.
+
+<table tabindex="0" role="region" aria-label="UI Test interactive page catalog">
+<thead><tr><th>Path / page</th><th>Purpose and controls</th><th>Contracts exercised</th><th>Evidence</th><th>Owner</th></tr></thead>
+<tbody>
+<tr><td><code>ui_tests/Layer.lua</code> — Layer</td><td>Left/Right panel selection; Escape return</td><td><code>multipanel</code>, names, functions, key callbacks, active state</td><td>Demonstrated only as an integrated shell</td><td><a href="../../guides/build-a-ui-screen/">Build a UI screen</a></td></tr>
+<tr><td><code>Scrollable.lua</code> — Scrollable</td><td>Add/clear dynamic rows; wheel/track/thumb movement</td><td>legacy scrollable, scrollbar composition, overflow and invalidation</td><td>Scroll state/components automated; complete UI demonstrated</td><td><a href="../../systems/ui/scrolling-and-popups/">Scrolling and popups</a></td></tr>
+<tr><td><code>TextDropdownSelector.lua</code> — TextDropdown</td><td>Open top/bottom anchored choices; replace options</td><td>popup anchors, retained selection, named children</td><td>Interactive demonstration</td><td><a href="../../systems/ui/reusable-components/">Reusable components</a></td></tr>
+<tr><td><code>SpriteProgressBar.lua</code> — SpriteProgressBar</td><td>Drag range slider to update a textured bar</td><td>drag functions, sprites, UV fill, retained value</td><td>Sprite parsing automated; composition demonstrated</td><td><a href="../../guides/use-sprites-images-and-nine-slice/">Sprites and nine-slice</a></td></tr>
+<tr><td><code>FormPanel.lua</code> — Form</td><td>Edit fields, toggle checks, choose options, submit</td><td>text input, explicit focus, dropdowns, state, functions</td><td>Text/TextBox pieces automated; form demonstrated</td><td><a href="../../guides/build-a-form-and-handle-input/">Build a form</a></td></tr>
+<tr><td><code>PopupStack.lua</code> — PopupStack</td><td>Create nested random-position popups and close levels</td><td>popup roots, stack/layers, callbacks, deferred destroy</td><td>Interactive demonstration; not modal automation</td><td><a href="../../guides/add-scrolling-and-popups/">Scrolling and popups guide</a></td></tr>
+<tr><td><code>Inventory.lua</code> — Inventory</td><td>Drag five items among 100 slots</td><td>cursor drag, hit test, reparenting, ignore hover, tags/names</td><td>Interactive demonstration</td><td><a href="../../systems/ui/events-and-callbacks/">Events and callbacks</a></td></tr>
+<tr><td><code>NineSlice.lua</code> — NineSlice</td><td>Compare compact/wide/tall/atlas/default panels</td><td>slice parsing, pixel UV, fitting, tint</td><td>NineSlice contracts automated; appearance demonstrated</td><td><a href="../../guides/use-sprites-images-and-nine-slice/">Sprites and nine-slice</a></td></tr>
+<tr><td><code>Animation.lua</code> — Animation</td><td>Observe tracks, sprite frames, typewriter; reset text</td><td>easing, yoyo, color/scale/size, atlas and completion lifecycle</td><td>Core behavior automated; timing/appearance demonstrated</td><td><a href="../../systems/ui/animation-and-effects/">Animation and effects</a></td></tr>
+<tr><td><code>FilterableList.lua</code> — FilterableList</td><td>Type partial-word queries over a long list</td><td>factory validation/copying, text input, rebuild, scroll reset</td><td>Factory automated; full page demonstrated</td><td><a href="../../guides/create-a-reusable-ui-component/">Reusable component guide</a></td></tr>
+</tbody>
+</table>
+
+## Resources
+
+UI Test uses `tests/Client/res/textures/ui/animation_sprite_sheet.png`, `nine_slice_panel.png`, and the `progress_bar/` textures. Resource aliases such as `i/ui/...` come from the Client's configured directory mapping; copying a Lua fragment without that mapping is incomplete.
+
+## Evidence boundary
+
+Core tests directly assert animation math and completion, scroll clamping/overflow, sprite UV parsing, nine-slice parsing, bounds, scissor, text, and input primitives. Client UI Test launches real integration examples, but its visual outcomes and controls are interactive demonstrations rather than automated Core assertions. See [`UITest.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/src/layers/UITest.cpp) and the full [`Layer.lua`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/res/lua/ui/ui_tests/Layer.lua).

@@ -1,0 +1,68 @@
+---
+title: Lua API
+description: Exact Lua-visible usertypes, constructors, properties, methods, service objects, and lifetime boundaries in the pinned snapshot.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [lua, ui]
+sourceFiles: [src/mle/lua/Lua.cpp, src/mle/math/LuaUTMathTypes.h, src/mle/utils/LuaUTUtils.h, src/mle/ui/LuaUTGUI.h, src/mle/ui/Entt.cpp]
+testFiles: [tests/Core/src/lua/T.Lua.cpp, tests/Core/res/lua/MathUT.lua, tests/Core/res/lua/UtilsUT.lua]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: lua-api
+---
+
+This is the Lua-visible surface registered by the pinned engine, not the complete C++ API. Objects borrowed from C++ remain valid only while their owner does. `mle_ui_Entt:valid()` only distinguishes a non-null entity identifier from `entt::null`; it does not query the registry or detect a stale wrapper. Never reuse a wrapper after requesting its destruction, clearing the UI, or replacing the UI root. Do not retain `mle_Image` beyond renderer ownership.
+
+<table tabindex="0" role="region" aria-label="Lua usertypes and global callables">
+<thead><tr><th>Lua name</th><th>Construction or call</th><th>Surface / result</th><th>Boundary</th></tr></thead>
+<tbody>
+<tr data-contract-row="vector-constructors"><td><code>Vec2i/Vec3i/Vec4i</code>, <code>Vec2f/Vec3f/Vec4f</code></td><td>full positional components only: 2, 3, or 4 integer/floating arguments</td><td>matching <code>x</code>, <code>y</code>, <code>z</code>, and <code>w</code> fields</td><td>No default constructor, scalar constructor, or operators are registered by <code>LuaUTMathTypes.h</code>.</td></tr>
+<tr><td><code>Rectf/Recti</code></td><td>four positional scalars or matching position/size vectors</td><td><code>pos</code> and <code>size</code> fields</td><td>No other rectangle constructors or methods are registered here.</td></tr>
+<tr><td><code>Color</code></td><td><code>()</code>, vectors, 4 numbers, packed <code>u32</code>, string, object</td><td><code>r/g/b/a</code>; <code>mix</code>, <code>lighten</code>, <code>withA</code>, <code>toLinear</code>, <code>toSRGB</code>, <code>random</code>, <code>fromHSV</code>, <code>toHSV</code></td><td>Malformed prefixed hex may throw during numeric parsing; h/s/v tables continue into later parsing and are not a reliable HSV constructor.</td></tr>
+<tr><td><code>Stopwatch</code></td><td><code>Stopwatch()</code></td><td><code>reset</code>, <code>elapsedSecInt</code>, <code>elapsedSecFloat</code>, <code>elapsedMSFloat</code></td><td>Measures its C++ clock lifetime.</td></tr>
+<tr><td><code>Utils.partial_word_match</code></td><td>candidate, query</td><td>boolean fuzzy/partial-word match</td><td>Used by shipped filterable list.</td></tr>
+<tr><td><code>C.stop</code></td><td>no documented arguments</td><td>requests application stop</td><td>Client/application global.</td></tr>
+</tbody>
+</table>
+
+<table tabindex="0" role="region" aria-label="Lua UI service API">
+<thead><tr><th>Object and member</th><th>Arguments</th><th>Result/effect</th><th>Failure and lifetime</th></tr></thead>
+<tbody>
+<tr><td><code>mle_UI.getElementById</code></td><td>string ID</td><td>entity wrapper or empty result</td><td>ID must exist in this UI registry.</td></tr>
+<tr><td><code>mle_UI.hitTest</code></td><td>x, y, optional ignored entity</td><td>top hit wrapper</td><td>Order follows hover relationship/layer traversal.</td></tr>
+<tr><td><code>mle_UI.logAllBounds</code></td><td>none</td><td>diagnostic logging</td><td>Debug operation.</td></tr>
+<tr><td><code>mle_UI.getRoot</code></td><td>none</td><td>root wrapper</td><td>Borrowed from UI.</td></tr>
+<tr><td><code>mle_UI.destroyElementById</code></td><td>string ID</td><td>requests destruction</td><td>Destruction completes in destroy phase.</td></tr>
+<tr><td><code>mle_Image.getExtent</code></td><td>none</td><td>pixel extent</td><td>Borrowed renderer image must remain alive.</td></tr>
+</tbody>
+</table>
+
+<table tabindex="0" role="region" aria-label="Lua UI entity methods">
+<thead><tr><th>Member</th><th>Arguments</th><th>Result/effect</th><th>Important boundary</th></tr></thead>
+<tbody>
+<tr><td><code>apply</code> / <code>applyTable</code></td><td>key+object / table</td><td>applies registered UI handlers</td><td>Unknown/invalid values follow handler-specific logging/no-op/assert behavior.</td></tr>
+<tr><td><code>get</code></td><td>key</td><td>handler getter result</td><td>Not every apply key has a getter.</td></tr>
+<tr><td><code>entt</code>, <code>ui</code></td><td>none</td><td>raw entity identifier / owning UI</td><td>Borrowed; validate wrapper.</td></tr>
+<tr><td><code>parent</code>, <code>getChild</code></td><td>none / name</td><td>relationship lookup</td><td>May return invalid/empty wrapper.</td></tr>
+<tr><td><code>name</code>, <code>fullName</code></td><td>none</td><td>local/debug path name</td><td>Names are not UI-wide IDs.</td></tr>
+<tr data-contract-row="entt-validity"><td><code>valid</code></td><td>none</td><td>true exactly when the stored entity identifier is non-null</td><td>It does not test registry membership or detect a stale wrapper. It is useful for null/missing lookup results only; never reuse wrappers after destroy, UI clear, or root replacement.</td></tr>
+<tr><td><code>addChild</code>, <code>addExistingChild</code></td><td>table / wrapper</td><td>constructs or reparents</td><td>Circular/self relationships are rejected; request layout as needed.</td></tr>
+<tr><td><code>applyOnChildren</code></td><td>application data</td><td>applies across children</td><td>Do not mutate the iterated collection.</td></tr>
+<tr><td><code>enableAll</code>, <code>disableAll</code>, <code>disableAllBut</code></td><td>optional selected name</td><td>toggles descendant active state</td><td>Not a global keyboard-focus scope.</td></tr>
+<tr><td><code>call</code></td><td>function name, arguments</td><td>invokes entry in <code>fn</code></td><td>Function and arity must match.</td></tr>
+<tr><td><code>dispatch</code></td><td>event name, payload</td><td>queues named UI event</td><td>Same-event enqueue during dispatch is unsafe in this snapshot.</td></tr>
+<tr><td><code>destroy</code>, <code>destroyAllChildren</code></td><td>none</td><td>deferred cleanup request</td><td>Wrappers become stale after phase completes.</td></tr>
+<tr><td><code>beginCursorDrag</code></td><td>none</td><td>starts drag callbacks</td><td>Requires matching functions and input routing.</td></tr>
+<tr><td><code>ignoreHover</code></td><td>boolean</td><td>toggles hover exclusion</td><td>Used by inventory drag demo.</td></tr>
+<tr><td><code>getChildrenNamedRecursive</code>, <code>getChildrenWithTagRecursive</code></td><td>name / tag</td><td>arrays of wrappers</td><td>Snapshot of current relationships.</td></tr>
+<tr><td><code>hasTag</code></td><td>tag</td><td>boolean</td><td>Tags are component-owned strings.</td></tr>
+<tr><td><code>createPopup</code></td><td>element table</td><td>creates popup-root child</td><td>Not modal; caller owns cleanup logic.</td></tr>
+<tr><td><code>getBoundsOnRoot</code>, <code>getBoundsOnRootNormalized</code></td><td>none</td><td>root-space rectangle</td><td>Depends on current completed layout.</td></tr>
+<tr><td><code>requestInternalBoundsUpdate</code>, <code>requestExternalBoundsUpdate</code></td><td>none</td><td>marks layout work</td><td>Internal currently propagates broadly because <code>hasFitSize()</code> always returns true.</td></tr>
+<tr><td><code>destroyAnimation</code></td><td>none</td><td>removes Animation component</td><td>No completion callback is implied.</td></tr>
+</tbody>
+</table>
+
+`uiHovered` is returned by `ew:get("hovered")` while the entity has the current hover component; hover callbacks themselves receive only `ew`. The engine also registers `mle_ui_Entt`, `mle_UI`, and `mle_Image` under their actual Lua names. See [`LuaUTGUI.h`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/ui/LuaUTGUI.h) and [UI element keys](../ui-element-keys/) for table application rather than callable methods.

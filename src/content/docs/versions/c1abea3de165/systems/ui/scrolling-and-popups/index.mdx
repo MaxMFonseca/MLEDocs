@@ -1,0 +1,38 @@
+---
+title: Scrolling and popups
+description: Retained scroll state, clipped viewports, scrollbar composition, popup ownership, and their failure boundaries.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [ui, lua]
+sourceFiles: [src/mle/ui/components/FreeContainer.cpp, src/mle/ui/components/ListContainer.cpp, src/mle/ui/Entt.cpp, res/lua/ui/comp/scroll_state.lua, res/lua/ui/comp/scrollable.lua, res/lua/ui/comp/scrollable_with_bar.lua]
+testFiles: [tests/Core/src/ui/T.ScrollState.cpp, tests/Core/res/lua/ScrollableUT.lua, tests/Core/res/lua/ScrollableWithBarUT.lua, tests/Client/res/lua/ui/ui_tests/Scrollable.lua, tests/Client/res/lua/ui/ui_tests/PopupStack.lua]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: scrolling-and-popups
+---
+
+Scrolling is not a separate scene graph. It is retained state on a `FreeContainer`: `current_scroll_y` moves the children during bounds calculation, while `max_scroll_y` clamps that offset. The `scroll` getter exposes both values. `ContentOverflow` supplies the measured overflow after layout; a scrollable composition turns that measurement into state for the next bounds pass.
+
+## Viewport and clipping contract
+
+`mle.ui.comp.scrollable` wraps an unnamed content table in a free-container viewport, renames it `scroll_driver`, and installs `on_resized`. The driver reads `overflow.overflow_y`, applies `{ current_scroll_y = 0, max_scroll_y = ... }` to its parent, then requests an internal bounds update. `on_scroll` applies `add_scroll_y` and requests the same update. The parent scissor remains the viewport boundary, so `escape_parent_scissor`, `ignore_parent_scissor`, or `render_outside_parent` can deliberately defeat the expected clipping.
+
+`scrollable_with_bar` adds a sibling track and thumb. `syncGeometry` shows the bar only when overflow is positive, derives the thumb ratio from viewport/content height, honors `min_thumb_px`, and requests external layout when bar visibility or thumb geometry changes. Wheel input calls `scrollBy(-wheel_delta * wheel_speed)`; track clicks page by one viewport; thumb drag uses normalized hover coordinates. Negative `wheel_speed` and a thumb smaller than one pixel are rejected by Lua errors.
+
+## Popup stack and routing
+
+`Entt:createPopup(table)` delegates to the UI popup root. Each returned popup owns the supplied child table and stores the creating entity as `table.owner`. New popups are siblings in stack order rather than children of the invoking control. Their normal relationship/layer order therefore controls hit routing. The shipped dropdown calculates an anchor with `getBoundsOnRootNormalized`, builds a popup child, and destroys the popup root after selection.
+
+Popups do not create an exclusive keyboard or text focus scope. Focus remains subject to the nonexclusive input behavior described in [Text input and focus](../text-input-and-focus/). A popup must intercept relevant pointer keys itself, close through `destroy()`, and release any references or callbacks it placed in `table`. Destruction is deferred to the UI destroy phase; `on_destroy` runs there.
+
+## Invalidation and cleanup
+
+- Add/remove scroll children, then call `requestInternalBoundsUpdate()` on the driver so overflow is remeasured.
+- When content shrinks, the native state reclamps the current offset; tests cover positive, negative, and lowered maxima.
+- `valid()` only reports whether the wrapper stores a non-null entity ID; it cannot detect a destroyed or otherwise stale registry entry. Use it for null/missing lookups, and never reuse retained wrappers after popup destruction, UI clear, or root replacement.
+- Callback mutation/removal keeps the [event limitations](../events-and-callbacks/): boolean callback removal is asymmetric and mutating the same named-event vector during dispatch is unsupported.
+- Layout invalidation is broad in this snapshot because `hasFitSize()` always returns true; internal requests propagate externally.
+
+The Core tests automate state and component geometry. [`Scrollable.lua`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/res/lua/ui/ui_tests/Scrollable.lua) and [`PopupStack.lua`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/res/lua/ui/ui_tests/PopupStack.lua) are interactive demonstrations, not support guarantees.

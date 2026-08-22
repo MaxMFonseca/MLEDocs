@@ -1,0 +1,49 @@
+---
+title: Reusable components
+description: How shipped Lua factories compose element tables, state, callbacks, nested components, scrolling, and popups.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [ui, lua]
+sourceFiles: [res/lua/ui/comp/filterable_list.lua, res/lua/ui/comp/scrollable_with_bar.lua, res/lua/ui/comp/text_dropdown_selector.lua, res/lua/ui/comp/sprite_progress_bar.lua, src/mle/lua/Lua.cpp, src/mle/ui/systems/LuaElementOps.cpp]
+testFiles: [tests/Core/res/lua/FilterableListUT.lua, tests/Core/res/lua/ScrollableWithBarUT.lua, tests/Client/res/lua/ui/ui_tests/FilterableList.lua, tests/Client/res/lua/ui/ui_tests/TextDropdownSelector.lua]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: reusable-components
+---
+
+Shipped components are Lua files that return a factory function. The factory returns an ordinary UI element fragment; callers attach it through `comp`, combine it with their element's `style`, structural `children`/`c`, names, and local overrides, and let normal table-to-entity construction do the rest.
+
+## Module execution is not package loading
+
+The engine's `require`, `requirePath`, and `tryRequire` call `script_file`. They do not use Lua package `require` or `package.loaded`; requesting a component re-executes the file. Use the accepted dotted or slash-like resource path already demonstrated by shipped scripts, and keep module-level mutable state deliberate. `tryRequire` protects a missing file (`NOT_FOUND`) only; syntax and runtime errors in an existing file still escape.
+
+## Composition conventions
+
+- Return a new table for every instance. Copy caller-owned row/option tables when later mutation would leak across instances.
+- Put private retained state under `table`, callable behavior under `fn`, and stable traversal identifiers under `name` or `id`.
+- Use `comp` to merge one reusable fragment into the host. `style`, `styles`, `children`, `c`, `child`, and `add_child` are structural application keys, not ECS components themselves.
+- Child names must match every `getChild()` call. IDs enter the UI-wide lookup and therefore carry broader collision/cleanup consequences.
+- Callback closures belong to their Lua state. Do not move them across the Client state and rendering-system auxiliary states.
+- After changing child count, content, or bounds-affecting properties, request the appropriate internal/external bounds update.
+
+## Shipped factories
+
+<table tabindex="0" role="region" aria-label="Shipped reusable UI components">
+<thead><tr><th>Factory</th><th>Inputs</th><th>Public retained surface</th><th>Important boundary</th></tr></thead>
+<tbody>
+<tr><td><code>carousel_selector</code></td><td>options, arrow texture, callback</td><td><code>nextItem</code>, <code>current_index</code></td><td>Empty input receives three example options; texture may be nil.</td></tr>
+<tr><td><code>color_picker</code></td><td>h, s, v, callback</td><td><code>setColor</code></td><td>Calls callback unconditionally and composes three range sliders.</td></tr>
+<tr><td><code>filterable_list</code></td><td>named rows, options</td><td><code>applyFilter</code>, query and results children</td><td>Rejects non-table/duplicate/empty-name rows; rebuilds result children.</td></tr>
+<tr><td><code>multipanel</code></td><td>children, one-active flag</td><td><code>setPanel</code>, <code>setEnabledChild</code>, <code>addPanel</code></td><td>Mutates supplied child <code>active</code> fields when one-active is true.</td></tr>
+<tr><td><code>progress_bar</code></td><td>base/fill colors, roundness, initial fill</td><td><code>fill</code></td><td>Display clamps to at least 0.005.</td></tr>
+<tr><td><code>range_slider</code></td><td>callback, value</td><td>drag functions and cursor child</td><td>Initial table value is not updated by its drag function.</td></tr>
+<tr><td><code>scrollable</code></td><td>unnamed content</td><td><code>scroll_driver</code></td><td>Rejects already-named content.</td></tr>
+<tr><td><code>scrollable_with_bar</code></td><td>content, scrollbar options</td><td><code>setOffset</code>, <code>scrollBy</code>, <code>syncGeometry</code></td><td>Validates nonnegative speed and positive thumb size.</td></tr>
+<tr><td><code>sprite_progress_bar</code></td><td>texture options and value</td><td><code>set_value</code>, value state</td><td>Clamps logical value; renders zero as 0.001.</td></tr>
+<tr><td><code>text_dropdown_selector</code></td><td>options, callback, popup origin</td><td><code>set_option</code>, <code>set_options</code>, <code>setOptions</code></td><td>Only <code>top_right</code> has a special anchor; other values use bottom-left.</td></tr>
+</tbody>
+</table>
+
+These are source-shipped patterns, not a compatibility-stable widget toolkit. The strongest tests cover filtering and scrolling. [`filterable_list.lua`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/res/lua/ui/comp/filterable_list.lua) is the best example of validation, defensive copying, child replacement, state, and invalidation in one component.

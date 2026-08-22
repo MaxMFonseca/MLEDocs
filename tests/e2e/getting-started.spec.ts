@@ -183,7 +183,7 @@ test('section hubs expose every finished page while unrelated reference groups r
 
   await page.goto(pageUrl(`/versions/${versionId}/reference/`));
   const available = page.locator('[data-mle-section-available]');
-  await expect(available.getByRole('link')).toHaveCount(4);
+  await expect(available.getByRole('link')).toHaveCount(9);
   await expect(available.getByRole('link', { name: 'Build options' })).toHaveAttribute(
     'href',
     `/MLEDocs/versions/${versionId}/reference/build-options/`,
@@ -200,14 +200,29 @@ test('section hubs expose every finished page while unrelated reference groups r
     'href',
     `/MLEDocs/versions/${versionId}/reference/renderer-and-resource-contracts/`,
   );
+  await expect(available.getByRole('link', { name: 'Lua API' })).toHaveAttribute(
+    'href',
+    `/MLEDocs/versions/${versionId}/reference/lua-api/`,
+  );
+  await expect(available.getByRole('link', { name: 'UI element keys' })).toHaveAttribute(
+    'href',
+    `/MLEDocs/versions/${versionId}/reference/ui-element-keys/`,
+  );
+  await expect(available.getByRole('link', { name: 'UI components' })).toHaveAttribute(
+    'href',
+    `/MLEDocs/versions/${versionId}/reference/ui-components/`,
+  );
+  await expect(available.getByRole('link', { name: 'UI events and callbacks' })).toHaveAttribute(
+    'href',
+    `/MLEDocs/versions/${versionId}/reference/ui-events-and-callbacks/`,
+  );
+  await expect(available.getByRole('link', { name: 'UI layout values' })).toHaveAttribute(
+    'href',
+    `/MLEDocs/versions/${versionId}/reference/ui-layout-values/`,
+  );
   const planned = page.locator('[data-mle-navigation-availability="planned"]');
-  await expect(planned).toHaveCount(7);
+  await expect(planned).toHaveCount(2);
   await expect(planned).toContainText([
-    'Lua APIPage planned',
-    'UI element keysPage planned',
-    'UI componentsPage planned',
-    'UI events and callbacksPage planned',
-    'UI layout valuesPage planned',
     'Audio contractsPage planned',
     'Window and input contractsPage planned',
   ]);

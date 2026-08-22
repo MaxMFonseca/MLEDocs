@@ -1,0 +1,46 @@
+---
+title: Build a form and handle input
+description: Compose text fields, toggles, dropdowns, retained values, focus changes, and submission in Lua UI.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [ui, window]
+sourceFiles: [tests/Client/res/lua/ui/ui_tests/FormPanel.lua, res/lua/ui/comp/text_dropdown_selector.lua, src/mle/ui/renderable/Text.cpp]
+testFiles: [tests/Core/src/ui/T.Text.cpp, tests/Core/src/window/T.TextBox.cpp, tests/Client/src/layers/UITest.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: build-a-form-and-handle-input
+---
+
+## Outcome
+
+Build named text fields, retained checkboxes, popup-backed selectors, a submit button, and a status label.
+
+## Preconditions
+
+The window input manager and UI must be initialized. Load `mle.ui.comp.text_dropdown_selector`. A field's `text.input` subtable constructs its `TextBox`; enabling does not construct one. Decide which entity coordinates focus using [Text input and focus](../../systems/ui/text-input-and-focus/): this snapshot does not enforce globally exclusive text focus.
+
+## Construct the entities and components
+
+Create text fields with stable `name`, size, padding, border, and `text = { text, input = {...} }`. Create checkbox rows with `table = { label, checked }` and `fn.setChecked`/`fn.toggle`. Create selectors by attaching `comp = dropdown(options, callback, origin)`. Put field names in the form root's retained `table`.
+
+## Configure layout and visuals
+
+Use a vertical list with fixed field widths/heights and consistent gaps. A multiline text input can set `multiline = true` and `ctrl_enter_newline = true`. Dropdown options render in a popup sized from the owner's normalized root bounds.
+
+## Connect state and interaction
+
+On a text field `lmb`, call a parent `focusTextInput(name)` function. That function first applies `text_input_disable` to every listed field and then `text_input_enable` to the selected one. Submit reads field `text`, checkbox `table.checked`, and selector `table.selected`, then updates the named status child. Enter submits and Tab completes according to Text input behavior; Escape blurs. Enable only focuses an existing `TextBox` and warns then returns when it is absent. Disable dereferences without that guard, so its prerequisite is `text.input` construction—not a prior enable.
+
+## Verify the result
+
+Click each field, type, toggle both checks, change dropdown choices, and submit. The visible status becomes `Submitted. Values printed to console.` and the values are printed by the demonstration.
+
+## Cleanup and failure modes
+
+Disable active input before removing the form when practical, then destroy the form root. Treat focus as explicitly coordinated, not exclusive by guarantee. Dropdown callbacks close their popup via deferred destroy. `valid()` does not query registry membership; never reuse retained wrappers after destruction, UI clear, or root replacement.
+
+## Authoritative example
+
+[`tests/Client/res/lua/ui/ui_tests/FormPanel.lua`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/res/lua/ui/ui_tests/FormPanel.lua) is complete demonstration code. Console submission is illustrative; it is not validation or persistence.

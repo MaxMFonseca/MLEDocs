@@ -1,0 +1,46 @@
+---
+title: Build a UI screen
+description: Compose a complete retained UI screen from a root table, containers, named children, state, and input.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [ui, lua]
+sourceFiles: [tests/Client/res/lua/ui/ui_tests/Layer.lua, res/lua/ui/comp/multipanel.lua, src/mle/ui/systems/LuaElementOps.cpp]
+testFiles: [tests/Client/src/layers/UITest.cpp, tests/Core/src/ui/T.Bounds.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: build-a-ui-screen
+---
+
+## Outcome
+
+Build a full-size screen whose left/right keys switch between named panels and whose Escape callback returns to the Client's initial UI.
+
+## Preconditions
+
+The Client Lua state must already expose `G.ui`, colors, key names, and the application callback you invoke. The component scripts must be under a resource directory recognized by the engine's file loader. Read [Entities, hierarchy, and layout](../../systems/ui/entities-hierarchy-and-layout/) for retained-tree ownership and [C++ and Lua boundary](../../concepts/cpp-lua-boundary/) before assuming a global exists in auxiliary rendering states.
+
+## Construct the entities and components
+
+Create panel tables with unique `name` values and load each complete panel script. Pass them to `mle/ui/comp/multipanel`, with `one_active = true`. The factory returns a free container; set its root `size = 1`. Store `panel_index` and the names under `table`, then define `fn.setPanelByOffset(ew, offset)` to update state and call the factory's `setPanel` function.
+
+## Configure layout and visuals
+
+Each panel owns its layout. The screen only needs the full-parent size; active children inherit the available bounds. Prefer named children over positional lookup because `getChild(name)` is the demonstrated retained handle. Container sizing and invalidation are covered in [Entities, hierarchy, and layout](../../systems/ui/entities-hierarchy-and-layout/).
+
+## Connect state and interaction
+
+Attach an `on_keys` table: `left` and `right` call `setPanelByOffset`; `escape` calls the Client return function. `disableAllBut` controls active panels, but key focus is not a globally exclusive scope—do not assume a hidden panel's external callbacks disappear unless it is actually disabled.
+
+## Verify the result
+
+Start UI Test, enter the multipanel, use both arrow keys, and confirm one named panel is enabled at a time. Escape should return to the initial screen. The visible result is a panel carousel, not an animation.
+
+## Cleanup and failure modes
+
+Destroy the screen root to defer-destroy its descendants and run `on_destroy` callbacks. A missing script is distinguishable only through `tryRequire`; a present file with a syntax/runtime error still fails. Duplicate or misspelled panel names make `disableAllBut` select the wrong/no child. Do not mutate the child collection during traversal callbacks.
+
+## Authoritative example
+
+[`tests/Client/res/lua/ui/ui_tests/Layer.lua`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/res/lua/ui/ui_tests/Layer.lua) is the complete shipped script. This page describes its composition; it does not reproduce the application-owned `G.return_to_init` setup.

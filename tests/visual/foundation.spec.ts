@@ -401,6 +401,34 @@ for (const handbookVisual of [
 		theme: 'light',
 		width: 390,
 	},
+	{
+		name: 'advanced UI overview desktop Dark',
+		path: 'systems/ui/scrolling-and-popups/',
+		file: 'handbook-ui-scrolling-desktop-dark.png',
+		theme: 'dark',
+		width: 1280,
+	},
+	{
+		name: 'code-heavy UI guide phone Light',
+		path: 'guides/build-a-form-and-handle-input/',
+		file: 'handbook-ui-form-guide-phone-light.png',
+		theme: 'light',
+		width: 390,
+	},
+	{
+		name: 'dense UI key reference desktop Dark',
+		path: 'reference/ui-element-keys/',
+		file: 'handbook-ui-keys-desktop-dark.png',
+		theme: 'dark',
+		width: 1440,
+	},
+	{
+		name: 'UI Test index desktop Light',
+		path: 'tools/ui-test/',
+		file: 'handbook-ui-test-desktop-light.png',
+		theme: 'light',
+		width: 1280,
+	},
 ] as const) {
 	test(handbookVisual.name, async ({ page }) => {
 		await page.setViewportSize({
@@ -431,5 +459,16 @@ test('runtime handbook Portuguese same-commit fallback phone', async ({ page }) 
 		animations: 'disabled',
 		caret: 'hide',
 		fullPage: true,
+	});
+});
+
+test('advanced UI Portuguese fallback phone', async ({ page }) => {
+	await page.setViewportSize({ width: 390, height: 844 });
+	await setTheme(page, 'dark');
+	await page.goto(`pt-br/versions/${versionId}/reference/ui-element-keys/`);
+	await expect(page.locator('[data-mle-translation-status="fallback"]')).toBeVisible();
+	await settlePage(page);
+	await expect(page).toHaveScreenshot('handbook-ui-keys-pt-br-fallback-phone-dark.png', {
+		animations: 'disabled', caret: 'hide', fullPage: true,
 	});
 });

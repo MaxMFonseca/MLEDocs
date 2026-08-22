@@ -1,12 +1,64 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { parseFrontmatter } from 'astro/markdown';
 import { describe, expect, it } from 'vitest';
 import { handbookPages } from '../../src/data/handbook';
 import { technicalPageMetadataSchema } from '../../src/lib/content/schema';
+import { pinnedMleCommit, uiGuideSourceManifest } from '../fixtures/ui-guide-source-manifest';
 
-const commit = 'c1abea3de165032fe064300340807b7a6af388f8';
+const commit = pinnedMleCommit;
 const docsRoot = resolve('src/content/docs/versions/c1abea3de165');
+
+const publishedReferenceExpectations = [
+	{
+		pageId: 'lua-api', slug: 'reference/lua-api',
+		rows: ['vector-constructors', 'entt-validity'],
+	},
+	{
+		pageId: 'ui-element-keys', slug: 'reference/ui-element-keys',
+		rows: ['getter-registry', 'renderable-keys', 'text-input-keys', 'hovered-getter'],
+	},
+	{
+		pageId: 'ui-components', slug: 'reference/ui-components',
+		rows: ['renderable-ownership'],
+	},
+	{
+		pageId: 'ui-events-and-callbacks-reference', slug: 'reference/ui-events-and-callbacks',
+		rows: ['hover-callbacks'],
+	},
+	{
+		pageId: 'ui-layout-values', slug: 'reference/ui-layout-values',
+		rows: ['target-bound-root', 'list-direction', 'list-justify', 'list-cross-align', 'list-wrap'],
+	},
+] as const;
+
+function contractRows(text: string): ReadonlyMap<string, string> {
+	return new Map(
+		[...text.matchAll(/<tr data-contract-row="([^"]+)">(.*?)<\/tr>/gs)].map((match) => [match[1], match[2]]),
+	);
+}
+
+interface ReferenceRowRecord {
+	readonly rowId: string;
+	readonly pageId: string;
+}
+
+function compareReferenceRows(expected: readonly ReferenceRowRecord[], actual: readonly ReferenceRowRecord[]) {
+	const key = ({ rowId }: ReferenceRowRecord) => rowId;
+	const expectedOwners = new Map(expected.map((record) => [record.rowId, record.pageId]));
+	const actualOwners = new Map(actual.map((record) => [record.rowId, record.pageId]));
+	const counts = new Map<string, number>();
+	for (const record of actual) counts.set(key(record), (counts.get(key(record)) ?? 0) + 1);
+	return {
+		missing: expected.filter((record) => !actualOwners.has(record.rowId)).map(key).sort(),
+		extra: actual.filter((record) => !expectedOwners.has(record.rowId)).map(key).sort(),
+		duplicates: [...counts].filter(([, count]) => count > 1).map(([rowId]) => rowId).sort(),
+		misowned: actual
+			.filter((record) => expectedOwners.has(record.rowId) && expectedOwners.get(record.rowId) !== record.pageId)
+			.map(key)
+			.sort(),
+	};
+}
 
 const contracts = [
 	['architecture', 'concepts/architecture', ['core', 'client', 'renderer', 'lua', 'ui']],
@@ -51,6 +103,24 @@ const luaUiFoundationContracts = [
 	['rendering-and-visuals', 'systems/ui/rendering-and-visuals', ['ui', 'renderer']],
 	['text-input-and-focus', 'systems/ui/text-input-and-focus', ['ui', 'window']],
 	['ui-events-and-callbacks', 'systems/ui/events-and-callbacks', ['ui', 'lua', 'window']],
+] as const;
+
+const luaUiAdvancedContracts = [
+	['scrolling-and-popups', 'systems/ui/scrolling-and-popups', ['ui', 'lua']],
+	['animation-and-effects', 'systems/ui/animation-and-effects', ['ui', 'renderer']],
+	['reusable-components', 'systems/ui/reusable-components', ['ui', 'lua']],
+	['build-a-ui-screen', 'guides/build-a-ui-screen', ['ui', 'lua']],
+	['create-a-reusable-ui-component', 'guides/create-a-reusable-ui-component', ['ui', 'lua']],
+	['build-a-form-and-handle-input', 'guides/build-a-form-and-handle-input', ['ui', 'window']],
+	['add-scrolling-and-popups', 'guides/add-scrolling-and-popups', ['ui', 'lua']],
+	['animate-and-style-ui', 'guides/animate-and-style-ui', ['ui', 'renderer']],
+	['use-sprites-images-and-nine-slice', 'guides/use-sprites-images-and-nine-slice', ['ui', 'renderer']],
+	['lua-api', 'reference/lua-api', ['lua', 'ui']],
+	['ui-element-keys', 'reference/ui-element-keys', ['ui', 'lua']],
+	['ui-components', 'reference/ui-components', ['ui', 'lua']],
+	['ui-events-and-callbacks-reference', 'reference/ui-events-and-callbacks', ['ui', 'lua', 'window']],
+	['ui-layout-values', 'reference/ui-layout-values', ['ui', 'lua']],
+	['ui-test', 'tools/ui-test', ['ui', 'lua']],
 ] as const;
 
 const ownership: Readonly<Record<string, { sourceFiles: readonly string[]; testFiles: readonly string[] }>> = {
@@ -140,7 +210,7 @@ describe('runtime foundations handbook content', () => {
 				.filter(({ publication }) => publication === 'published')
 				.map(({ pageId }) => pageId)
 				.sort(),
-		).toEqual([...contracts.map(([pageId]) => pageId), ...rendererContracts.map(([pageId]) => pageId), ...luaUiFoundationContracts.map(([pageId]) => pageId)].sort());
+		).toEqual([...contracts.map(([pageId]) => pageId), ...rendererContracts.map(([pageId]) => pageId), ...luaUiFoundationContracts.map(([pageId]) => pageId), ...luaUiAdvancedContracts.map(([pageId]) => pageId)].sort());
 	});
 
 	it.each(contracts)('%s has pinned, canonical technical metadata', (pageId, slug, subsystems) => {
@@ -424,5 +494,118 @@ describe('Lua and UI foundation handbook content', () => {
 		expect(events).toMatch(/queued.*same frame.*events phase/is);
 		expect(events).toMatch(/raw.*EventListener.*unlisten/is);
 		expect(events).toMatch(/boolean.*asymmetric|wrong callback/is);
+	});
+});
+
+describe('advanced Lua and UI handbook content', () => {
+	it('keeps independently owned reference semantics on the five published reference pages', () => {
+		const expectedRows = publishedReferenceExpectations.flatMap(({ pageId, rows }) =>
+			rows.map((rowId) => ({ rowId, pageId })),
+		);
+		const actualRows: ReferenceRowRecord[] = [];
+		for (const expectation of publishedReferenceExpectations) {
+			const text = source(expectation.slug);
+			const metadata = technicalPageMetadataSchema.parse(parseFrontmatter(text).frontmatter);
+			expect(metadata.pageId).toBe(expectation.pageId);
+			expect(handbookPages.find(({ pageId }) => pageId === expectation.pageId)).toMatchObject({
+				publication: 'published', slug: expectation.slug,
+			});
+			actualRows.push(...[...contractRows(text)].map(([rowId]) => ({ rowId, pageId: expectation.pageId })));
+		}
+		expect(compareReferenceRows(expectedRows, actualRows)).toEqual({
+			missing: [], extra: [], duplicates: [], misowned: [],
+		});
+
+		const deleted = actualRows.filter(({ rowId }) => rowId !== 'entt-validity');
+		const misowned = actualRows.map((record) => record.rowId === 'entt-validity' ? { ...record, pageId: 'ui-components' } : record);
+		expect(compareReferenceRows(expectedRows, deleted).missing).toEqual(['entt-validity']);
+		expect(compareReferenceRows(expectedRows, misowned).misowned).toEqual(['entt-validity']);
+	});
+
+	it('states the reviewed Lua/UI boundaries in stable reference rows', () => {
+		const luaApi = contractRows(source('reference/lua-api'));
+		expect(luaApi.get('vector-constructors')).toMatch(/full positional.*fields.*no default.*scalar.*operators/is);
+		expect(luaApi.get('entt-validity')).toMatch(/non-null.*not.*registry.*stale.*never reuse/is);
+
+		const keys = contractRows(source('reference/ui-element-keys'));
+		expect(keys.get('getter-registry')).toMatch(/table.*hovered.*fn.*text.*scroll.*overflow.*tags/is);
+		expect(keys.get('renderable-keys')).toMatch(/incompatible.*logs.*returns.*preserves/is);
+		expect(keys.get('text-input-keys')).toMatch(/text\.input.*TextBox.*enable.*focus.*warn.*disable.*guard/is);
+		expect(keys.get('hovered-getter')).toMatch(/assert/i);
+
+		expect(contractRows(source('reference/ui-components')).get('renderable-ownership')).toMatch(/incompatible.*preserves/is);
+		expect(contractRows(source('reference/ui-events-and-callbacks')).get('hover-callbacks')).toMatch(/\(ew\).*ew:get\(['"]hovered['"]\)/is);
+
+		const layout = contractRows(source('reference/ui-layout-values'));
+		expect(layout.get('target-bound-root')).toMatch(/root/i);
+		expect(layout.get('list-direction')).toMatch(/horizontal.*h.*row.*vertical.*v.*column.*col.*h_r.*row_r.*v_r.*col_r/is);
+		expect(layout.get('list-justify')).toMatch(/start.*s.*b.*center.*centre.*c.*space_between.*sb.*space_around.*sa.*space_evenly.*se/is);
+		expect(layout.get('list-cross-align')).toMatch(/start.*s.*b.*center.*centre.*c.*end.*e.*stretch/is);
+		expect(layout.get('list-wrap')).toMatch(/n.*no.*y.*yes.*wrap.*y_r.*yes_reversed.*wrap_reversed.*wrap_r/is);
+	});
+
+	it('links every practical UI guide to its committed source identity and published system owner without a scout checkout', () => {
+		const unavailableScoutRoot = resolve(process.env.MLE_SCOUT_SOURCE_ROOT ?? 'tests/fixtures/unavailable-mle-scout-source');
+		expect(existsSync(unavailableScoutRoot)).toBe(false);
+		for (const { pageId, slug, sourcePath, ownerPageId, ownerSlug } of uiGuideSourceManifest) {
+			const text = source(slug);
+			const metadata = technicalPageMetadataSchema.parse(parseFrontmatter(text).frontmatter);
+			expect(metadata.sourceFiles).toContain(sourcePath);
+			expect(text).toContain(`github.com/MaxMFonseca/MLE/blob/${commit}/${sourcePath}`);
+			expect(text).toContain(`../../${ownerSlug}`);
+			expect(metadata.pageId).toBe(pageId);
+			expect(handbookPages.find(({ pageId }) => pageId === ownerPageId)?.publication).toBe('published');
+		}
+	});
+
+	it('keeps tracked UI contract tests independent of the ignored local research tree', () => {
+		const ignoredScoutPath = ['.local', 'research'].join('/');
+		for (const testFile of ['tests/unit/handbook-content.test.ts', 'tests/unit/ui-contract-inventory.test.ts']) {
+			expect(readFileSync(resolve(testFile), 'utf8')).not.toContain(ignoredScoutPath);
+		}
+		expect(uiGuideSourceManifest).toHaveLength(6);
+		expect(uiGuideSourceManifest.every(({ sourcePath }) => !sourcePath.startsWith('/') && !sourcePath.includes('\\'))).toBe(true);
+	});
+
+	it.each(luaUiAdvancedContracts)('%s has canonical pinned evidence and an exact physical route', (pageId, slug, subsystems) => {
+		const text = source(slug);
+		const metadata = technicalPageMetadataSchema.parse(parseFrontmatter(text).frontmatter);
+		expect(metadata).toMatchObject({ mleCommit: commit, maturity: 'in-development', pageId, translationStatus: 'canonical' });
+		expect(metadata.audiences).toEqual(expect.arrayContaining(['integrator', 'contributor']));
+		expect(metadata.subsystems).toEqual(subsystems);
+		expect(metadata.sourceFiles.length).toBeGreaterThan(0);
+		expect(metadata.testFiles.length).toBeGreaterThan(0);
+		expect(metadata.lastVerified).toBe('2026-08-21');
+		expect(handbookPages.find((page) => page.pageId === pageId)).toMatchObject({ slug, publication: 'published' });
+		expect(text).toContain(`github.com/MaxMFonseca/MLE/blob/${commit}/`);
+		expect(text).not.toMatch(/\b(?:TBD|lorem ipsum|Doxygen)\b/i);
+	});
+
+	it('gives every UI guide the complete practical sequence and a shipped authoritative example', () => {
+		for (const [, slug] of luaUiAdvancedContracts.filter(([pageId]) => handbookPages.find((page) => page.pageId === pageId)?.kind === 'guide')) {
+			const text = source(slug);
+			for (const heading of ['Outcome', 'Preconditions', 'Construct the entities and components', 'Configure layout and visuals', 'Connect state and interaction', 'Verify the result', 'Cleanup and failure modes', 'Authoritative example']) {
+				expect(text, `${slug}: ${heading}`).toContain(`## ${heading}`);
+			}
+			expect(text).toMatch(/(?:tests\/Client|res\/lua)\/.*\.lua/);
+		}
+	});
+
+	it('keeps the retained UI limitations beside the advanced features', () => {
+		expect(source('systems/ui/scrolling-and-popups')).toMatch(/viewport.*clipping.*popup.*stack.*focus.*cleanup/is);
+		const animation = source('systems/ui/animation-and-effects');
+		expect(animation).toMatch(/fixed.*1\/60/is);
+		expect(animation).toMatch(/invalidation/is);
+		expect(animation).toMatch(/on_finished.*destroyAnimation/is);
+		expect(source('systems/ui/reusable-components')).toMatch(/script_file.*package\.loaded.*re-executes.*style.*comp.*children/is);
+	});
+
+	it('ships keyboard-labeled dense references and distinguishes UI Test demonstrations from automated evidence', () => {
+		for (const slug of ['reference/lua-api', 'reference/ui-element-keys', 'reference/ui-components', 'reference/ui-events-and-callbacks', 'reference/ui-layout-values']) {
+			expect(source(slug)).toMatch(/<table tabindex="0" role="region" aria-label="[^"]+">/);
+		}
+		const uiTest = source('tools/ui-test');
+		expect(uiTest).toMatch(/interactive demonstration.*not.*automated|demonstrated.*not.*guarantee/is);
+		for (const page of ['Animation', 'FilterableList', 'FormPanel', 'Inventory', 'Layer', 'NineSlice', 'PopupStack', 'Scrollable', 'SpriteProgressBar', 'TextDropdownSelector']) expect(uiTest).toContain(page);
 	});
 });
