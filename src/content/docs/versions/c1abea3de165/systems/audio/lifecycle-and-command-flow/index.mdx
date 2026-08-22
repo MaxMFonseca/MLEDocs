@@ -1,0 +1,54 @@
+---
+title: Lifecycle and command flow
+description: Follow audio initialization, mailbox admission, worker ownership, asynchronous failures, and ordered Client teardown.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [audio, client]
+sourceFiles: [src/mle/audio/AudioEngine.cpp, src/mle/audio/CommandMailbox.cpp, src/mle/audio/CommandMailbox.h, src/mle/audio/AudioThreadStartup.h, src/mle/client/Client.cpp, src/mle/client/ShutdownSequence.h]
+testFiles: [tests/Core/shutdown/T.AudioShutdown.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: audio-lifecycle-and-command-flow
+---
+
+Audio work crosses an explicit producer/consumer boundary. A Client layer, Lua callable, or runtime-configuration callback is a producer on its caller thread. The audio thread is the consumer and the sole realtime owner of OpenAL state.
+
+## Startup
+
+`Client::init` performs `Lua::init`, `Window::init`, `AudioEngine::init`, then `AudioEngine::addLuaBinding`. Audio initialization resets and closes the mailbox, resets the startup signal, initializes runtime-configuration listeners, opens the default OpenAL device, creates a context, and launches a `std::jthread`.
+
+The worker makes the context current, requires `AL_EXT_FLOAT32`, generates eight stream sources plus as many one-shot sources as the device permits, opens the mailbox, and publishes `Result::OK`. The calling thread blocks on `AudioThreadStartup::wait`. Failure publishes an error and cleans up the partially created context/device before `Client::init` continues through `Core::check`.
+
+## Admission and outcomes
+
+The mailbox is a 128-entry queue. Producer admission is serialized by a mutex; queue consumption remains on the audio thread.
+
+| Submission outcome | Meaning at the mailbox boundary | What the public caller sees |
+| --- | --- | --- |
+| `ACCEPTED` | The command entered the queue. Playback has not completed—or necessarily started. | `enqueueCmd` returns `void`. |
+| `FULL` | No queue slot was available; the command is dropped. | Warning: `Audio command queue is full, dropping command.` |
+| `CLOSED` | Startup has not opened admission, reset closed it, or shutdown has closed it. | Warning: `Audio command rejected because AudioEngine is shutting down.` |
+
+Lua returns no acceptance or completion value. Runtime-config callbacks likewise enqueue and return `false`. Success means only that a producer made a request; decoding, lookup, slot validation, voice selection, and OpenAL calls happen later. Watch logs when an observable acknowledgment matters.
+
+## Consumption and state transitions
+
+The worker drains all currently queued commands, updates one-shots and streams, then sleeps for 10 ms. `Load` adds or replaces a cache entry. `PlayOneShot` moves a free or stolen voice from priority `0` to active metadata. `StartStream` preflights the complete request before replacing the target slot. Pause and resume only act on an active slot in the corresponding state; stop resets its data and counters.
+
+Group start has an atomic preflight boundary, not a fully transactional OpenAL boundary. Every member is validated before any slot is changed. A preparation or `alSourcePlayv` failure then clears every touched target, including slots that were previously playing.
+
+## Shutdown and final commands
+
+Client shuts layers down before `AudioEngine::shutdown`. The Core shutdown test verifies this order and verifies that layer-produced `StopStream` commands are consumed on another thread before audio teardown.
+
+```text
+game layer shutdown → debug layers shutdown → mailbox close
+→ audio thread drains accepted commands → free OpenAL sources
+→ clear current context → join → destroy context → close device
+```
+
+Once admission closes, later commands are rejected. The drain handles accepted commands in queue order, then frees streams and one-shot sources. Callers must not assume commands submitted concurrently with shutdown will be admitted.
+
+Evidence: [`CommandMailbox.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/audio/CommandMailbox.cpp), [`AudioEngine::runLoop`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/audio/AudioEngine.cpp), and [`T.AudioShutdown.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Core/shutdown/T.AudioShutdown.cpp).

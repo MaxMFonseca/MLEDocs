@@ -132,19 +132,19 @@ const handbookGroupsUnvalidated = [
 		{ pageId: 'ui-test', slug: 'tools/ui-test', title: 'UI Test', kind: 'tool', emphasis: 'deep', publication: 'published', subsystem: 'ui' },
 	]),
 	group('audio-system', 'systems', 'Audio', 15, [
-		{ pageId: 'audio', slug: 'systems/audio', title: 'Audio', kind: 'system', emphasis: 'overview', subsystem: 'audio' },
-		{ pageId: 'audio-lifecycle-and-command-flow', slug: 'systems/audio/lifecycle-and-command-flow', title: 'Lifecycle and command flow', kind: 'system', emphasis: 'focused', subsystem: 'audio' },
-		{ pageId: 'playback-and-streaming', slug: 'systems/audio/playback-and-streaming', title: 'Playback and streaming', kind: 'system', emphasis: 'focused', subsystem: 'audio' },
-		{ pageId: 'buses-voices-and-limitations', slug: 'systems/audio/buses-voices-and-limitations', title: 'Buses, voices, and limitations', kind: 'system', emphasis: 'focused', subsystem: 'audio' },
+		{ pageId: 'audio', slug: 'systems/audio', title: 'Audio', kind: 'system', emphasis: 'overview', publication: 'published', subsystem: 'audio' },
+		{ pageId: 'audio-lifecycle-and-command-flow', slug: 'systems/audio/lifecycle-and-command-flow', title: 'Lifecycle and command flow', kind: 'system', emphasis: 'focused', publication: 'published', subsystem: 'audio' },
+		{ pageId: 'playback-and-streaming', slug: 'systems/audio/playback-and-streaming', title: 'Playback and streaming', kind: 'system', emphasis: 'focused', publication: 'published', subsystem: 'audio' },
+		{ pageId: 'buses-voices-and-limitations', slug: 'systems/audio/buses-voices-and-limitations', title: 'Buses, voices, and limitations', kind: 'system', emphasis: 'focused', publication: 'published', subsystem: 'audio' },
 	]),
 	group('audio-guides', 'guides', 'Audio guides', 16, [
-		{ pageId: 'use-audio-playback', slug: 'guides/use-audio-playback', title: 'Use audio playback', kind: 'guide', emphasis: 'focused', subsystem: 'audio' },
+		{ pageId: 'use-audio-playback', slug: 'guides/use-audio-playback', title: 'Use audio playback', kind: 'guide', emphasis: 'focused', publication: 'published', subsystem: 'audio' },
 	]),
 	group('audio-reference', 'reference', 'Audio reference', 17, [
-		{ pageId: 'audio-contracts', slug: 'reference/audio-contracts', title: 'Audio contracts', kind: 'reference', emphasis: 'lookup', subsystem: 'audio', ownerPageId: 'audio' },
+		{ pageId: 'audio-contracts', slug: 'reference/audio-contracts', title: 'Audio contracts', kind: 'reference', emphasis: 'lookup', publication: 'published', subsystem: 'audio', ownerPageId: 'audio' },
 	]),
 	group('audio-tools', 'tools', 'Audio tools', 18, [
-		{ pageId: 'audio-test', slug: 'tools/audio-test', title: 'Audio Test', kind: 'tool', emphasis: 'focused', subsystem: 'audio' },
+		{ pageId: 'audio-test', slug: 'tools/audio-test', title: 'Audio Test', kind: 'tool', emphasis: 'focused', publication: 'published', subsystem: 'audio' },
 	]),
 	group('client-system', 'systems', 'Client', 19, [
 		{ pageId: 'client-system', slug: 'systems/client', title: 'Client', kind: 'system', emphasis: 'overview', subsystem: 'client' },

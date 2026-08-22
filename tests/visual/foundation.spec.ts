@@ -429,6 +429,20 @@ for (const handbookVisual of [
 		theme: 'light',
 		width: 1280,
 	},
+	{
+		name: 'audio command flow desktop Dark',
+		path: 'systems/audio/lifecycle-and-command-flow/',
+		file: 'handbook-audio-flow-desktop-dark.png',
+		theme: 'dark',
+		width: 1280,
+	},
+	{
+		name: 'audio contracts phone Light',
+		path: 'reference/audio-contracts/',
+		file: 'handbook-audio-contracts-phone-light.png',
+		theme: 'light',
+		width: 390,
+	},
 ] as const) {
 	test(handbookVisual.name, async ({ page }) => {
 		await page.setViewportSize({

@@ -183,7 +183,7 @@ test('section hubs expose every finished page while unrelated reference groups r
 
   await page.goto(pageUrl(`/versions/${versionId}/reference/`));
   const available = page.locator('[data-mle-section-available]');
-  await expect(available.getByRole('link')).toHaveCount(9);
+  await expect(available.getByRole('link')).toHaveCount(10);
   await expect(available.getByRole('link', { name: 'Build options' })).toHaveAttribute(
     'href',
     `/MLEDocs/versions/${versionId}/reference/build-options/`,
@@ -191,6 +191,10 @@ test('section hubs expose every finished page while unrelated reference groups r
   await expect(available.getByRole('link', { name: 'Helper commands' })).toHaveAttribute(
     'href',
     `/MLEDocs/versions/${versionId}/reference/helper-commands/`,
+  );
+  await expect(available.getByRole('link', { name: 'Audio contracts' })).toHaveAttribute(
+    'href',
+    `/MLEDocs/versions/${versionId}/reference/audio-contracts/`,
   );
   await expect(available.getByRole('link', { name: 'Core, math, and utility types' })).toHaveAttribute(
     'href',
@@ -221,11 +225,8 @@ test('section hubs expose every finished page while unrelated reference groups r
     `/MLEDocs/versions/${versionId}/reference/ui-layout-values/`,
   );
   const planned = page.locator('[data-mle-navigation-availability="planned"]');
-  await expect(planned).toHaveCount(2);
-  await expect(planned).toContainText([
-    'Audio contractsPage planned',
-    'Window and input contractsPage planned',
-  ]);
+  await expect(planned).toHaveCount(1);
+  await expect(planned).toContainText(['Window and input contractsPage planned']);
 });
 
 for (const sectionId of orderedSections) {

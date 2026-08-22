@@ -993,6 +993,18 @@ for (const handbookCase of [
 		theme: 'dark',
 		selector: 'main table',
 	},
+	{
+		name: 'audio command reference in Dark',
+		path: `/versions/${versionId}/reference/audio-contracts/`,
+		theme: 'dark',
+		selector: 'main table',
+	},
+	{
+		name: 'audio playback guide in Light',
+		path: `/versions/${versionId}/guides/use-audio-playback/`,
+		theme: 'light',
+		selector: 'main pre',
+	},
 ] as const) {
   test(`runtime handbook accessibility: ${handbookCase.name} reflows locally and is axe-clean`, async ({
     page,

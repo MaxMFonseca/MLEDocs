@@ -1,0 +1,65 @@
+{
+  "mleCommit": "c1abea3de165032fe064300340807b7a6af388f8",
+  "groups": [
+    {
+      "kind": "command",
+      "ownerPageId": "audio-contracts",
+      "sourceFiles": ["src/mle/audio/Types.h"],
+      "names": ["Load", "PlayOneShot", "StartStream", "StartStreamGroup", "StopStream", "SetStreamParams", "PauseStream", "ResumeStream", "SetVolume", "SetListener", "SetDistanceParams", "StopAll", "SetBusVoicePolicy"]
+    },
+    {
+      "kind": "outcome",
+      "ownerPageId": "audio-lifecycle-and-command-flow",
+      "sourceFiles": ["src/mle/audio/CommandMailbox.h"],
+      "names": ["CommandSubmitResult.ACCEPTED", "CommandSubmitResult.FULL", "CommandSubmitResult.CLOSED"]
+    },
+    {
+      "kind": "outcome",
+      "ownerPageId": "audio-lifecycle-and-command-flow",
+      "sourceFiles": ["src/mle/audio/VoiceAllocator.h"],
+      "names": ["VoiceRejectReason.NONE", "VoiceRejectReason.INVALID_BUS", "VoiceRejectReason.ZERO_PRIORITY", "VoiceRejectReason.BUS_CAP", "VoiceRejectReason.INSUFFICIENT_PRIORITY", "VoiceRejectReason.NO_ELIGIBLE_VICTIM"]
+    },
+    {
+      "kind": "outcome",
+      "ownerPageId": "audio-lifecycle-and-command-flow",
+      "sourceFiles": ["src/mle/audio/StreamGroup.h"],
+      "names": ["StreamGroupRejectReason.NONE", "StreamGroupRejectReason.EMPTY", "StreamGroupRejectReason.TOO_MANY", "StreamGroupRejectReason.INVALID_SLOT", "StreamGroupRejectReason.DUPLICATE_SLOT"]
+    },
+    {
+      "kind": "outcome",
+      "ownerPageId": "playback-and-streaming",
+      "sourceFiles": ["src/mle/audio/StreamState.h", "src/mle/audio/StreamState.cpp"],
+      "names": ["RampCompletion.NONE", "RampCompletion.STOP"]
+    },
+    {
+      "kind": "type",
+      "ownerPageId": "audio-contracts",
+      "sourceFiles": ["src/mle/audio/AudioEngine.h", "src/mle/audio/Types.h", "src/mle/audio/CommandMailbox.h", "src/mle/audio/AudioThreadStartup.h", "src/mle/audio/StreamState.h", "src/mle/audio/VoiceAllocator.h"],
+      "names": ["AudioEngine", "PlayParams", "Cmd", "CommandMailbox", "AudioThreadStartup", "WavData", "SourcePlaybackState", "SampleWindow", "ValidatedStreamStart", "VolumeRamp", "RampCompletion", "RampAdvance", "BusVoicePolicy", "VoiceMetadata", "VoiceSelection"]
+    },
+    {
+      "kind": "lua-callable",
+      "ownerPageId": "audio-contracts",
+      "sourceFiles": ["src/mle/audio/AudioEngine.cpp"],
+      "names": ["C.Audio.loadSound", "C.Audio.playOneShot", "C.Audio.startStream", "C.Audio.stopStream", "C.Audio.pauseStream", "C.Audio.resumeStream", "C.Audio.setStreamParams", "C.Audio.setVolume", "C.Audio.getVolume", "C.Audio.setBusVoicePolicy", "C.Audio.stopAll"]
+    },
+    {
+      "kind": "lua-field",
+      "ownerPageId": "audio-contracts",
+      "sourceFiles": ["src/mle/audio/AudioEngine.cpp"],
+      "names": ["loadSound.name", "loadSound.stream", "playOneShot.name", "playOneShot.bus", "playOneShot.volume", "playOneShot.pitch", "playOneShot.priority", "startStream.name", "startStream.id", "startStream.bus", "startStream.volume", "startStream.pitch", "startStream.looping", "startStream.fade_in_ms", "setStreamParams.id", "setStreamParams.volume", "setStreamParams.pitch", "setStreamParams.fade_ms", "setBusVoicePolicy.bus", "setBusVoicePolicy.max_voices", "setBusVoicePolicy.protected_from_other_buses"]
+    },
+    {
+      "kind": "runtime-config",
+      "ownerPageId": "audio-contracts",
+      "sourceFiles": ["src/mle/audio/AudioEngine.cpp"],
+      "names": ["audio.play_one_shot", "audio.start_stream", "audio.stop_stream", "audio.pause_stream", "audio.resume_stream", "audio.set_volume", "audio.stop_all"]
+    },
+    {
+      "kind": "bus",
+      "ownerPageId": "buses-voices-and-limitations",
+      "sourceFiles": ["src/mle/audio/Types.h", "src/mle/audio/AudioEngine.cpp"],
+      "names": ["0 (master)", "1", "2", "3", "4", "5", "6", "7"]
+    }
+  ]
+}

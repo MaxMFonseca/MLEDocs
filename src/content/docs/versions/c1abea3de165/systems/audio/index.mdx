@@ -1,0 +1,50 @@
+---
+title: Audio
+description: Understand MLE's Client-owned OpenAL worker, command mailbox, playback paths, voice policy, and incomplete spatial boundary.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [audio, client]
+sourceFiles: [src/mle/audio/AudioEngine.cpp, src/mle/audio/AudioEngine.h, src/mle/audio/Types.h, src/mle/client/Client.cpp]
+testFiles: [tests/Core/shutdown/T.AudioShutdown.cpp, tests/Core/src/audio/T.StreamState.cpp, tests/Core/src/audio/T.VoiceAllocator.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: audio
+---
+
+MLE audio is a Client-owned OpenAL service with one caller-facing command mailbox and one realtime owner thread. Layers and Lua enqueue small value commands; the audio thread alone owns the OpenAL context, decoded caches, sources, stream slots, gains, and voice metadata. This boundary keeps OpenAL work out of the Client update loop, but it also makes every public submission asynchronous.
+
+```text
+Client / layer / Lua
+        │ enqueue audio::Cmd
+        ▼
+CommandMailbox (128 entries)
+        │ drain about every 10 ms
+        ▼
+Audio thread ── OpenAL context, buffers, sources, streams, buses
+```
+
+## What it can do
+
+- Load mono or stereo WAV files from `res/sounds/<name>.wav` as one-shot buffers or retained stream sample data.
+- Play prioritized one-shots, subject to the available OpenAL source pool and per-bus policy.
+- Run up to eight fixed stream slots, including looping, offset/duration windows, pause/resume, gain ramps, pitch, and synchronized group starts from C++.
+- Apply one master gain and seven additional numeric bus gains.
+- Expose the common load, one-shot, stream, bus, and stop operations as `C.Audio` in Client Lua.
+
+Commands do not carry completion callbacks or futures. `enqueueCmd` returns `void`; a queued command can later fail preflight, decoding, allocation, or an OpenAL call. Logs are the only general failure signal in this snapshot.
+
+## Ownership and lifetime
+
+`Client::init` initializes Lua, then Window, then `AudioEngine`; only after successful audio startup does it add `C.Audio`. The worker opens its mailbox after the OpenAL context becomes current and source generation succeeds. Client shutdown stops and destroys game and debug layers before closing the mailbox, joining the worker, destroying the context, and closing the device. That order lets layer teardown enqueue final stop commands before audio teardown drains the queue.
+
+Loaded one-shots retain OpenAL buffers. Stream loads retain immutable decoded `WavData` through `shared_ptr`; an active slot keeps its current data alive even if another `Load` replaces the cache entry with the same hashed name. Names are converted to `entt::hashed_string` identities, so callers must load and play the same literal resource name.
+
+## Capability boundary
+
+The types declare position, velocity, a `spatial` flag, listener state, and distance parameters. Source position and velocity are applied when `spatial` is true, but `SetListener` and `SetDistanceParams` are TODO handlers. Lua exposes neither surface. Treat 3D attenuation and listener control as **experimental or incomplete**, not as a usable spatial-audio contract.
+
+Continue with [Lifecycle and command flow](./lifecycle-and-command-flow/), [Playback and streaming](./playback-and-streaming/), [Buses, voices, and limitations](./buses-voices-and-limitations/), or the practical [audio playback guide](../../guides/use-audio-playback/).
+
+Evidence: [`AudioEngine.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/audio/AudioEngine.cpp), [`Types.h`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/audio/Types.h), and [`Client.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/client/Client.cpp).

@@ -1,0 +1,124 @@
+---
+title: Use audio playback
+description: Load and play a one-shot and a retained stream through the verified Client Lua audio boundary.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [audio, lua]
+sourceFiles: [src/mle/audio/AudioEngine.cpp, src/mle/audio/Types.h, tests/Client/res/lua/ui/InitLayer.lua]
+testFiles: [tests/Core/shutdown/T.AudioShutdown.cpp, tests/Core/src/audio/T.StreamState.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: use-audio-playback
+---
+
+## Outcome
+
+This sequence loads one WAV as an in-memory one-shot and another as retained stream data, plays both through `C.Audio`, changes the stream, and tears playback down. The names and call shapes match the pinned Client Lua binding.
+
+## Prerequisites
+
+- Run inside the Client after `Client::init`; `C.Audio` is added only after the audio worker starts successfully.
+- Place each asset at `res/sounds/<name>.wav` relative to the process working directory.
+- Use mono or stereo WAV data. MLE decodes to float samples and requires the OpenAL `AL_EXT_FLOAT32` extension.
+- Keep stream IDs within the eight fixed slots, `0–7`.
+
+The Client preloads only `mle/t` as a one-shot. `InitLayer.lua` later calls `startStream` for `i/ambient` without a matching stream load, so that screen is a partial call-shape example with a missing stream preload, not a complete playback workflow. The explicit `loadSound` sequence below supplies the required preload.
+
+## Load before playback
+
+Loading and playing are separate asynchronous commands. Submit loads early enough for the audio thread to decode them before the corresponding play request.
+
+```lua
+C.Audio.loadSound("mle/t")
+C.Audio.loadSound({ name = "i/ambient", stream = true })
+```
+
+The string form always loads a one-shot. The table form requires `name`; `stream` defaults to `false`. Reloading replaces the matching cache entry. The calls return no load handle or result.
+
+## Play a one-shot
+
+```lua
+C.Audio.playOneShot({
+  name = "mle/t",
+  bus = 1,
+  volume = 0.8,
+  pitch = 1.0,
+  priority = 2,
+})
+```
+
+The string shorthand `C.Audio.playOneShot("mle/t")` uses bus `0`, volume `1`, pitch `1`, and priority `1`. A one-shot needs a completed one-shot load, nonzero priority, a bus in `0–7`, and an eligible OpenAL source. The Lua table does not expose spatial position, offsets, duration, or fades.
+
+If a category must retain capacity under saturation, configure its numeric bus before producing sounds:
+
+```lua
+C.Audio.setBusVoicePolicy({
+  bus = 1,
+  max_voices = 4,
+  protected_from_other_buses = true,
+})
+```
+
+Protection blocks cross-bus stealing; it does not block a higher-priority request on bus `1` from replacing a lower-priority voice on the same bus.
+
+## Run a stream
+
+```lua
+C.Audio.startStream({
+  name = "i/ambient",
+  id = 0,
+  bus = 0,
+  volume = 0.65,
+  pitch = 1.0,
+  looping = true,
+  fade_in_ms = 250,
+})
+
+C.Audio.pauseStream(0)
+C.Audio.resumeStream(0)
+
+C.Audio.setStreamParams({
+  id = 0,
+  volume = 0.35,
+  pitch = 0.8,
+  fade_ms = 250,
+})
+```
+
+The stream table requires `name` and `id`. Volume and pitch changes happen on the audio thread. A positive `fade_ms` ramps volume; pitch changes immediately. Pause freezes ramp progress until resume resets the ramp clock.
+
+Lua does not expose `start_offset_ms`, `duration_ms`, or `StartStreamGroup`; those are C++ command surfaces. Stream loading retains the full decoded WAV in memory.
+
+## Observe success and failure
+
+Audio commands are asynchronous, and the Lua functions return no acceptance or completion result. Audible output is the practical success signal. Logs distinguish missing files, decode/channel problems, an unloaded sound ID, invalid slots or parameters, voice rejection, a full mailbox, a closed mailbox, and OpenAL errors.
+
+Do not submit `loadSound` and immediately treat silence as a synchronous load failure: the load and play commands are merely ordered in the mailbox. Conversely, `ACCEPTED` would only mean queued, not decoded or playing.
+
+## Cleanup
+
+```lua
+-- Choose this when the stream should fade. Keep the layer alive and do not
+-- immediately enqueue stopAll; there is no completion callback to await.
+C.Audio.stopStream(0, 500)
+```
+
+Alternatively, choose an immediate global stop instead of the fade request:
+
+```lua
+C.Audio.stopAll()
+```
+
+Use either `stopStream` with a fade or `stopAll` for immediate cleanup; do not enqueue both back-to-back when the fade matters. Commands are consumed in mailbox order: `stopStream(0, 500)` installs a ramp, then an immediately following `stopAll()` clears the slot and cancels the in-progress stream fade. A layer's C++ `shutdown` can enqueue `StopAll`; Client destroys layers before closing the mailbox so accepted cleanup is drained before OpenAL sources are freed. `stopAll` is immediate: the C++ command has a `fade_out_ms` field, but this handler ignores it.
+
+## Limitations
+
+- The Lua binding does not expose a completion event, handle, stream state query, synchronized group start, time windows, or spatial fields.
+- Bus names are application conventions; MLE exposes only indices `0–7`.
+- Listener and distance commands are TODO handlers. Do not build a 3D workflow from the declared fields.
+- Device capacity controls the one-shot source count, and the mailbox can drop commands when its 128 entries are full.
+- The float32 extension is required in practice; the logged fallback is not implemented.
+
+The exact command and Lua field lookup is in [Audio contracts](../../reference/audio-contracts/). [`InitLayer.lua`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/res/lua/ui/InitLayer.lua) supplies only the partial call shape described above; complete preload/start ordering is visible in [`AudioTest.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/src/layers/AudioTest.cpp), and core state semantics are covered by [`T.StreamState.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Core/src/audio/T.StreamState.cpp).

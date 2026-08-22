@@ -39,6 +39,13 @@ for (const pageCase of [
 	{ path: 'reference/ui-events-and-callbacks/', title: 'UI events and callbacks' },
 	{ path: 'reference/ui-layout-values/', title: 'UI layout values' },
 	{ path: 'tools/ui-test/', title: 'UI Test' },
+	{ path: 'systems/audio/', title: 'Audio' },
+	{ path: 'systems/audio/lifecycle-and-command-flow/', title: 'Lifecycle and command flow' },
+	{ path: 'systems/audio/playback-and-streaming/', title: 'Playback and streaming' },
+	{ path: 'systems/audio/buses-voices-and-limitations/', title: 'Buses, voices, and limitations' },
+	{ path: 'guides/use-audio-playback/', title: 'Use audio playback' },
+	{ path: 'reference/audio-contracts/', title: 'Audio contracts' },
+	{ path: 'tools/audio-test/', title: 'Audio Test' },
 ] as const) {
 	test(`${pageCase.title} renders as a pinned handbook page`, async ({ page }) => {
 		await page.goto(url(`/versions/${versionId}/${pageCase.path}`));
@@ -190,6 +197,73 @@ test('Pagefind discovers the pinned runtime configuration page in active scope',
 	const dialog = page.getByRole('dialog', { name: 'Search' });
 	await dialog.locator('.pagefind-ui__search-input').fill('RuntimeConfig listener');
 	const result = dialog.locator('.pagefind-ui__result').filter({ hasText: 'Runtime configuration' }).first();
+	await expect(result).toBeVisible({ timeout: 15_000 });
+	await expect(result).toHaveAttribute('data-mle-search-version', versionId);
+	await expect(result).toHaveAttribute('data-mle-search-locale', 'en');
+});
+
+test('audio pages expose command ownership, limitations, and evidence without synchronous promises', async ({ page }) => {
+	await page.goto(url(`/versions/${versionId}/systems/audio/lifecycle-and-command-flow/`));
+	await expect(page.locator('main')).toContainText('ACCEPTED');
+	await expect(page.locator('main')).toContainText('FULL');
+	await expect(page.locator('main')).toContainText('CLOSED');
+	await expect(page.locator('main')).toContainText('returns no acceptance or completion value');
+
+	await page.goto(url(`/versions/${versionId}/systems/audio/buses-voices-and-limitations/`));
+	await expect(page.locator('main')).toContainText('There are no named buses');
+	await expect(page.locator('main')).toContainText('SetListener');
+	await expect(page.locator('main')).toContainText('TODO handlers');
+
+	await page.goto(url(`/versions/${versionId}/systems/audio/playback-and-streaming/`));
+	await expect(page.locator('main')).toContainText('up to four OpenAL buffers');
+	await expect(page.locator('main')).toContainText('queue fewer buffers');
+
+	await page.goto(url(`/versions/${versionId}/reference/audio-contracts/`));
+	await expect(page.locator('main')).toContainText('RampCompletion::STOP');
+	await expect(page.locator('main')).toContainText('RampAdvance');
+
+	await page.goto(url(`/versions/${versionId}/guides/use-audio-playback/`));
+	await expect(page.locator('main')).toContainText('partial call-shape example');
+	await expect(page.locator('main')).toContainText('cancels the in-progress stream fade');
+
+	await page.goto(url(`/versions/${versionId}/tools/audio-test/`));
+	await expect(page.locator('main')).toContainText('PENDING USER PLAYTEST');
+	await expect(page.locator('main')).toContainText('interactive Client demonstration');
+	await expect(page.locator('main')).toContainText('AudioTest.cpp');
+	await expect(page.locator('main')).toContainText('Play the protected UI cue');
+});
+
+test('latest audio alias resolves permanently and Portuguese remains a same-commit fallback', async ({ page }) => {
+	await page.goto(url('/latest/systems/audio/'));
+	await expect(page).toHaveURL(new RegExp(`/MLEDocs/versions/${versionId}/systems/audio/$`));
+	await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', new RegExp(`/versions/${versionId}/systems/audio/$`));
+
+	await page.goto(url(`/pt-br/versions/${versionId}/reference/audio-contracts/`));
+	await expect(page.getByRole('heading', { level: 1 })).toHaveText('Audio contracts');
+	await expect(page.locator('main')).toHaveAttribute('lang', 'en');
+	await expect(page.locator('[data-mle-translation-status="fallback"]')).toContainText(`Commit fixado: ${versionId}.`);
+	expect(await page.locator('meta[data-pagefind-filter="mleLocale"]').getAttribute('content')).toBe('pt-br');
+});
+
+test('audio reference is keyboard reachable and locally scrollable', async ({ page }) => {
+	await page.setViewportSize({ width: 360, height: 800 });
+	await page.goto(url(`/versions/${versionId}/reference/audio-contracts/`));
+	const table = page.getByRole('region', { name: 'Audio command contracts' });
+	await expect(table).toBeVisible();
+	await table.focus();
+	await expect(table).toBeFocused();
+	expect(await table.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
+	await page.keyboard.press('ArrowRight');
+	await expect.poll(() => table.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
+});
+
+test('Pagefind discovers Audio Test in the pinned English scope', async ({ page }) => {
+	await page.goto(url(`/versions/${versionId}/systems/audio/`));
+	await expect(page.locator('#starlight__search .pagefind-ui__search-input')).toHaveCount(1, { timeout: 15_000 });
+	await page.keyboard.press('Control+k');
+	const dialog = page.getByRole('dialog', { name: 'Search' });
+	await dialog.locator('.pagefind-ui__search-input').fill('PENDING USER PLAYTEST');
+	const result = dialog.locator('.pagefind-ui__result').filter({ hasText: 'Audio Test' }).first();
 	await expect(result).toBeVisible({ timeout: 15_000 });
 	await expect(result).toHaveAttribute('data-mle-search-version', versionId);
 	await expect(result).toHaveAttribute('data-mle-search-locale', 'en');

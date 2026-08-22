@@ -1,0 +1,67 @@
+---
+title: Audio Test
+description: Separate MLE's automated audio state tests, interactive Client Audio Test, deterministic fixtures, and still-pending audible playtest.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [audio, client, ui]
+sourceFiles: [tests/Client/src/layers/AudioTest.cpp, tests/Client/res/lua/ui/AudioTestLayer.lua, tests/Client/tools/generate_audio_fixtures.py, tests/Client/AUDIO_PLAYTEST.md]
+testFiles: [tests/Core/src/audio/T.StreamState.cpp, tests/Core/src/audio/T.StreamGroup.cpp, tests/Core/src/audio/T.VoiceAllocator.cpp, tests/Core/src/audio/T.SourcePlaybackState.cpp, tests/Core/src/audio/T.CombatEventAggregator.cpp, tests/Core/shutdown/T.AudioShutdown.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: audio-test
+---
+
+MLE has three distinct audio evidence layers. Keep them separate when evaluating a behavior: Core tests automate deterministic state and allocation contracts; Audio Test is an interactive Client demonstration; `AUDIO_PLAYTEST.md` records a manual audible checklist whose overall status is still **PENDING USER PLAYTEST**.
+
+## Automated Core tests
+
+| Suite | What it actually asserts |
+| --- | --- |
+| `T.AudioShutdown.cpp` | Closed/open/reset mailbox behavior, `ACCEPTED`/`FULL`/`CLOSED`, startup result handoff, layer-before-audio shutdown, final drain thread. |
+| `T.StreamState.cpp` | Millisecond sample windows, mono/stereo interleaving, loop wrapping, retained cache data, start validation, ramps, and live parameter command shape. |
+| `T.StreamGroup.cpp` | Count/slot/duplicate validation and one ordered `playv` call. |
+| `T.VoiceAllocator.cpp` | Free choice, bus caps, strict priority, protection, tie-breaking, invalid inputs, and policy defaults. |
+| `T.SourcePlaybackState.cpp` | Listener-relative reset and spatial position/velocity mapping only. |
+| `T.CombatEventAggregator.cpp` | Frame-rate-independent aggregation and at most four priority-ordered cues per frame. |
+
+These tests do not assert audible output, OpenAL device-specific capacity, UI visibility, or the complete listener/distance path.
+
+## Interactive Audio Test
+
+Select **Audio Test** from the Client Init screen. `AudioTest.cpp` preloads generated cues and exposes controls through the game-layer Lua table; `AudioTestLayer.lua` renders buttons, telemetry, and keyboard shortcuts. This is demonstrated behavior, not an automated assertion.
+
+| Keys | Scenario |
+| --- | --- |
+| `1–4` | Bus-cap rejection, equal-priority rejection, higher-priority replacement, protected UI A/B |
+| `5–6` | Stream fade and ramp replacement |
+| `7–9`, `Q/W` | Sparse, battle, and saturation rates; start/stop generated load |
+| `A/S/D/F` | Representative one-shots |
+| `Space` | Play the protected UI cue at priority `4` |
+| `G/H`, `J/K` | Bus policy and priority changes |
+| `Z/X/C/P`, `V/B`, `N`, `M/,` | Stream start/pause/resume/stop, live ramps, fade values, duration |
+| `R/T/Y` | Known mono/stereo offset and duration windows in slots 3/4 |
+| `0`, `U`, `I`, `Esc` | Corrupt load, stop all, reset, return |
+
+Telemetry distinguishes raw, aggregated, submitted, and dropped combat events. The protected-UI scenario intentionally submits 249 quiet fillers to saturate the device-dependent source pool, compares unprotected and protected bus behavior, then sends a higher-priority attack.
+
+## Deterministic fixture set
+
+`tests/Client/res/sounds/generated/` contains 12 audio fixtures plus `audio_manifest.json`: four hits, two combat tones, a seamless stereo texture, a protected UI tone, a quiet protection filler, known-duration mono and stereo files, and a deliberately corrupt RIFF header. The manifest records SHA-256, rate, channels, frames, role, and generated peak where applicable.
+
+The NumPy/SciPy generator uses a fixed seed, a 48 kHz sample rate, controlled peaks, and a complete expected-filename set. Regeneration is a contributor action; normal builds consume committed files without Python packages.
+
+```sh
+python tests/Client/tools/generate_audio_fixtures.py --verify
+```
+
+The recorded fixture verification says committed files matched deterministic regeneration. That result verifies bytes, not playback.
+
+## Manual playtest status
+
+The last recorded attempt could not reach the UI or audio-device initialization because the environment failed first with `SDL_Init failed: No available video device`. No audible result was observed. Every acceptance item—density, protection, priority, fades, pause/resume position, mono/stereo windows, stop/reset/shutdown, and corrupt-load behavior—remains `PENDING USER PLAYTEST`.
+
+Do not turn the playtest's expected results into claims that someone heard them. When running it on a machine with a display and audio device, record the generated-source count and relevant log lines alongside any failure; device capacity changes the saturation scenario.
+
+Evidence: [`AudioTest.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/src/layers/AudioTest.cpp), [`AudioTestLayer.lua`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/res/lua/ui/AudioTestLayer.lua), [`generate_audio_fixtures.py`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/tools/generate_audio_fixtures.py), and [`AUDIO_PLAYTEST.md`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/AUDIO_PLAYTEST.md).

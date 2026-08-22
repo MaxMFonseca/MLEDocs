@@ -1,0 +1,47 @@
+---
+title: Playback and streaming
+description: Compare MLE one-shot buffers with its eight fixed streaming slots, timing windows, state changes, fades, and validation limits.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [audio]
+sourceFiles: [src/mle/audio/AudioEngine.cpp, src/mle/audio/Types.h, src/mle/audio/StreamState.cpp, src/mle/audio/StreamGroup.cpp, src/mle/audio/Utils.cpp]
+testFiles: [tests/Core/src/audio/T.StreamState.cpp, tests/Core/src/audio/T.StreamGroup.cpp, tests/Core/src/audio/T.SourcePlaybackState.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: playback-and-streaming
+---
+
+One-shots and streams begin with the same WAV decoder but retain different resources. A one-shot is decoded and uploaded once into an OpenAL buffer. A stream load keeps decoded float samples in memory and feeds one of eight fixed stream slots through up to four OpenAL buffers of 8,192 samples each. Non-looping streams queue fewer buffers when a short selected duration reaches its end during the initial fills. This is buffered playback from memory, not file-on-demand streaming.
+
+## Load and one-shot path
+
+`Load{name, stream=false}` resolves `res/sounds/<name>.wav`, accepts mono or stereo, uploads float32 sample data, and stores the OpenAL buffer under the hashed name. Reloading replaces and deletes the old buffer. `PlayOneShot` requires that cache entry, a nonzero priority, a valid bus, and an eligible source. It sets pitch, source-relative or world-space state, gain, and non-looping playback.
+
+One-shot `PlayParams.start_offset_ms`, `duration_ms`, `fade_in_ms`, and `fade_out_ms` are declared but not read by `processCmdPlayOneShot`. Do not rely on one-shot seeking, duration windows, or fades at this commit.
+
+## Eight fixed stream slots
+
+`Load{name, stream=true}` retains an immutable `WavData`. `StartStream` selects slot `id` in `0–7`, finds the loaded name, validates bus/volume/pitch and the time window, then stops and replaces that slot. Each active slot owns a shared reference to its decoded data, so reloading the same name does not invalidate playback already in progress.
+
+Offsets and durations are milliseconds. The implementation converts them to interleaved sample indices: stereo advances two samples per frame. `duration_ms = 0` means play from the offset to the end. An offset at or beyond the end, a positive duration that rounds to zero samples, a non-finite volume, or a non-positive/non-finite pitch rejects the start. Streams whose complete decoded sample count is at most one 8,192-sample buffer are also rejected.
+
+Pitch is clamped to `0.01–4.0`; source volume is clamped to `0–4`. Looping wraps inside the selected offset/duration window rather than across the whole file. Non-looping slots clean themselves when OpenAL stops them.
+
+## State changes and ramps
+
+- `PauseStream` pauses an active, unpaused slot. While paused, its volume ramp does not advance.
+- `ResumeStream` plays that paused source and resets the ramp tick; it does not explicitly rewind the source.
+- `SetStreamParams` can change pitch and/or volume. A positive `fade_ms` replaces the current ramp from its value at command-processing time.
+- `StopStream` stops immediately when `fade_out_ms` is zero; otherwise it installs a ramp to zero whose completion stops and clears the slot.
+- A ramp carries `RampCompletion::NONE` for an ordinary gain transition or `RampCompletion::STOP` when reaching zero must clear the slot. `advanceRamp` returns a `RampAdvance` containing the new volume and consumes that completion once.
+- `StopAll` immediately clears every stream and stops active one-shots. Its declared `fade_out_ms` is ignored by the handler, and it cancels any in-progress stream fade by clearing that slot and ramp.
+
+`StartStreamGroup` is C++-only. It accepts one to eight distinct valid slots, preflights all members, prepares them, then calls `alSourcePlayv` once in source order. A failure clears the touched slots.
+
+## Evidence boundary
+
+The Core suite test-backs sample windows, loop wrapping, ramp replacement, pause-safe ramp arithmetic, pitch validation, retained decoded-data lifetime, group validation, and synchronized call ordering. The Audio Test demonstrates audible pause/resume, fades, duration windows, and looping, but its playtest checklist remains pending rather than an automated audio-output assertion.
+
+Evidence: [`StreamState.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/audio/StreamState.cpp), [`AudioEngine.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/audio/AudioEngine.cpp), and [`T.StreamState.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Core/src/audio/T.StreamState.cpp).

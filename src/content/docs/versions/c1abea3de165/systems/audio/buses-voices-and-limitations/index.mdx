@@ -1,0 +1,55 @@
+---
+title: Buses, voices, and limitations
+description: Use MLE's eight numeric buses and deterministic one-shot allocator without overstating its unfinished listener and distance surfaces.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [audio]
+sourceFiles: [src/mle/audio/AudioEngine.cpp, src/mle/audio/Types.h, src/mle/audio/VoiceAllocator.cpp, src/mle/audio/SourcePlaybackState.cpp]
+testFiles: [tests/Core/src/audio/T.VoiceAllocator.cpp, tests/Core/src/audio/T.SourcePlaybackState.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: buses-voices-and-limitations
+---
+
+MLE has exactly eight numeric buses. There are no named buses or authored routing graph in this snapshot.
+
+| Index | Implemented role | Default gain |
+| --- | --- | --- |
+| `0` | Master multiplier; also a valid source bus | `1.0` |
+| `1` | Numeric source bus | `1.0` |
+| `2` | Numeric source bus | `1.0` |
+| `3` | Numeric source bus | `1.0` |
+| `4` | Numeric source bus | `1.0` |
+| `5` | Numeric source bus | `1.0` |
+| `6` | Numeric source bus | `1.0` |
+| `7` | Numeric source bus | `1.0` |
+
+For a source on bus `1–7`, effective gain is `clamp(master × bus × source, 0, 4)`. A source assigned to bus `0` uses the master once, not squared. `SetVolume` clamps the stored bus gain to `0–4` and reapplies affected active gains. `getVolume` reads the stored value and returns `0` for an invalid index. The source itself flags the cross-thread bus-volume read as possibly needing synchronization; do not treat concurrent `getVolume` and audio-thread writes as a documented thread-safe query.
+
+## One-shot allocation
+
+Priority `0` is reserved for a free voice. Selection takes the lowest-index free source first. When no source is free, a request can steal only a strictly lower-priority eligible voice; equal priority cannot steal. Ties between eligible victims choose the lowest index.
+
+`SetBusVoicePolicy` controls two fields per bus:
+
+- `max_voices = 0` means unlimited within the physical one-shot source pool.
+- A nonzero cap restricts active voices on that bus. At the cap, only a lower-priority voice on the same bus can be replaced.
+- `protected_from_other_buses = true` prevents a request from another bus stealing that bus's voices. It does not prevent the protected bus from replacing its own lower-priority voice.
+
+The pool size is device-dependent. Startup requests up to 256 total sources, reserves eight for streams, then generates one-shot sources until OpenAL stops returning a new source. A policy does not create capacity.
+
+## Streams and groups
+
+Stream slots do not use the one-shot voice allocator or bus caps. They still use the assigned bus gain. `StartStreamGroup` synchronizes the final OpenAL play call for multiple stream slots; it is a group start command, not a persistent mix group with group-level controls.
+
+## Incomplete 3D surface
+
+`PlayParams` contains `position`, `velocity`, and `spatial`. Automated tests verify that non-spatial sources reset to listener-relative origin and spatial sources use the supplied world position and velocity. That narrow source-state mapping exists.
+
+The surrounding system is unfinished: `SetListener` and `SetDistanceParams` are TODO handlers, no distance model is configured here, and Lua does not expose spatial fields or either command. Consequently, listener motion, attenuation, orientation, and the end-to-end spatial workflow are **experimental or incomplete**. Header fields establish only the narrow source-state mapping described above.
+
+OpenAL device availability and `AL_EXT_FLOAT32` are runtime requirements. Despite a log message mentioning a fallback, the missing-extension path publishes `OAL_ERROR` and aborts audio initialization; no 16-bit fallback is implemented.
+
+Evidence: [`VoiceAllocator.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/audio/VoiceAllocator.cpp), [`SourcePlaybackState.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/audio/SourcePlaybackState.cpp), and [`T.VoiceAllocator.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Core/src/audio/T.VoiceAllocator.cpp).

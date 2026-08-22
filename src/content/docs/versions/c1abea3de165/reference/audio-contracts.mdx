@@ -1,0 +1,76 @@
+---
+title: Audio contracts
+description: Look up every pinned audio command, mailbox outcome, Lua callable and field, owner thread, state effect, and current limitation.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [audio, lua]
+sourceFiles: [src/mle/audio/Types.h, src/mle/audio/AudioEngine.cpp, src/mle/audio/CommandMailbox.h, src/mle/audio/VoiceAllocator.h, src/mle/audio/StreamGroup.h, src/mle/audio/StreamState.h]
+testFiles: [tests/Core/shutdown/T.AudioShutdown.cpp, tests/Core/src/audio/T.StreamState.cpp, tests/Core/src/audio/T.StreamGroup.cpp, tests/Core/src/audio/T.VoiceAllocator.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: audio-contracts
+---
+
+This is a curated lookup for integration decisions, not a method-by-method C++ reference or stability promise. Every command is produced on a caller thread, copied into `CommandMailbox`, and consumed by the audio thread. `enqueueCmd` returns `void`; failures after submission are logged.
+
+## C++ command variant
+
+<table tabindex="0" role="region" aria-label="Audio command contracts">
+<thead><tr><th>Command</th><th>Arguments and defaults</th><th>Audio-thread effect and outcome</th><th>Limits</th></tr></thead>
+<tbody>
+<tr><td><code>Load</code></td><td><code>name</code>; <code>stream=false</code></td><td>Decode <code>res/sounds/&lt;name&gt;.wav</code>; upload one-shot buffer or retain stream samples.</td><td>Mono/stereo; logs failure; replacement is not reported to caller.</td></tr>
+<tr><td><code>PlayOneShot</code></td><td><code>sound_id</code>; <code>priority=1</code>; <code>PlayParams</code></td><td>Select/free/steal a voice, apply source state/gain/pitch, play once.</td><td>Must be loaded; priority nonzero; bus valid; offsets/duration/fades ignored.</td></tr>
+<tr><td><code>StartStream</code></td><td><code>sound_id</code>; <code>loop=false</code>; <code>id=0</code>; params</td><td>Preflight, replace target slot, fill and queue up to four buffers, start source.</td><td>Eight slots; loaded as stream; a short non-looping selected window can queue fewer than four buffers. The complete decoded source must satisfy <code>total_samples &gt; samples_per_buffer</code>: more than 8,192 samples.</td></tr>
+<tr><td><code>StartStreamGroup</code></td><td>Eight-entry array; <code>count=0</code></td><td>Preflight all, prepare all, one ordered <code>alSourcePlayv</code>.</td><td>Count 1–8; distinct valid slots; C++ only; failure clears touched slots.</td></tr>
+<tr><td><code>StopStream</code></td><td><code>id=0</code>; <code>fade_out_ms=0</code></td><td>Immediate clear or ramp to zero then clear.</td><td>Active slot required for fade behavior.</td></tr>
+<tr><td><code>SetStreamParams</code></td><td><code>id=0</code>; optional volume/pitch; <code>fade_ms=0</code></td><td>Apply pitch; set or ramp source volume.</td><td>Active slot; finite volume; positive finite pitch.</td></tr>
+<tr><td><code>PauseStream</code></td><td><code>id=0</code></td><td>Pause active unpaused slot; mark paused.</td><td>Invalid/inactive slots only log or no-op.</td></tr>
+<tr><td><code>ResumeStream</code></td><td><code>id=0</code></td><td>Play paused source; resume ramp clock.</td><td>No state result returned.</td></tr>
+<tr><td><code>SetVolume</code></td><td><code>volume=1</code>; <code>bus=max&lt;u8&gt;()</code></td><td>Store gain and reapply affected active sources.</td><td>Caller must set bus 0–7; gain clamps 0–4.</td></tr>
+<tr><td><code>SetListener</code></td><td>position, velocity, forward, up</td><td>TODO handler.</td><td><strong>Experimental or incomplete.</strong></td></tr>
+<tr><td><code>SetDistanceParams</code></td><td>reference 1; rolloff 1; max 50</td><td>TODO handler.</td><td><strong>Experimental or incomplete.</strong></td></tr>
+<tr><td><code>StopAll</code></td><td><code>fade_out_ms=0</code></td><td>Immediately clear streams and stop/reset active one-shots.</td><td><code>fade_out_ms</code> is ignored.</td></tr>
+<tr><td><code>SetBusVoicePolicy</code></td><td><code>bus=0</code>; <code>max_voices=0</code>; protection false</td><td>Replace policy for one numeric bus.</td><td>One-shots only; eight buses.</td></tr>
+</tbody>
+</table>
+
+## `PlayParams`
+
+Defaults are position `(0,0,0)`, volume `1`, velocity `(0,0,0)`, pitch `1`, all millisecond fields `0`, `spatial=false`, and bus `0`. Streams use volume, pitch, start offset, duration, fade-in, position/velocity/spatial, and bus. One-shots use volume, pitch, position/velocity/spatial, and bus; their time/fade fields are not read.
+
+## Mailbox and selection outcomes
+
+- `CommandSubmitResult`: `ACCEPTED`, `FULL`, `CLOSED`. These are internal mailbox outcomes; `enqueueCmd` converts rejection to warnings.
+- `VoiceRejectReason`: `NONE`, `INVALID_BUS`, `ZERO_PRIORITY`, `BUS_CAP`, `INSUFFICIENT_PRIORITY`, `NO_ELIGIBLE_VICTIM`.
+- `StreamGroupRejectReason`: `NONE`, `EMPTY`, `TOO_MANY`, `INVALID_SLOT`, `DUPLICATE_SLOT`.
+- `RampCompletion`: `RampCompletion::NONE` reports no terminal action; `RampCompletion::STOP` tells the stream updater to stop and clear the slot after a fade reaches zero.
+
+Supporting types are `AudioEngine`, `Cmd`, `CommandMailbox`, `AudioThreadStartup`, `WavData`, `SourcePlaybackState`, `SampleWindow`, `ValidatedStreamStart`, `VolumeRamp`, `RampCompletion`, `RampAdvance`, `BusVoicePolicy`, `VoiceMetadata`, and `VoiceSelection`. `RampAdvance` returns the current volume plus a one-time `RampCompletion` from `advanceRamp`. Their ownership semantics are explained on [Lifecycle and command flow](../../systems/audio/lifecycle-and-command-flow/) and [Playback and streaming](../../systems/audio/playback-and-streaming/).
+
+## Lua `C.Audio`
+
+<table tabindex="0" role="region" aria-label="Lua audio call contracts">
+<thead><tr><th>Callable</th><th>Accepted form</th><th>Fields / return</th></tr></thead>
+<tbody>
+<tr><td><code>C.Audio.loadSound(obj)</code></td><td>string or table</td><td>Table: required <code>name</code>, optional <code>stream</code>; no return.</td></tr>
+<tr><td><code>C.Audio.playOneShot(obj)</code></td><td>string or table</td><td>Required table <code>name</code>; optional <code>bus</code>, <code>volume</code>, <code>pitch</code>, <code>priority</code>; no return.</td></tr>
+<tr><td><code>C.Audio.startStream(obj)</code></td><td>string or table</td><td>String defaults slot/bus 0; table requires <code>name</code>, <code>id</code>; optional <code>bus</code>, <code>volume</code>, <code>pitch</code>, <code>looping</code>, <code>fade_in_ms</code>; no return.</td></tr>
+<tr><td><code>C.Audio.setStreamParams(table)</code></td><td>table</td><td>Required <code>id</code>; optional <code>volume</code>, <code>pitch</code>, <code>fade_ms</code>; no return.</td></tr>
+<tr><td><code>C.Audio.stopStream(id, fade_out_ms?)</code></td><td>integers</td><td>No return.</td></tr>
+<tr><td><code>C.Audio.pauseStream(id)</code> / <code>resumeStream(id)</code></td><td>integer</td><td>No return.</td></tr>
+<tr><td><code>C.Audio.setVolume(bus, volume)</code></td><td>integer, number</td><td>No return.</td></tr>
+<tr><td><code>C.Audio.getVolume(bus)</code></td><td>integer</td><td>Stored gain; invalid bus returns <code>0</code>.</td></tr>
+<tr><td><code>C.Audio.setBusVoicePolicy(table)</code></td><td>table</td><td>Required <code>bus</code>; optional <code>max_voices</code>, <code>protected_from_other_buses</code>; no return.</td></tr>
+<tr><td><code>C.Audio.stopAll()</code></td><td>none</td><td>Immediate stop request; no return.</td></tr>
+</tbody>
+</table>
+
+The string form of `startStream` is accepted despite its error text saying the expected type is a table. Lua exposes no group start, spatial fields, time window, listener, distance, state query, or completion callback.
+
+## Runtime-configuration keys
+
+The debug listeners are `audio.play_one_shot`, `audio.start_stream`, `audio.stop_stream`, `audio.pause_stream`, `audio.resume_stream`, `audio.set_volume`, and `audio.stop_all`. Values are space-split strings. `audio.start_stream` actually requires three tokens—sound name, slot ID, and bus—but its rejection message reports two arguments (`requires 2 arguments`) while printing all three placeholders. Invalid numeric text silently falls back to slot/bus `0` or volume `1`. These keys are debug surfaces, not a structured runtime API.
+
+Evidence: [`Types.h`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/audio/Types.h), [`AudioEngine::addLuaBinding`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/audio/AudioEngine.cpp), and [`CommandMailbox.h`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/audio/CommandMailbox.h).

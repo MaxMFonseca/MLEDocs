@@ -123,6 +123,16 @@ const luaUiAdvancedContracts = [
 	['ui-test', 'tools/ui-test', ['ui', 'lua']],
 ] as const;
 
+const audioContracts = [
+	['audio', 'systems/audio', ['audio', 'client']],
+	['audio-lifecycle-and-command-flow', 'systems/audio/lifecycle-and-command-flow', ['audio', 'client']],
+	['playback-and-streaming', 'systems/audio/playback-and-streaming', ['audio']],
+	['buses-voices-and-limitations', 'systems/audio/buses-voices-and-limitations', ['audio']],
+	['use-audio-playback', 'guides/use-audio-playback', ['audio', 'lua']],
+	['audio-contracts', 'reference/audio-contracts', ['audio', 'lua']],
+	['audio-test', 'tools/audio-test', ['audio', 'client', 'ui']],
+] as const;
+
 const ownership: Readonly<Record<string, { sourceFiles: readonly string[]; testFiles: readonly string[] }>> = {
 	architecture: {
 		sourceFiles: ['src/mle/Entry.inl', 'src/mle/core/Core.cpp', 'src/mle/client/Client.cpp'],
@@ -200,7 +210,8 @@ const ownership: Readonly<Record<string, { sourceFiles: readonly string[]; testF
 };
 
 function source(slug: string): string {
-	return readFileSync(resolve(docsRoot, slug.startsWith('reference/') ? `${slug}.mdx` : `${slug}/index.mdx`), 'utf8');
+	const direct = resolve(docsRoot, `${slug}.mdx`);
+	return readFileSync(existsSync(direct) ? direct : resolve(docsRoot, `${slug}/index.mdx`), 'utf8');
 }
 
 describe('runtime foundations handbook content', () => {
@@ -210,7 +221,7 @@ describe('runtime foundations handbook content', () => {
 				.filter(({ publication }) => publication === 'published')
 				.map(({ pageId }) => pageId)
 				.sort(),
-		).toEqual([...contracts.map(([pageId]) => pageId), ...rendererContracts.map(([pageId]) => pageId), ...luaUiFoundationContracts.map(([pageId]) => pageId), ...luaUiAdvancedContracts.map(([pageId]) => pageId)].sort());
+		).toEqual([...contracts.map(([pageId]) => pageId), ...rendererContracts.map(([pageId]) => pageId), ...luaUiFoundationContracts.map(([pageId]) => pageId), ...luaUiAdvancedContracts.map(([pageId]) => pageId), ...audioContracts.map(([pageId]) => pageId)].sort());
 	});
 
 	it.each(contracts)('%s has pinned, canonical technical metadata', (pageId, slug, subsystems) => {
@@ -342,7 +353,7 @@ describe('renderer and models handbook content', () => {
 		for (const [pageId] of rendererContracts) {
 			expect(handbookPages.find((page) => page.pageId === pageId)?.publication).toBe('published');
 		}
-		for (const pageId of ['audio', 'client', 'tools-and-test-applications']) {
+		for (const pageId of ['client', 'tools-and-test-applications']) {
 			expect(handbookPages.find((page) => page.pageId === pageId)?.publication).not.toBe('published');
 		}
 	});
@@ -607,5 +618,99 @@ describe('advanced Lua and UI handbook content', () => {
 		const uiTest = source('tools/ui-test');
 		expect(uiTest).toMatch(/interactive demonstration.*not.*automated|demonstrated.*not.*guarantee/is);
 		for (const page of ['Animation', 'FilterableList', 'FormPanel', 'Inventory', 'Layer', 'NineSlice', 'PopupStack', 'Scrollable', 'SpriteProgressBar', 'TextDropdownSelector']) expect(uiTest).toContain(page);
+	});
+});
+
+describe('audio handbook content', () => {
+	it.each(audioContracts)('%s has canonical pinned evidence and an exact physical route', (pageId, slug, subsystems) => {
+		const text = source(slug);
+		const metadata = technicalPageMetadataSchema.parse(parseFrontmatter(text).frontmatter);
+		expect(metadata).toMatchObject({ mleCommit: commit, maturity: 'in-development', pageId, translationStatus: 'canonical' });
+		expect(metadata.audiences).toEqual(expect.arrayContaining(['integrator', 'contributor']));
+		expect(metadata.subsystems).toEqual(subsystems);
+		expect(metadata.sourceFiles.length).toBeGreaterThan(0);
+		expect(metadata.testFiles.length).toBeGreaterThan(0);
+		expect(metadata.lastVerified).toBe('2026-08-21');
+		expect(handbookPages.find((page) => page.pageId === pageId)).toMatchObject({ slug, publication: 'published' });
+		expect(text).toContain(`github.com/MaxMFonseca/MLE/blob/${commit}/`);
+		expect(text).not.toMatch(/\b(?:TBD|lorem ipsum|Doxygen)\b/i);
+	});
+
+	it('publishes exactly seven audio records without advancing Client', () => {
+		for (const [pageId] of audioContracts) expect(handbookPages.find((page) => page.pageId === pageId)?.publication).toBe('published');
+		expect(handbookPages.find((page) => page.pageId === 'client-system')?.publication).not.toBe('published');
+	});
+
+	it('states lifecycle, mailbox outcomes, and shutdown order without implying synchronous command results', () => {
+		const lifecycle = source('systems/audio/lifecycle-and-command-flow');
+		expect(lifecycle).toMatch(/Client::init.*Window.*AudioEngine::init.*addLuaBinding/is);
+		expect(lifecycle).toMatch(/ACCEPTED.*FULL.*CLOSED/is);
+		expect(lifecycle).toMatch(/128.*queue/i);
+		expect(lifecycle).toMatch(/producer.*caller.*consumer.*audio thread/is);
+		expect(lifecycle).toMatch(/layers.*before.*AudioEngine::shutdown/is);
+		expect(lifecycle).toMatch(/Lua.*returns no.*acceptance|void.*not.*completion/is);
+	});
+
+	it('documents exact playback, streaming, bus, and incomplete spatial boundaries', () => {
+		const playback = source('systems/audio/playback-and-streaming');
+		expect(playback).toMatch(/one-shot.*decoded.*OpenAL buffer/is);
+		expect(playback).toMatch(/eight.*fixed.*stream.*slots/is);
+		expect(playback).toMatch(/milliseconds.*offset.*duration.*zero.*end/is);
+		expect(playback).toMatch(/four.*buffers.*8,192.*samples/is);
+		expect(playback).toMatch(/up to four.*buffers.*fewer.*short.*duration/is);
+		expect(playback).toMatch(/pause.*ramp.*resume/is);
+		expect(playback).toMatch(/StopAll.*fade_out_ms.*ignored/is);
+
+		const buses = source('systems/audio/buses-voices-and-limitations');
+		expect(buses).toMatch(/0.*master.*1.*2.*3.*4.*5.*6.*7/is);
+		expect(buses).toMatch(/no named buses/i);
+		expect(buses).toMatch(/equal priority.*cannot steal/is);
+		expect(buses).toMatch(/protected_from_other_buses/is);
+		expect(buses).toMatch(/SetListener.*SetDistanceParams.*TODO/is);
+		expect(buses).not.toMatch(/(?:complete|working|supported) 3D audio/i);
+	});
+
+	it('provides a verified Lua-first workflow with outcomes, cleanup, and failure signals', () => {
+		const guide = source('guides/use-audio-playback');
+		for (const heading of ['Outcome', 'Prerequisites', 'Load before playback', 'Play a one-shot', 'Run a stream', 'Observe success and failure', 'Cleanup', 'Limitations']) {
+			expect(guide).toContain(`## ${heading}`);
+		}
+		for (const identifier of ['C.Audio.loadSound', 'C.Audio.playOneShot', 'C.Audio.startStream', 'C.Audio.stopStream']) expect(guide).toContain(identifier);
+		expect(guide).toMatch(/res\/sounds.*\.wav/is);
+		expect(guide).toMatch(/asynchronous.*log|log.*asynchronous/is);
+		expect(guide).toMatch(/InitLayer\.lua.*partial.*missing.*stream preload/is);
+		expect(guide).toMatch(/stopAll.*cancel.*in-progress.*stream fade/is);
+		expect(guide).toMatch(/either.*stopStream.*fade.*or.*stopAll/is);
+		const luaBlocks = [...guide.matchAll(/```lua\r?\n([\s\S]*?)```/g)].map((match) => match[1]);
+		for (const block of luaBlocks) {
+			const runnable = block.split(/\r?\n/).filter((line) => !line.trimStart().startsWith('--')).join('\n');
+			expect(
+				runnable.includes('C.Audio.stopStream(') && runnable.includes('C.Audio.stopAll('),
+				'one copyable Lua block must not actively request both a stream fade and immediate StopAll',
+			).toBe(false);
+		}
+	});
+
+	it('ships keyboard-reachable exact lookup and honest Audio Test evidence classes', () => {
+		const reference = source('reference/audio-contracts');
+		expect(reference).toMatch(/<table tabindex="0" role="region" aria-label="Audio command contracts">/);
+		for (const command of ['Load', 'PlayOneShot', 'StartStream', 'StartStreamGroup', 'StopStream', 'SetStreamParams', 'PauseStream', 'ResumeStream', 'SetVolume', 'SetListener', 'SetDistanceParams', 'StopAll', 'SetBusVoicePolicy']) expect(reference).toContain(command);
+		for (const callable of ['loadSound', 'playOneShot', 'startStream', 'setStreamParams', 'setBusVoicePolicy']) expect(reference).toContain(`C.Audio.${callable}`);
+		for (const supporting of ['RampCompletion', 'RampAdvance', 'RampCompletion::NONE', 'RampCompletion::STOP']) expect(reference).toContain(supporting);
+		const startStreamRow = reference.match(/<tr><td><code>StartStream<\/code><\/td>[\s\S]*?<\/tr>/)?.[0] ?? '';
+		expect(startStreamRow).toMatch(/up to four.*fewer than four/is);
+		expect(startStreamRow).toMatch(/complete decoded source.*total_samples.*(?:&gt;|>|greater than).*samples_per_buffer.*more than 8,192/is);
+		expect(reference).toMatch(/audio\.start_stream.*three.*tokens.*message.*two arguments/is);
+
+		const tool = source('tools/audio-test');
+		expect(tool).toMatch(/automated.*Core tests/is);
+		expect(tool).toMatch(/interactive demonstration.*not.*automated|demonstrated.*not.*assert/is);
+		expect(tool).toMatch(/PENDING USER PLAYTEST/is);
+		expect(tool).toMatch(/SDL_Init failed: No available video device/is);
+		expect(tool).toMatch(/12.*fixtures.*manifest/is);
+		expect(tool).toMatch(/deterministic.*--verify/is);
+		expect(tool).toContain('AudioTest.cpp');
+		expect(tool).not.toContain('AudioTestLayer.cpp');
+		expect(tool).toMatch(/Space.*protected.*UI.*cue/is);
 	});
 });
