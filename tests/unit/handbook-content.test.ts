@@ -41,6 +41,18 @@ const rendererContracts = [
 	['renderer-and-resource-contracts', 'reference/renderer-and-resource-contracts', ['renderer', 'models']],
 ] as const;
 
+const luaUiFoundationContracts = [
+	['cpp-lua-boundary', 'concepts/cpp-lua-boundary', ['lua']],
+	['ui-composition', 'concepts/ui-composition', ['ui', 'lua']],
+	['lua', 'systems/lua', ['lua']],
+	['runtime-calls-and-bindings', 'systems/lua/runtime-calls-and-bindings', ['lua']],
+	['ui', 'systems/ui', ['ui', 'lua']],
+	['entities-hierarchy-and-layout', 'systems/ui/entities-hierarchy-and-layout', ['ui', 'lua']],
+	['rendering-and-visuals', 'systems/ui/rendering-and-visuals', ['ui', 'renderer']],
+	['text-input-and-focus', 'systems/ui/text-input-and-focus', ['ui', 'window']],
+	['ui-events-and-callbacks', 'systems/ui/events-and-callbacks', ['ui', 'lua', 'window']],
+] as const;
+
 const ownership: Readonly<Record<string, { sourceFiles: readonly string[]; testFiles: readonly string[] }>> = {
 	architecture: {
 		sourceFiles: ['src/mle/Entry.inl', 'src/mle/core/Core.cpp', 'src/mle/client/Client.cpp'],
@@ -128,7 +140,7 @@ describe('runtime foundations handbook content', () => {
 				.filter(({ publication }) => publication === 'published')
 				.map(({ pageId }) => pageId)
 				.sort(),
-		).toEqual([...contracts.map(([pageId]) => pageId), ...rendererContracts.map(([pageId]) => pageId)].sort());
+		).toEqual([...contracts.map(([pageId]) => pageId), ...rendererContracts.map(([pageId]) => pageId), ...luaUiFoundationContracts.map(([pageId]) => pageId)].sort());
 	});
 
 	it.each(contracts)('%s has pinned, canonical technical metadata', (pageId, slug, subsystems) => {
@@ -260,7 +272,7 @@ describe('renderer and models handbook content', () => {
 		for (const [pageId] of rendererContracts) {
 			expect(handbookPages.find((page) => page.pageId === pageId)?.publication).toBe('published');
 		}
-		for (const pageId of ['lua', 'ui', 'audio', 'client', 'tools-and-test-applications']) {
+		for (const pageId of ['audio', 'client', 'tools-and-test-applications']) {
 			expect(handbookPages.find((page) => page.pageId === pageId)?.publication).not.toBe('published');
 		}
 	});
@@ -347,5 +359,70 @@ describe('renderer and models handbook content', () => {
 			expect(text).toMatch(/Cleanup/i);
 			expect(text).toMatch(/Limitations/i);
 		}
+	});
+});
+
+describe('Lua and UI foundation handbook content', () => {
+	it.each(luaUiFoundationContracts)('%s has canonical pinned evidence and an exact physical route', (pageId, slug, subsystems) => {
+		const text = source(slug);
+		const parsed = parseFrontmatter(text);
+		const metadata = technicalPageMetadataSchema.parse(parsed.frontmatter);
+		expect(metadata).toMatchObject({
+			mleCommit: commit,
+			maturity: 'in-development',
+			pageId,
+			translationStatus: 'canonical',
+		});
+		expect(metadata.audiences).toEqual(expect.arrayContaining(['integrator', 'contributor']));
+		expect(metadata.subsystems).toEqual(subsystems);
+		expect(metadata.sourceFiles.length).toBeGreaterThan(0);
+		expect(metadata.testFiles.length).toBeGreaterThan(0);
+		expect(metadata.lastVerified).toBe('2026-08-21');
+		expect(handbookPages.find((page) => page.pageId === pageId)).toMatchObject({ slug, publication: 'published' });
+		expect(text).toContain(`github.com/MaxMFonseca/MLE/blob/${commit}/`);
+		expect(text).not.toMatch(/\b(?:TBD|lorem ipsum|Doxygen)\b/i);
+	});
+
+	it('separates direct script execution, protected probing, and runtime registration', () => {
+		const boundary = source('concepts/cpp-lua-boundary');
+		expect(boundary).toMatch(/public scripting boundary.*sol::state.*Client/is);
+		expect(boundary).toMatch(/auxiliary.*state.*CompRenderingCtx/is);
+		expect(boundary).toMatch(/sol::object.*sol::table.*usertype/is);
+		expect(boundary).toMatch(/panic.*unrecoverable/is);
+		const runtime = source('systems/lua/runtime-calls-and-bindings');
+		expect(runtime).toMatch(/script_file.*res\/lua/is);
+		expect(runtime).toMatch(/tryRequire.*NOT_FOUND/is);
+		expect(runtime).toMatch(/does not.*package\.loaded|executes.*again/is);
+	});
+
+	it('states UI ownership, phase order, hierarchy, and invalidation contracts', () => {
+		const composition = source('concepts/ui-composition');
+		expect(composition).toMatch(/Lua table.*entity.*component.*bounds.*render packet/is);
+		const overview = source('systems/ui');
+		expect(overview).toMatch(/animation.*hover.*on_update.*events.*bounds.*rendering.*destroy/is);
+		expect(overview).toMatch(/UI.*owns.*registry.*systems/is);
+		const hierarchy = source('systems/ui/entities-hierarchy-and-layout');
+		expect(hierarchy).toMatch(/Relationship.*circular.*sibling/is);
+		expect(hierarchy).toMatch(/internal.*content.*external.*ancestor/is);
+		expect(hierarchy).toMatch(/px.*flex.*fit.*%r.*%w.*%h/is);
+		expect(hierarchy).toMatch(/hasFitSize.*returns true.*every.*internal.*propagates.*external/is);
+		expect(hierarchy).toMatch(/intended.*selective.*pinned.*broad/is);
+	});
+
+	it('keeps rendering, input, and callback limitations source-observed', () => {
+		const rendering = source('systems/ui/rendering-and-visuals');
+		expect(rendering).toMatch(/triple.buffer.*packet.*render thread/is);
+		expect(rendering).toMatch(/one.*`Renderable`.*per entity/is);
+		expect(rendering).toMatch(/parent scissor.*render target/is);
+		expect(rendering).toMatch(/Rendering::update.*ascending.*lower.*first/is);
+		expect(rendering).toMatch(/Relationship.*hover.*descending.*higher.*first/is);
+		const input = source('systems/ui/text-input-and-focus');
+		expect(input).toMatch(/not globally exclusive.*disable/is);
+		for (const key of ['text_input_enable', 'text_input_disable', 'text_input_set', 'text_input_clear']) expect(input).toContain(key);
+		expect(input).toMatch(/Enter.*submit.*Tab.*complete.*Escape.*blur/is);
+		const events = source('systems/ui/events-and-callbacks');
+		expect(events).toMatch(/queued.*same frame.*events phase/is);
+		expect(events).toMatch(/raw.*EventListener.*unlisten/is);
+		expect(events).toMatch(/boolean.*asymmetric|wrong callback/is);
 	});
 });

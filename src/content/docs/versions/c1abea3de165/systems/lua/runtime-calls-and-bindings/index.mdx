@@ -1,0 +1,40 @@
+---
+title: Runtime calls and bindings
+description: Use MLE's exact file-loading, table, function, usertype, conversion, and error contracts without assuming standard Lua module semantics.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [lua]
+sourceFiles: [src/mle/lua/Lua.cpp, src/mle/lua/Lua.h, src/mle/lua/Types.cpp, src/mle/lua/Utils.h]
+testFiles: [tests/Core/src/lua/T.Lua.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: runtime-calls-and-bindings
+---
+
+The names suggest Lua's module loader, but the implementation is more direct. Know which path is being built and who owns every value before using these calls.
+
+## Loading files
+
+| Call | Accepted input | Observed path and result |
+| --- | --- | --- |
+| `require(name)` | nonempty name, with or without `.lua` | calls `script_file` on `res/lua/` + name + optional `.lua`; returns the chunk result |
+| `requirePath(path)` | nonempty path ending in `.lua` | calls `script_file` on the path exactly |
+| `tryRequire(name)` | nonempty name without `.lua` | checks `res/lua/<name>.lua`; returns `NOT_FOUND` only when absent, otherwise executes it |
+
+These wrappers do not call Lua's package `require`, do not consult `package.loaded`, and therefore execute the chunk again on every call. `Lua::init` computes an extended `package.path` in a local proxy but never writes that string back to `package.path` at this snapshot. First-party Lua `require("mle.ui…")` calls still use Lua's library when made inside Lua; that is a separate path from these C++ wrappers.
+
+## Tables and calls
+
+`createTable(name)` creates a global table. The unnamed overload creates an unbound table. A shallow copy shares nested tables; the deep copy walks nested tables iteratively. `mergeTables` recursively merges table values and replaces non-table leaves. Cycles are not detected, so deep-copying or merging a cyclic table is unsafe.
+
+`setGlobal`, `getGlobal`, and `setFunction` operate on the single state. `newUsertype` asserts a nonempty, unused global name; `removeUsertype` unregisters it. Usertype values such as `mle_ui_Entt` usually carry access to C++ ownership rather than duplicating the target object.
+
+## Errors and conversions
+
+Use `tryAs`, `tryGetList`, and `tryGetKeyAs` for data that can be malformed. The strict helpers can call the engine's unrecoverable path, and several are explicitly unsafe in release mode if their preconditions are ignored. Script syntax and runtime errors from an existing file are not converted to `Result` by `tryRequire`.
+
+`lua::toString` renders nested values for diagnostics with a maximum depth of 32. That is a depth assertion, not cycle handling. The registered surface is intentionally curated; the planned **Lua API** reference will own exact names, so do not infer that a C++ method is bound.
+
+Evidence: [`Lua.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/lua/Lua.cpp), [`Lua.h`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/lua/Lua.h), and [`Utils.h`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/lua/Utils.h).

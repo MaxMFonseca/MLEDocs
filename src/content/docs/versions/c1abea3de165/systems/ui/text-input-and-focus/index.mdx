@@ -1,0 +1,48 @@
+---
+title: Text input and focus
+description: Configure Lua text inputs with accurate focus ownership, keyboard routing, callbacks, placeholder behavior, and cleanup requirements.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [ui, window]
+sourceFiles: [src/mle/ui/renderable/Text.cpp, src/mle/ui/renderable/Text.h, src/mle/window/TextBox.cpp, src/mle/window/UserInputManager.cpp]
+testFiles: [tests/Core/src/ui/T.Text.cpp, tests/Core/src/window/T.TextBox.cpp, tests/Core/src/window/T.UserInputManager.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: text-input-and-focus
+---
+
+A UI text input is a `Text` renderable that owns a `TextBox`. The static `text` value acts as display text and, when an input is empty and unfocused, as its placeholder. While focused, the renderable displays the input value with a `|` inserted at the selection end.
+
+```lua
+{
+  text = {
+    text = "Resource path",
+    height = "18px",
+    input = {
+      on_submit = function(element, value) end,
+      on_complete = function(element, value) end,
+    },
+  },
+}
+```
+
+## Focus is explicit
+
+`text_input_enable` focuses the element's `TextBox`; passing boolean `false` disables it. `text_input_disable` blurs it, `text_input_clear` empties the owned input value, and `text_input_set` requires a string and moves the caret to the end while preserving current focus.
+
+Focus is **not globally exclusive**. Enabling one input does not disable another. A form or focus controller must apply `text_input_disable` to the previous input before enabling the next, as the focused-sequence test does. Calling `text_input_disable` on a `Text` created without an input box dereferences the missing handle in this snapshot; only call it for an input-configured text element.
+
+## Keyboard and callback routing
+
+Focusing registers text, editing, selection, clipboard, Enter, Tab, and Escape listeners with `UserInputManager`. Printable key listeners are suppressed while any text listener is active, except Ctrl/Alt combinations, mouse keys, and non-printable keys. Listener traversal is newest-first; `always_call` listeners run before the first regular handler that consumes the input.
+
+- Single-line **Enter** calls `on_submit` when present; without a submit callback, it is not registered/consumed.
+- **Tab** calls `on_complete` when present.
+- **Escape** blurs the box. A higher-level always-call Escape listener can then observe the same key event.
+- Multiline mode inserts newline on Enter. With `ctrl_enter_newline`, the implementation inserts only when Ctrl is held; it does not submit on plain Enter.
+
+Focus, edits, and programmatic set/clear request internal bounds updates because the displayed glyphs and caret can change size. Destroying the renderable destroys the `TextBox`; its RAII listener members unregister. The planned **Handle input, focus, and text** guide will own the end-to-end form workflow.
+
+Evidence: [`Text.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/ui/renderable/Text.cpp), [`TextBox.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/window/TextBox.cpp), and [`T.Text.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Core/src/ui/T.Text.cpp).

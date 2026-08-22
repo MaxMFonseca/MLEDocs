@@ -1,0 +1,42 @@
+---
+title: C++ and Lua boundary
+description: Understand how MLE's authoring LuaJIT state exchanges values, failures, functions, and non-owning engine handles with C++.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [lua]
+sourceFiles: [src/mle/lua/Lua.cpp, src/mle/lua/Lua.h, src/mle/lua/Utils.h, src/mle/client/Client.cpp]
+testFiles: [tests/Core/src/lua/T.Lua.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: cpp-lua-boundary
+---
+
+MLE's public scripting boundary crosses through the `sol::state` owned by `Client`. C++ initializes it, installs engine-backed globals and usertypes, and executes files. Lua receives values and handles; it does not become the owner of the `Client`, `UI`, entity registry, renderer resources, or other engine singletons those handles reach.
+
+This is the state used for UI authoring and engine registrations, but it is not literally the only `Lua` instance in the process. Every UI rendering system constructs an auxiliary initialized state and passes it in `CompRenderingCtx`; no renderable or shader in this snapshot reads that field. The `Lua.h` comment claiming one global state therefore describes intent more narrowly than the implementation. Do not assume globals registered on `Client::lua()` exist in that auxiliary state.
+
+## Smallest useful flow
+
+```text
+C++ owner → sol::object / sol::table / usertype → Lua callback or module
+    ↑                                                │
+    └──────── converted value or protected error ───┘
+```
+
+Plain numbers, strings, booleans, tables, and copied value types can cross by value. `mle_UI`, `mle_ui_Entt`, and `mle_Image` expose access to C++-owned state. An entity wrapper is meaningful only while its `UI` and registry entity remain alive; `valid()` checks the null sentinel used by lookup failures, but it is not a general lifetime guarantee after the registry changes.
+
+## Conversion and failure
+
+`lua::valid<T>` checks validity and convertibility. `lua::tryAs` and the `tryGet…` helpers report a mismatch without writing partial output. The direct `lua::as` path calls `Core::unrecoverable` for a bad type in the checked path; comments in `Utils.h` warn that several helpers are unsafe in release builds. Treat table shapes as contracts, not as dynamically repaired input.
+
+Ordinary script errors surface through Sol2's script call behavior. A Lua panic logs its message and calls `Core::unrecoverable`, which aborts the application. `tryRequire` protects only the missing-file check by returning `NOT_FOUND`; it does not turn syntax or runtime errors inside an existing file into `Expected` errors.
+
+## Lifetime rule
+
+Store Lua callbacks only as long as their C++ owner can unregister them. UI callback components retain `sol::function` values, while event listeners retain a UI pointer and entity identifier and re-check registry validity before invocation. Replacing the root or clearing the UI invalidates old entities and unregisters owned listeners during component destruction.
+
+The complete registered surface belongs to the planned **Lua API reference**. Operational loading and registration rules are in [Runtime calls and bindings](../../systems/lua/runtime-calls-and-bindings/).
+
+Evidence: [`Lua.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/lua/Lua.cpp), [`Utils.h`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/lua/Utils.h), and [`Client.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/client/Client.cpp).

@@ -1,0 +1,40 @@
+---
+title: UI
+description: Build a source-backed mental model of MLE's retained Lua-authored entity UI, its update phases, ownership, rendering, and current limits.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [ui, lua]
+sourceFiles: [src/mle/ui/UI.cpp, src/mle/ui/UI.h, src/mle/ui/Entt.cpp, src/mle/ui/systems/LuaElementOps.cpp]
+testFiles: [tests/Core/src/ui/T.Bounds.cpp, tests/Core/src/ui/T.Text.cpp, tests/Client/src/layers/UITest.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: ui
+---
+
+MLE UI is a retained entity/component system authored mainly through Lua tables. Each `UI` owns its EnTT registry and its bounds, rendering, hover, and custom-event systems. It also owns one window-resize listener, popup input listeners, style tables, and the current root. A `UI` instance is independent of another UI's entity tree. UI authoring and callbacks use the Client's Lua state, while renderer services and the global input manager are shared. Each UI rendering system also owns an auxiliary Lua state passed through rendering contexts, although current renderables and shaders do not read it.
+
+## From table to frame
+
+`setRoot` clears the registry, creates the root, applies styles and element keys, and requests layout. The caller then invokes `update()` and `render()` as its layer runs. The observed update order is fixed:
+
+```text
+animation → hover → on_update → events → bounds → rendering packet → destroy
+```
+
+This order is user-visible. A callback before bounds can invalidate layout for the current packet. Enqueuing a custom event from a named-event listener is unsupported: it mutates the vector being range-iterated, and the system clears that vector after the pass. `destroy()` is deferred until the final phase. `render()` consumes the newest triple-buffered packet and returns an image owned by the UI rendering system.
+
+## Required structure
+
+Every element created through `Relationship` receives `Relationship` and `Bounds`. It needs one sizing source: a `ListContainer`, `FreeContainer`, or renderable-provided `SizeProvider`. Applying a second renderable to an entity is rejected as incompatible. Parent links establish layout space, hover traversal, clipping, and recursive disable state.
+
+The Lua `mle_UI` and `mle_ui_Entt` usertypes expose selected operations, not the entire C++ surface. Keep raw entity wrappers local, check `valid()` after lookup, and do not retain them beyond root replacement or `UI::clear`.
+
+## Maturity boundary
+
+Automated tests cover bounds parsing/scheduling, text/input behavior, tags, animation, scrolling state, sprite/nine-slice parsing, and scissor rules. The Client's UI Test layer is a broad interactive demonstration. Its screens show useful combinations but do not establish stability for every key or factory.
+
+Continue with [Entities, hierarchy, and layout](./entities-hierarchy-and-layout/), [Rendering and visuals](./rendering-and-visuals/), [Text input and focus](./text-input-and-focus/), and [Events and callbacks](./events-and-callbacks/). Scrolling, popups, effects, factories, full guides, and lookup tables remain in the planned Task 5 pages visible in navigation.
+
+Evidence: [`UI.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/ui/UI.cpp), [`LuaElementOps.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/ui/systems/LuaElementOps.cpp), and [`UITest.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Client/src/layers/UITest.cpp).

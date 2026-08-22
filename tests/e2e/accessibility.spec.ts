@@ -957,12 +957,24 @@ for (const handbookCase of [
     theme: 'light',
     selector: 'main pre',
   },
-  {
-    name: 'renderer contracts table in Dark',
+	{
+		name: 'renderer contracts table in Dark',
     path: `/versions/${versionId}/reference/renderer-and-resource-contracts/`,
     theme: 'dark',
-    selector: 'main table',
-  },
+		selector: 'main table',
+	},
+	{
+		name: 'UI hierarchy table in Light',
+		path: `/versions/${versionId}/systems/ui/entities-hierarchy-and-layout/`,
+		theme: 'light',
+		selector: 'main table',
+	},
+	{
+		name: 'UI text input code in Dark',
+		path: `/versions/${versionId}/systems/ui/text-input-and-focus/`,
+		theme: 'dark',
+		selector: 'main pre',
+	},
 ] as const) {
   test(`runtime handbook accessibility: ${handbookCase.name} reflows locally and is axe-clean`, async ({
     page,

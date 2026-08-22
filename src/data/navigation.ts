@@ -518,6 +518,21 @@ function registryPageIdForLink(
 	return remainder.length === 1 && childPageIds.includes(remainder[0] ?? '') ? remainder[0] : undefined;
 }
 
+function registryPageIdForEntry(
+	entry: ResolvedSidebarEntry,
+	version: VersionEntry,
+	section: NavigationSection,
+	rank: ReadonlyMap<string, number>,
+): string | undefined {
+	if (entry.type === 'link') return registryPageIdForLink(entry, version, section);
+	return entry.entries
+		.map((child) => registryPageIdForEntry(child, version, section, rank))
+		.filter((pageId): pageId is string => pageId !== undefined)
+		.sort((left, right) =>
+			(rank.get(left) ?? Number.MAX_SAFE_INTEGER) - (rank.get(right) ?? Number.MAX_SAFE_INTEGER),
+		)[0];
+}
+
 function orderSectionEntriesByRegistry(
 	entries: readonly ResolvedSidebarEntry[],
 	version: VersionEntry,
@@ -530,11 +545,16 @@ function orderSectionEntriesByRegistry(
 		),
 	];
 	const rank = new Map(pageIds.map((pageId, index) => [pageId, index]));
-	const orderedKnownEntries = entries
+	const entriesWithOrderedChildren = entries.map((entry) =>
+		entry.type === 'group'
+			? { ...entry, entries: orderSectionEntriesByRegistry(entry.entries, version, section) }
+			: entry,
+	);
+	const orderedKnownEntries = entriesWithOrderedChildren
 		.map((entry, index) => ({
 			entry,
 			index,
-			pageId: registryPageIdForLink(entry, version, section),
+			pageId: registryPageIdForEntry(entry, version, section, rank),
 		}))
 		.filter(
 			(candidate): candidate is typeof candidate & { pageId: string } =>
@@ -547,8 +567,8 @@ function orderSectionEntriesByRegistry(
 		.map(({ entry }) => entry);
 	let orderedIndex = 0;
 
-	return entries.map((entry) =>
-		registryPageIdForLink(entry, version, section)
+	return entriesWithOrderedChildren.map((entry) =>
+		registryPageIdForEntry(entry, version, section, rank)
 			? (orderedKnownEntries[orderedIndex++] ?? entry)
 			: entry,
 	);

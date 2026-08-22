@@ -1,0 +1,53 @@
+---
+title: Entities, hierarchy, and layout
+description: Compose MLE UI entities safely by understanding relationship ownership, container sizing, target values, dependencies, and invalidation order.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [ui, lua]
+sourceFiles: [src/mle/ui/Entt.cpp, src/mle/ui/components/Relationship.cpp, src/mle/ui/components/Bounds.cpp, src/mle/ui/components/ListContainer.cpp, src/mle/ui/components/FreeContainer.cpp, src/mle/ui/systems/Bounds.cpp]
+testFiles: [tests/Core/src/ui/T.Bounds.cpp, tests/Core/src/ui/T.Tags.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: entities-hierarchy-and-layout
+---
+
+Layout is a tree calculation over retained components. The hierarchy supplies coordinate space and ordering; a container or renderable supplies size; target components constrain the result. Most hard-to-diagnose UI failures come from changing one layer without invalidating the other.
+
+## Relationship ownership
+
+`Relationship` stores a parent plus a circular doubly linked sibling ring and the parent's first child/count. Creating a child allocates it in the same UI registry, gives it `Relationship` and `Bounds`, attaches it, applies `children_base` before the child's own table, then calls its one-shot `on_create`.
+
+Names may not contain `.`. `getChild` follows immediate names; IDs scan the registry; tag/name recursive queries descend the tree. Reparenting unlinks the entity first and invalidates both the old/new layout path. Destruction recursively runs `on_destroy` and removes descendants. Calling `Entt::destroy()` only marks the element for the end of the update.
+
+## Values and dependencies
+
+<table tabindex="0" role="region" aria-label="UI layout value and dependency summary">
+  <thead><tr><th>Form</th><th>Meaning</th><th>Dependency / order</th></tr></thead>
+  <tbody>
+    <tr><td>number or no suffix</td><td>container-dependent default value</td><td>Interpreted by <code>TargetBound::fromLua</code> for the receiving container.</td></tr>
+    <tr><td><code>px</code></td><td>pixels</td><td>No parent-size conversion.</td></tr>
+    <tr><td><code>f</code> or <code>flex</code></td><td>share of remaining main-axis space</td><td>Resolved by <code>ListContainer::computeChildrenBounds</code>.</td></tr>
+    <tr><td><code>fit</code></td><td>size-provider result</td><td>Requires <code>SizeProvider</code>; content is measured before dependent bounds settle.</td></tr>
+    <tr><td><code>%</code></td><td>percentage of the relevant parent axis</td><td>Reads the parent content extent for the current axis.</td></tr>
+    <tr><td><code>%r</code></td><td>percentage of the root axis</td><td>Reads the root content extent.</td></tr>
+    <tr><td><code>%w</code> / <code>%h</code></td><td>percentage of the reference width / height</td><td>Selects one reference axis regardless of the target axis.</td></tr>
+  </tbody>
+</table>
+
+Suffix-only forms use `1` (or `100` for percentages); explicit percent values are divided by 100. Origins also accept `l`/`t` = 0, `x`/`c` = 0.5, and `r`/`b` = 1. A sibling dependency names an element in the same parent, optionally followed by `:<value>`; a missing sibling logs an error and leaves the dependency entity null.
+
+## Container choice
+
+`ListContainer` lays out children horizontally, vertically, or reversed; it supports wrap, main-axis justification, cross alignment, gaps, and flex shares. `FreeContainer` positions children independently and also carries vertical scroll state. A renderable installs `SizeProvider`, so an entity should not combine incompatible sizing providers.
+
+## Invalidation direction
+
+An **internal** request means this entity's calculated content may change. The intended shape is selective propagation when the entity can fit content, but that is not the pinned behavior: `Entt::hasFitSize` returns true on every path, including its final fallback. Therefore every internal bounds request currently propagates externally. An **external** request recursively climbs through ancestor internal requests until the root, where it becomes a full root/layout request. In this snapshot, treat invalidation as broad and do not rely on fixed-size descendants containing it.
+
+The bounds phase resolves external requests first, recalculates the affected entity or whole tree, invokes `on_resized`, clears resize flags, and resets cached size providers.
+
+Dependencies and child layout are order-sensitive. Define referenced siblings before relying on them, and avoid mutating the hierarchy from a size provider. The exhaustive aliases and table shapes belong to the planned **UI element keys** and **UI layout values** references.
+
+Evidence: [`Relationship.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/ui/components/Relationship.cpp), [`Bounds.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/ui/components/Bounds.cpp), and [`Bounds system`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/ui/systems/Bounds.cpp).

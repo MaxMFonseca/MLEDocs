@@ -1,0 +1,37 @@
+---
+title: Lua runtime
+description: Map MLE's authoring LuaJIT state, auxiliary rendering states, built-in libraries, engine registrations, resource paths, and verified script boundary.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [lua]
+sourceFiles: [src/mle/lua/Lua.cpp, src/mle/lua/Lua.h, src/mle/client/Client.cpp, src/mle/math/LuaUTMathTypes.h, src/mle/utils/LuaUTUtils.h]
+testFiles: [tests/Core/src/lua/T.Lua.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: lua
+---
+
+MLE embeds its authoring LuaJIT state inside `Client`. That state loads scripts from the process working directory, exchanges Sol2 objects and tables, registers selected engine types, and supplies helpers used by UI and test layers. It is not a sandbox, a state scheduler, or a promise that every C++ type is scriptable.
+
+## Initialization map
+
+`Lua::init` installs a panic handler and opens the base, package, JIT, math, string, and table libraries. It verifies that `jit` exists, executes `res/lua/mle/utils.lua`, exposes that table as `Utils`, adds `partial_word_match`, then registers vector, rectangle, stopwatch, and color usertypes.
+
+`Client::init` extends the state later. It loads the color table, creates global `C` with `C.stop`, registers `mle_UI`, and creates global `Colors`. UI entity and image bindings are registered lazily the first time `UI` construction calls `LuaElementOps::init`.
+
+There is a second ownership path hidden behind UI rendering: every `Rendering` system contains its own `Lua`, calls `init`, and passes that state through `CompRenderingCtx`. Current renderable and shader implementations do not read `ctx.lua`, so this is not a supported second authoring environment. It does mean the `Lua.h` statement that only one global state exists is not literally true for this commit.
+
+## What scripts can rely on
+
+- The working directory must make `res/lua/...` reachable. MLE does not discover an installation-relative resource root here.
+- `require`, `requirePath`, and `tryRequire` execute a file and return its `sol::object` result.
+- C++ creates and merges Lua tables; deep copy and merge recurse through nested tables without cycle detection.
+- First-party UI factories under `res/lua/ui/comp` are source examples and reusable modules, but their complete contracts belong to the planned **Reusable components** page.
+
+The automated Lua suite covers table creation/merge, module execution, conversions, stringification, math helpers, and several shipped UI factories. Client Lua screens add demonstration evidence; they do not make all demonstrated combinations stable APIs.
+
+See [Runtime calls and bindings](./runtime-calls-and-bindings/) before adding a loader or retaining a usertype. The [C++ and Lua boundary](../../concepts/cpp-lua-boundary/) explains ownership and errors.
+
+Evidence: [`Lua::init`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/lua/Lua.cpp), [`Client::init`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/client/Client.cpp), and [`T.Lua.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Core/src/lua/T.Lua.cpp).

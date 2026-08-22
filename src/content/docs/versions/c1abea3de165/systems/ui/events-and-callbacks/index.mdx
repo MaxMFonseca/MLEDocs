@@ -1,0 +1,38 @@
+---
+title: Events and callbacks
+description: Route hover, key, scroll, lifecycle, custom, resize, drag, text, and animation callbacks with MLE's exact ordering and lifetime limits.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [ui, lua, window]
+sourceFiles: [src/mle/ui/UI.cpp, src/mle/ui/components/Base.cpp, src/mle/ui/components/Hoverable.cpp, src/mle/ui/systems/Events.cpp, src/mle/ui/systems/Hover.cpp, src/mle/ui/systems/LuaElementOps.cpp]
+testFiles: [tests/Core/src/window/T.UserInputManager.cpp, tests/Core/src/ui/T.Text.cpp, tests/Core/src/ui/T.Animation.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: ui-events-and-callbacks
+---
+
+MLE UI has three distinct callback paths: callbacks stored directly on components, global input listeners activated by hover/focus, and named custom events queued on the owning `UI`. They share Lua functions but not routing or timing.
+
+## Lifecycle and custom events
+
+`on_create` runs after the child table is fully applied, then its component is erased. `on_update` runs every UI update before custom events and bounds. `on_destroy` runs during recursive removal or `UI::clear`. `on_resized` runs after bounds marks an entity resized and before resize flags are cleared.
+
+`element:dispatch(name, payload)` appends a named event. `listen` owns `EventListener` handles and accepts either `event_name = function` or `{event/name, fn/callback}` forms. Dispatch is queued and occurs in the same frame's events phase when enqueued earlier in the update. Enqueuing from a named-event listener is unsafe and unsupported: `dispatchEvents` range-iterates the same vector that `dispatch` appends to, so an append can invalidate traversal, and the vector is cleared after the pass. Do not dispatch new named events from named-event listeners.
+
+The event system stores raw `EventListener*` values. `ListenEvents` owns shared listener handles, and each listener destructor calls `unlisten`; its callback also checks that the target entity is still valid. Do not create an unmanaged listener whose lifetime can end without unlistening, and do not mutate the listener vector while it is being iterated.
+
+## Hover, keys, scroll, and drag
+
+Hover walks the root tree, descending the first eligible highest-layer child that contains the cursor. Enter activates non-`always` key and scroll listeners, hover invokes `on_hover`, and exit unregisters them before calling `on_hover_out`. `beginCursorDrag` sets one registry flag and calls `onCursorDragBegin`; while held it calls `onCursorDrag`, then calls `onCursorDragEnd` when mouse-one releases or the cursor becomes unavailable.
+
+Input dispatch uses a snapshot and lifetime tokens, so a key/scroll callback can destroy a later listener safely. Hover's stored Lua callbacks do not have the same general reentrancy snapshot contract. Prefer marking entities for deferred destruction rather than restructuring the active hover path.
+
+## Pinned implementation limitations
+
+Boolean callback removal is asymmetric in this snapshot. `on_hover = false` and `on_hover_in = false` clear `on_hover_out` instead of their own fields. `on_scroll = true` clears the scroll callback, while `false` only logs and does nothing. `on_key` boolean `true` removes a binding while `false` does nothing. Use functions for installation and explicit element/component replacement or destruction for cleanup; do not rely on these boolean branches as a uniform API.
+
+Text `on_submit`/`on_complete` and animation `on_finished` are owned by their respective components. Their full payload tables and all keybinding forms belong to the planned **UI events and callbacks reference**.
+
+Evidence: [`Events.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/ui/systems/Events.cpp), [`Hoverable.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/ui/components/Hoverable.cpp), and [`UserInputManager.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/window/UserInputManager.cpp).

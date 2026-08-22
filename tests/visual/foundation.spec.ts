@@ -387,6 +387,20 @@ for (const handbookVisual of [
 		theme: 'dark',
 		width: 1440,
 	},
+	{
+		name: 'UI composition concept desktop Dark',
+		path: 'concepts/ui-composition/',
+		file: 'handbook-ui-composition-desktop-dark.png',
+		theme: 'dark',
+		width: 1280,
+	},
+	{
+		name: 'dense UI hierarchy phone Light',
+		path: 'systems/ui/entities-hierarchy-and-layout/',
+		file: 'handbook-ui-hierarchy-phone-light.png',
+		theme: 'light',
+		width: 390,
+	},
 ] as const) {
 	test(handbookVisual.name, async ({ page }) => {
 		await page.setViewportSize({

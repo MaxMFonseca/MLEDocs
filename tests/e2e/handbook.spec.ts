@@ -20,6 +20,12 @@ for (const pageCase of [
 	{ path: 'guides/upload-and-render-a-model/', title: 'Upload and render a model' },
 	{ path: 'guides/control-camera-and-animation/', title: 'Control camera and animation' },
 	{ path: 'reference/renderer-and-resource-contracts/', title: 'Renderer and resource contracts' },
+	{ path: 'systems/lua/', title: 'Lua runtime' },
+	{ path: 'systems/ui/', title: 'UI' },
+	{ path: 'systems/ui/entities-hierarchy-and-layout/', title: 'Entities, hierarchy, and layout' },
+	{ path: 'systems/ui/rendering-and-visuals/', title: 'Rendering and visuals' },
+	{ path: 'systems/ui/text-input-and-focus/', title: 'Text input and focus' },
+	{ path: 'systems/ui/events-and-callbacks/', title: 'Events and callbacks' },
 ] as const) {
 	test(`${pageCase.title} renders as a pinned handbook page`, async ({ page }) => {
 		await page.goto(url(`/versions/${versionId}/${pageCase.path}`));
@@ -69,6 +75,12 @@ test('latest renderer guide resolves to the permanent commit route', async ({ pa
 	await expect(page.getByRole('heading', { level: 1 })).toHaveText('Create a shader and pipeline');
 });
 
+test('latest UI overview resolves to the permanent commit route', async ({ page }) => {
+	await page.goto(url('/latest/systems/ui/'));
+	await expect(page).toHaveURL(new RegExp(`/MLEDocs/versions/${versionId}/systems/ui/$`));
+	await expect(page.getByRole('heading', { level: 1 })).toHaveText('UI');
+});
+
 test('Portuguese geometry route is a same-commit English fallback', async ({ page }) => {
 	await page.goto(url(`/pt-br/versions/${versionId}/systems/math/geometry-and-intersections/`));
 	await expect(page.getByRole('heading', { level: 1 })).toHaveText('Geometry and intersections');
@@ -87,6 +99,28 @@ test('Portuguese renderer guide is a same-commit English fallback', async ({ pag
 	await expect(page.locator('[data-mle-translation-status="fallback"]')).toContainText(`Commit fixado: ${versionId}.`);
 	expect(await page.locator('meta[data-pagefind-filter="mleVersion"]').getAttribute('content')).toBe(versionId);
 	expect(await page.locator('meta[data-pagefind-filter="mleLocale"]').getAttribute('content')).toBe('pt-br');
+});
+
+test('Portuguese UI hierarchy is a same-commit English fallback', async ({ page }) => {
+	await page.goto(url(`/pt-br/versions/${versionId}/systems/ui/entities-hierarchy-and-layout/`));
+	await expect(page.getByRole('heading', { level: 1 })).toHaveText('Entities, hierarchy, and layout');
+	await expect(page.locator('main')).toHaveAttribute('lang', 'en');
+	await expect(page.locator('[data-mle-translation-status="fallback"]')).toContainText(`Commit fixado: ${versionId}.`);
+	expect(await page.locator('meta[data-pagefind-filter="mleVersion"]').getAttribute('content')).toBe(versionId);
+	expect(await page.locator('meta[data-pagefind-filter="mleLocale"]').getAttribute('content')).toBe('pt-br');
+});
+
+test('Lua and UI foundation pages occupy their registry order in the systems sidebar', async ({ page }) => {
+	await page.goto(url(`/versions/${versionId}/systems/ui/`));
+	const labels = (await page.locator('#starlight__sidebar').getByRole('link').allTextContents()).map((label) => label.trim());
+	const luaIndex = labels.indexOf('Lua runtime');
+	const uiIndex = labels.indexOf('UI');
+	expect(luaIndex).toBeGreaterThanOrEqual(0);
+	expect(labels.slice(luaIndex, luaIndex + 2)).toEqual(['Lua runtime', 'Runtime calls and bindings']);
+	expect(uiIndex).toBeGreaterThan(luaIndex);
+	expect(labels.slice(uiIndex, uiIndex + 5)).toEqual([
+		'UI', 'Entities, hierarchy, and layout', 'Rendering and visuals', 'Text input and focus', 'Events and callbacks',
+	]);
 });
 
 test('renderer guides expose the practical sequence and source boundary', async ({ page }) => {

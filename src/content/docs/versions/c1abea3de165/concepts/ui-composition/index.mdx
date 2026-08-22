@@ -1,0 +1,38 @@
+---
+title: UI composition
+description: Follow a Lua UI table as MLE turns it into an entity hierarchy, calculates layout, routes interaction, and publishes render packets.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [ui, lua]
+sourceFiles: [src/mle/ui/UI.cpp, src/mle/ui/Entt.cpp, src/mle/ui/components/Relationship.cpp, src/mle/ui/systems/Bounds.cpp, src/mle/ui/systems/Rendering.cpp]
+testFiles: [tests/Core/src/ui/T.Bounds.cpp, tests/Core/src/ui/T.RenderingScissor.cpp, tests/Client/src/layers/UITest.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: ui-composition
+---
+
+An MLE screen begins as a Lua table, but it runs as an entity/component tree. `UI::setRoot` creates a registry entity, adds `Relationship` and `Bounds`, applies the table as components, and supplies a `ListContainer` when the root has no size provider.
+
+```text
+Lua table → entity + components → hierarchy → bounds → render packet
+                              ↘ hover / keys / text → callbacks
+```
+
+## Four layers of the model
+
+1. **Entity identity.** A `mle_ui_Entt` pairs one `UI` with one EnTT identifier. Names, IDs, and tags are lookup aids; the identifier and registry establish validity.
+2. **Components.** Table keys apply behavior or data. A container provides child sizing, a renderable provides visual content and a size provider, and callbacks retain Lua functions.
+3. **Relationships and layout.** Every created element has a `Relationship` and `Bounds`. Parent/child links determine coordinate space, clipping, traversal, and invalidation propagation.
+4. **Frame products.** Bounds are calculated on the client/UI update path. Rendering snapshots the enabled tree into a triple-buffered packet, then the render thread consumes the latest available packet.
+
+## Practical ordering
+
+Create the root only after `Client::init`, `Window::init`, renderer shader/cache setup, and the UI bindings are available through normal Client initialization. Apply structure before relying on child lookup. A layout-affecting change requests bounds work; the bounds phase runs after animations, hover, `on_update`, and custom-event dispatch. Rendering packets are built after bounds, while deferred destruction runs last.
+
+This order means a callback can request layout and have it reflected in the packet built later in the same `UI::update`. A `destroy()` call merely adds `DestroyFlag`; the entity remains present until the final destroy phase.
+
+Use [Entities, hierarchy, and layout](../../systems/ui/entities-hierarchy-and-layout/) for the sizing rules and [Events and callbacks](../../systems/ui/events-and-callbacks/) for mutation boundaries. Advanced factories and exhaustive key tables remain assigned to the planned UI guides and reference.
+
+Evidence: [`UI.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/ui/UI.cpp), [`Relationship.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/ui/components/Relationship.cpp), and [`Rendering.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/ui/systems/Rendering.cpp).

@@ -1,0 +1,41 @@
+---
+title: Rendering and visuals
+description: Understand how UI components become triple-buffered render packets, how clipping and layers work, and which renderer resources visuals require.
+contentType: technical
+mleCommit: c1abea3de165032fe064300340807b7a6af388f8
+maturity: in-development
+audiences: [integrator, contributor]
+subsystems: [ui, renderer]
+sourceFiles: [src/mle/ui/systems/Rendering.cpp, src/mle/ui/systems/Rendering.h, src/mle/ui/components/Renderable.cpp, src/mle/ui/renderable/Text.cpp, src/mle/ui/renderable/Sprite.cpp, src/mle/ui/renderable/NineSlice.cpp]
+testFiles: [tests/Core/src/ui/T.RenderingScissor.cpp, tests/Core/src/ui/T.Text.cpp, tests/Core/src/ui/T.Sprite.cpp, tests/Core/src/ui/T.NineSlice.cpp]
+lastVerified: '2026-08-21'
+translationStatus: canonical
+pageId: rendering-and-visuals
+---
+
+UI rendering has a client-side snapshot phase and a render-thread draw phase. `Rendering::update` walks the enabled entity tree after bounds, copies bounds/background/border/layer state, refreshes versioned renderable and shader packets, and publishes a packet through an atomic triple buffer. `Rendering::render` consumes the latest packet on the render thread and returns its color image.
+
+## Visual ownership
+
+MLE permits one `Renderable` implementation per entity. `text`, `sprite`, `nine_slice`, and `render_image` create or update that implementation; applying an incompatible renderable key to an occupied entity logs an error. Constructing a renderable also installs `SizeProvider`, and destroying it removes that provider.
+
+- `Text` uses the renderer font cache and UI text shaders. Text/font/wrap changes invalidate layout; color and border changes version the render packet.
+- `Sprite` and `NineSlice` use an image or texture-cache entry and can derive aspect from their UV region. Exact table forms remain assigned to the visual guide/reference.
+- `RenderImage` displays another image, including a dedicated child render target.
+- Background and border are separate node fields using cached UI pipelines.
+
+Renderer shader and pipeline caches must already contain the built-in `mle/ui/...` shaders. UI images and packets do not outlive the renderer services they reference.
+
+## Order and clipping
+
+The two layer sorts serve different consumers. `Rendering::update` sorts packet children in ascending `Layer` order, so lower layers draw first and higher layers draw later over them. Separately, `Relationship` hover traversal sorts children in descending layer order through `getChildrenSortedByLayer`, so higher layers receive hit-test priority first. Both use an ordinary sort, so authors should not treat equal-layer sibling order as a stable contract.
+
+Normal children intersect their bounds with the parent scissor. `escape_parent_scissor`, `ignore_parent_scissor`, and `render_outside_parent` are aliases for one flag: it bypasses the parent scissor but still clips to the current render target. It is not “no clipping.”
+
+A node shader may run before children or after them and may request a dedicated render target. Dedicated images are retained per entity in double-buffered handles; destruction callbacks move them into renderer garbage collection. `clear()` resets packet state and dedicated images.
+
+## Current boundary
+
+The packet bridge favors the newest available state; intermediate snapshots may be skipped. A changed Lua table is not observed until its handler versions a packet or requests layout as appropriate. Do not mutate render-owned data from arbitrary threads. The detailed shader/effect, sprite, image, and nine-slice options belong to the planned **Animation and effects** page and visual guide.
+
+Evidence: [`Rendering.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/ui/systems/Rendering.cpp), [`Renderable.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/src/mle/ui/components/Renderable.cpp), and [`T.RenderingScissor.cpp`](https://github.com/MaxMFonseca/MLE/blob/c1abea3de165032fe064300340807b7a6af388f8/tests/Core/src/ui/T.RenderingScissor.cpp).
