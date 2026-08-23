@@ -591,13 +591,30 @@ test('repository root is a stable landing page', async ({ page }) => {
   const picker = page.locator('[data-mle-landing-version-picker]');
   await expect(picker).toHaveAccessibleName('Documentation version');
   await expect(picker.locator('option:checked')).toHaveValue(`/MLEDocs/versions/${versionId}/`);
-  await expect(page.locator('[data-mle-landing-selected-version]')).toHaveText(versionId);
+  await expect(page.locator('[data-mle-landing-selected-version]')).toHaveCount(0);
+  const themePicker = page.locator('[data-mle-landing-theme-picker]');
+  await expect(themePicker).toHaveAccessibleName('Theme');
+  await expect(themePicker.locator('option')).toHaveText(['Auto', 'Light', 'Dark']);
+  const githubLink = page.getByRole('link', { name: 'GitHub', exact: true }).first();
+  await expect(githubLink).toHaveAttribute(
+    'href',
+    `https://github.com/MaxMFonseca/MLE/tree/${fullCommit}`,
+  );
+  await expect(githubLink.locator('svg')).toHaveCount(1);
+  const xPlaceholder = page.locator('[data-mle-landing-x-placeholder]');
+  await expect(xPlaceholder).toHaveAttribute('aria-disabled', 'true');
+  await expect(xPlaceholder).toBeDisabled();
+  await expect(xPlaceholder).not.toHaveAttribute('href', /.+/);
+  await expect(xPlaceholder.locator('svg')).toHaveCount(1);
   await expect(page.locator('[data-mle-landing-feature]')).toHaveCount(3);
   await expect(page.locator('[data-mle-landing-section]')).toHaveCount(7);
   await expect(
     page.locator('[data-mle-landing-section="start"]').getByRole('link'),
   ).toHaveAccessibleName(/Start Here/);
   await expect(page.locator('[data-mle-landing-evidence]')).toContainText(versionId);
+  await expect(page.locator('[data-mle-landing-evidence] dl > div')).toHaveCount(3);
+  await expect(page.locator('[data-mle-landing-evidence]')).not.toContainText('Languages');
+  await expect(page.locator('[data-mle-landing-evidence] .landing-evidence__source svg')).toHaveCount(1);
   const gameplay = page.getByRole('img', { name: 'Gameplay scene rendered by MLE' });
   await expect(gameplay).toHaveAttribute('src', `/MLEDocs/media/${versionId}/gameplay.webp`);
   await expect
@@ -624,7 +641,7 @@ for (const journey of [
     description:
       'MLE is a C++23 game engine with Vulkan rendering, Lua-driven UI, OpenAL audio, SDL window and input, and development tools.',
     canonical: 'https://maxmfonseca.github.io/MLEDocs/',
-    evidenceLanguages: 'English and Brazilian Portuguese',
+    absentEvidenceLabel: 'Languages',
   },
   {
     path: '/pt-br/',
@@ -634,7 +651,7 @@ for (const journey of [
     description:
       'MLE é um motor de jogos C++23 com renderização Vulkan, UI controlada por Lua, áudio OpenAL, janela e entrada SDL e ferramentas de desenvolvimento.',
     canonical: 'https://maxmfonseca.github.io/MLEDocs/pt-br/',
-    evidenceLanguages: 'inglês e português do Brasil',
+    absentEvidenceLabel: 'Idiomas',
   },
 ]) {
   test(`${journey.locale} root is a localized landing document`, async ({ page }) => {
@@ -661,18 +678,34 @@ for (const journey of [
       'href',
       'https://maxmfonseca.github.io/MLEDocs/pt-br/',
     );
-    await expect(
-      page
-        .locator('[data-mle-landing-evidence] dl > div')
-        .filter({
-          has: page.getByText(journey.locale === 'en' ? 'Languages' : 'Idiomas', {
-            exact: true,
-          }),
-        })
-        .locator('dd'),
-    ).toHaveText(journey.evidenceLanguages);
+    await expect(page.locator('[data-mle-landing-evidence] dl > div')).toHaveCount(3);
+    await expect(page.locator('[data-mle-landing-evidence]')).not.toContainText(
+      journey.absentEvidenceLabel,
+    );
   });
 }
+
+test('landing theme picker applies and persists explicit and automatic themes', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.goto(pageUrl('/'));
+
+  const picker = page.locator('[data-mle-landing-theme-picker]');
+  await picker.selectOption('dark');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  expect(await page.evaluate(() => localStorage.getItem('starlight-theme'))).toBe('dark');
+
+  await picker.selectOption('auto');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  expect(await page.evaluate(() => localStorage.getItem('starlight-theme'))).toBe('');
+
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+
+  await picker.selectOption('light');
+  await page.emulateMedia({ colorScheme: 'no-preference' });
+  await picker.selectOption('auto');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+});
 
 for (const journey of [
   {

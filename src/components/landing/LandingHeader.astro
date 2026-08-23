@@ -3,6 +3,7 @@ import type { Locale } from '../../data/taxonomy';
 import type { LandingCopy } from '../../lib/landing/copy';
 import type { LandingModel } from '../../lib/landing/model';
 import LandingLanguagePicker from './LandingLanguagePicker.astro';
+import LandingThemePicker from './LandingThemePicker.astro';
 import LandingVersionPicker from './LandingVersionPicker.astro';
 
 interface Props {
@@ -19,8 +20,18 @@ const { copy, locale, model } = Astro.props;
 		<a class="landing-brand" href={model.landingHome} aria-label={copy.header.homeLabel}>MLE</a>
 		<div class="landing-picker"><LandingVersionPicker {copy} {model} /></div>
 		<div class="landing-picker"><LandingLanguagePicker {copy} {locale} {model} /></div>
+		<div class="landing-picker"><LandingThemePicker {copy} /></div>
 		<nav class="landing-actions" aria-label={copy.header.navigationLabel}>
-			<a href={model.sourceDestination}>{copy.header.sourceLabel}</a>
+			<a class="landing-action" href={model.sourceDestination} aria-label={copy.header.sourceLabel}>
+				<svg viewBox="0 0 24 24" aria-hidden="true">
+					<path fill="currentColor" d="M12 .7A11.5 11.5 0 0 0 8.36 23.1c.58.1.79-.25.79-.56v-2.23c-3.24.7-3.92-1.37-3.92-1.37-.53-1.35-1.29-1.71-1.29-1.71-1.06-.72.08-.71.08-.71 1.17.08 1.78 1.2 1.78 1.2 1.04 1.78 2.73 1.27 3.4.97.1-.75.4-1.27.74-1.56-2.58-.3-5.3-1.29-5.3-5.69 0-1.26.45-2.28 1.2-3.09-.12-.29-.52-1.48.11-3.05 0 0 .98-.31 3.16 1.18a10.9 10.9 0 0 1 5.76 0c2.18-1.49 3.16-1.18 3.16-1.18.63 1.57.23 2.76.11 3.05.75.81 1.2 1.83 1.2 3.09 0 4.41-2.72 5.39-5.31 5.68.42.36.79 1.07.79 2.17v3.25c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .7Z" />
+				</svg>
+			</a>
+			<button class="landing-action landing-action--disabled" data-mle-landing-x-placeholder type="button" aria-label={copy.header.xPlaceholderLabel} aria-disabled="true" title={copy.header.xPlaceholderLabel} disabled>
+				<svg viewBox="0 0 24 24" aria-hidden="true">
+					<path fill="currentColor" d="M18.9 2H22l-6.77 7.74L23.2 22h-6.24l-4.89-6.39L6.48 22H3.36l7.26-8.3L2.98 2h6.4l4.42 5.84L18.9 2Zm-1.1 17.84h1.73L8.44 4.05H6.58L17.8 19.84Z" />
+				</svg>
+			</button>
 		</nav>
 	</div>
 </header>
@@ -33,8 +44,8 @@ const { copy, locale, model } = Astro.props;
 	}
 	.landing-header__inner {
 		display: grid;
-		grid-template-columns: auto minmax(15rem, 22rem) minmax(11rem, 15rem) auto;
-		gap: var(--mle-space-6);
+		grid-template-columns: auto minmax(14rem, 20rem) minmax(10rem, 13rem) minmax(8rem, 10rem) auto;
+		gap: var(--mle-space-5);
 		align-items: center;
 		width: min(76rem, calc(100% - 3rem));
 		min-height: 5.5rem;
@@ -51,21 +62,27 @@ const { copy, locale, model } = Astro.props;
 	.landing-picker { min-width: 0; }
 	.landing-actions {
 		display: flex;
-		flex-wrap: wrap;
-		gap: var(--mle-space-5);
+		gap: var(--mle-space-3);
 		justify-content: flex-end;
-		font-size: 0.92rem;
 	}
-	.landing-actions a {
+	.landing-action {
+		display: inline-grid;
+		place-items: center;
+		width: 2.5rem;
+		height: 2.5rem;
+		border: 1px solid var(--mle-border);
+		border-radius: var(--mle-radius-md);
+		background: var(--mle-surface-2);
 		color: var(--mle-text);
-		font-weight: 650;
-		text-decoration-color: var(--mle-border);
-		text-underline-offset: 0.24em;
+		padding: 0;
+		text-decoration: none;
 	}
+	.landing-action svg { width: 1.18rem; height: 1.18rem; }
 	.landing-actions a:hover {
 		color: var(--mle-accent-bright);
-		text-decoration-color: currentColor;
+		border-color: currentColor;
 	}
+	.landing-action--disabled { cursor: not-allowed; opacity: 0.42; }
 	@media (max-width: 52rem) {
 		.landing-header__inner {
 			grid-template-columns: 1fr;

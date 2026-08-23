@@ -1,0 +1,79 @@
+---
+import type { LandingCopy } from '../../lib/landing/copy';
+
+interface Props {
+	copy: LandingCopy;
+}
+
+const { copy } = Astro.props;
+---
+
+<label class="landing-theme-picker">
+	<span>{copy.header.themeLabel}</span>
+	<select data-mle-landing-theme-picker autocomplete="off">
+		<option value="auto">{copy.header.themeAuto}</option>
+		<option value="light">{copy.header.themeLight}</option>
+		<option value="dark">{copy.header.themeDark}</option>
+	</select>
+</label>
+
+<script is:inline>
+	(() => {
+		const picker = document.querySelector('[data-mle-landing-theme-picker]');
+		const preference = window.matchMedia('(prefers-color-scheme: light)');
+		if (!(picker instanceof HTMLSelectElement)) return;
+
+		const savedTheme = localStorage.getItem('starlight-theme');
+		picker.value = savedTheme === 'light' || savedTheme === 'dark' ? savedTheme : 'auto';
+
+		const applyTheme = () => {
+			const selected = picker.value;
+			const theme = selected === 'auto' ? (preference.matches ? 'light' : 'dark') : selected;
+			document.documentElement.dataset.theme = theme;
+			localStorage.setItem('starlight-theme', selected === 'auto' ? '' : selected);
+		};
+
+		picker.addEventListener('change', applyTheme);
+		preference.addEventListener('change', () => {
+			if (picker.value === 'auto') applyTheme();
+		});
+	})();
+</script>
+
+<style>
+	.landing-theme-picker {
+		display: grid;
+		gap: var(--mle-space-2);
+		border-radius: var(--mle-radius-md);
+		color: var(--mle-text-muted);
+		font-size: 0.8rem;
+	}
+
+	.landing-theme-picker:has(select:focus) {
+		box-shadow:
+			0 0 0 6px var(--mle-focus-outer),
+			0 0 0 7px var(--mle-focus-edge);
+	}
+
+	select {
+		width: 100%;
+		min-height: 2.5rem;
+		padding: var(--mle-space-1) var(--mle-space-2);
+		border: 1px solid var(--mle-border);
+		border-radius: var(--mle-radius-md);
+		background: var(--mle-surface-2);
+		color: var(--mle-text);
+		font-family: var(--mle-font-code);
+		font-size: 0.78rem;
+	}
+
+	select:focus {
+		outline: 3px solid var(--mle-accent-bright);
+		outline-offset: 2px;
+		box-shadow: none;
+	}
+
+	@media (max-width: 52rem) {
+		.landing-theme-picker { width: 100%; }
+	}
+</style>

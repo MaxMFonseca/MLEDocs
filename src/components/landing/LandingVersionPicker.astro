@@ -22,7 +22,6 @@ const { copy, model } = Astro.props;
 		}
 	</select>
 </label>
-<span class="landing-selected-version" data-mle-landing-selected-version>{model.version.id}</span>
 
 <script is:inline>
 	document.querySelector('[data-mle-landing-version-picker]')?.addEventListener('change', (event) => {
@@ -61,14 +60,6 @@ const { copy, model } = Astro.props;
 		outline: 3px solid var(--mle-accent-bright);
 		outline-offset: 2px;
 		box-shadow: none;
-	}
-
-	.landing-selected-version {
-		display: block;
-		margin-top: var(--mle-space-2);
-		font-family: var(--mle-font-code);
-		font-size: 0.75rem;
-		color: var(--mle-text-muted);
 	}
 
 	@media (max-width: 52rem) {

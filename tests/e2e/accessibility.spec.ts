@@ -145,6 +145,7 @@ for (const localeCase of [
     path: '/',
     versionLabel: 'Documentation version',
     languageLabel: 'Language',
+    themeLabel: 'Theme',
     versionDestination: `/MLEDocs/versions/${versionId}/`,
   },
   {
@@ -152,6 +153,7 @@ for (const localeCase of [
     path: '/pt-br/',
     versionLabel: 'Versão da documentação',
     languageLabel: 'Idioma',
+    themeLabel: 'Tema',
     versionDestination: `/MLEDocs/pt-br/versions/${versionId}/`,
   },
 ] as const) {
@@ -168,6 +170,10 @@ for (const localeCase of [
     const languagePicker = page.locator('[data-mle-landing-language-picker]');
     await expect(languagePicker).toHaveAccessibleName(localeCase.languageLabel);
     await expectLandingPickerFocus(page, languagePicker, '.landing-language-picker');
+
+    const themePicker = page.locator('[data-mle-landing-theme-picker]');
+    await expect(themePicker).toHaveAccessibleName(localeCase.themeLabel);
+    await expectLandingPickerFocus(page, themePicker, '.landing-theme-picker');
   });
 }
 
