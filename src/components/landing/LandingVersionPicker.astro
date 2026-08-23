@@ -1,0 +1,77 @@
+---
+import type { LandingModel } from '../../lib/landing/model';
+
+interface Props {
+	model: LandingModel;
+}
+
+const { model } = Astro.props;
+---
+
+<label class="landing-version-picker">
+	<span>Documentation version</span>
+	<select data-mle-landing-version-picker autocomplete="off">
+		{
+			model.options.map((option) => (
+				<option value={option.destination} selected={option.versionId === model.version.id}>
+					{option.label}
+				</option>
+			))
+		}
+	</select>
+</label>
+<span class="landing-selected-version" data-mle-landing-selected-version>{model.version.id}</span>
+
+<script is:inline>
+	document.querySelector('[data-mle-landing-version-picker]')?.addEventListener('change', (event) => {
+		if (event.currentTarget instanceof HTMLSelectElement) location.assign(event.currentTarget.value);
+	});
+</script>
+
+<style>
+	.landing-version-picker {
+		display: grid;
+		gap: var(--mle-space-2);
+		border-radius: var(--mle-radius-md);
+		color: var(--mle-text-muted);
+		font-size: 0.8rem;
+	}
+
+	.landing-version-picker:has(select:focus) {
+		box-shadow:
+			0 0 0 6px var(--mle-focus-outer),
+			0 0 0 7px var(--mle-focus-edge);
+	}
+
+	select {
+		width: 100%;
+		min-height: 2.5rem;
+		padding: var(--mle-space-1) var(--mle-space-2);
+		border: 1px solid var(--mle-border);
+		border-radius: var(--mle-radius-md);
+		background: var(--mle-surface-2);
+		color: var(--mle-text);
+		font-family: var(--mle-font-code);
+		font-size: 0.78rem;
+	}
+
+	select:focus {
+		outline: 3px solid var(--mle-accent-bright);
+		outline-offset: 2px;
+		box-shadow: none;
+	}
+
+	.landing-selected-version {
+		display: block;
+		margin-top: var(--mle-space-2);
+		font-family: var(--mle-font-code);
+		font-size: 0.75rem;
+		color: var(--mle-text-muted);
+	}
+
+	@media (max-width: 52rem) {
+		.landing-version-picker {
+			width: 100%;
+		}
+	}
+</style>

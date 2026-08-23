@@ -1,15 +1,13 @@
 ---
-import { navigationSections } from '../data/navigation';
+import { versions } from '../data/versions';
+import LandingVersionPicker from '../components/landing/LandingVersionPicker.astro';
 import { getCurrentVersion } from '../lib/versions/manifest';
-import { docsPath } from '../lib/links/base';
+import { buildLandingModel } from '../lib/landing/model';
 import '../styles/tokens.css';
 import '../styles/typography.css';
 import '../styles/global.css';
 
-const current = getCurrentVersion();
-const orderedSections = [...navigationSections].sort((left, right) => left.order - right.order);
-const englishHome = docsPath({ locale: 'en', versionId: current.id, slug: '' });
-const portugueseHome = docsPath({ locale: 'pt-br', versionId: current.id, slug: '' });
+const model = buildLandingModel(versions, getCurrentVersion().id);
 const base = import.meta.env.BASE_URL;
 const canonical = new URL(base, Astro.site).toString();
 const favicon = `${base}favicon.png`;
@@ -45,11 +43,11 @@ const favicon = `${base}favicon.png`;
 			<a class="brand" href={base} aria-label="MLE documentation home">MLE</a>
 			<div class="header-context">
 				<span>Versioned documentation</span>
-				<a href={current.repositoryUrl}>Source repository</a>
+				<a href={model.version.repositoryUrl}>Source repository</a>
 			</div>
 		</header>
 
-		<main data-mle-landing data-mle-landing-version={current.id}>
+		<main data-mle-landing data-mle-landing-version={model.version.id}>
 			<section class="hero" aria-labelledby="landing-title">
 				<div class="hero-copy">
 					<p class="eyebrow">Documentation for one exact source snapshot</p>
@@ -59,29 +57,30 @@ const favicon = `${base}favicon.png`;
 						and evidence—without drifting across commits.
 					</p>
 					<div class="language-actions" aria-label="Choose documentation language">
-						<a class="primary-action" href={englishHome}>Read in English</a>
-						<a class="secondary-action" href={portugueseHome} lang="pt-BR">Ler em português</a>
+						<a class="primary-action" href={model.englishHome}>Read in English</a>
+						<a class="secondary-action" href={model.portugueseHome} lang="pt-BR">Ler em português</a>
 					</div>
 				</div>
 
 				<aside class="snapshot-card" aria-label="Current documentation snapshot">
 					<p class="snapshot-label">Current snapshot</p>
-					<code>{current.id}</code>
+					<code>{model.version.id}</code>
+					<LandingVersionPicker {model} />
 					<dl>
 						<div>
 							<dt>Commit date</dt>
-							<dd>{current.committedAt}</dd>
+							<dd>{model.version.committedAt}</dd>
 						</div>
 						<div>
 							<dt>Status</dt>
-							<dd>{current.label.en}</dd>
+							<dd>{model.version.label.en}</dd>
 						</div>
 						<div>
 							<dt>Languages</dt>
 							<dd>English · Português</dd>
 						</div>
 					</dl>
-					<a href={`${current.repositoryUrl}/tree/${current.commit}`}>Inspect this commit on GitHub</a>
+					<a href={model.sourceDestination}>Inspect this commit on GitHub</a>
 				</aside>
 			</section>
 
@@ -89,21 +88,17 @@ const favicon = `${base}favicon.png`;
 				<div class="section-heading">
 					<p class="eyebrow">Documentation directory</p>
 					<h2 id="directory-title">Choose where to start</h2>
-					<p>Each section stays pinned to <code>{current.id}</code>.</p>
+					<p>Each section stays pinned to <code>{model.version.id}</code>.</p>
 				</div>
 
 				<div class="section-grid">
 					{
-						orderedSections.map((section) => (
+						model.sections.map(({ section, href }) => (
 							<a
 								class="section-card"
 								data-accent={section.accent}
 								data-mle-landing-section={section.pageId}
-								href={docsPath({
-									locale: 'en',
-									versionId: current.id,
-									slug: section.segment,
-								})}
+								href={href}
 							>
 								<span class="section-number">0{section.order}</span>
 								<span class="section-copy">
@@ -121,7 +116,7 @@ const favicon = `${base}favicon.png`;
 
 		<footer>
 			<span>MLE documentation</span>
-			<span>Snapshot {current.id}</span>
+			<span>Snapshot {model.version.id}</span>
 		</footer>
 	</body>
 </html>

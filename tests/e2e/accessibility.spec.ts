@@ -63,6 +63,30 @@ for (const landingCase of [
   });
 }
 
+test('landing version picker is keyboard-focusable with a two-part focus indicator', async ({ page }) => {
+  await page.goto(pageUrl('/'));
+
+  const picker = page.locator('[data-mle-landing-version-picker]');
+  await expect(picker).toHaveAccessibleName('Documentation version');
+  await page.locator('body').click({ position: { x: 2, y: 2 } });
+  for (let step = 0; step < 8; step += 1) {
+    await page.keyboard.press('Tab');
+    if (await picker.evaluate((element) => element === document.activeElement)) break;
+  }
+  await expect(picker).toBeFocused();
+  const focus = await picker.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      outlineStyle: style.outlineStyle,
+      outlineWidth: Number.parseFloat(style.outlineWidth),
+      wrapperShadow: getComputedStyle(element.closest('.landing-version-picker')!).boxShadow,
+    };
+  });
+  expect(focus.outlineStyle).not.toBe('none');
+  expect(focus.outlineWidth).toBeGreaterThanOrEqual(2);
+  expect(focus.wrapperShadow).not.toBe('none');
+});
+
 test('applies the MLE palette instead of the Starlight defaults', async ({ page }) => {
   await page.goto(pageUrl('/versions/c1abea3de165/'));
   await page.locator('header starlight-theme-select select').selectOption('dark');

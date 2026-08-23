@@ -588,6 +588,10 @@ test('repository root is a stable landing page for both documentation languages'
     'href',
     `/MLEDocs/pt-br/versions/${versionId}/`,
   );
+  const picker = page.locator('[data-mle-landing-version-picker]');
+  await expect(picker).toHaveAccessibleName('Documentation version');
+  await expect(picker.locator('option:checked')).toHaveValue(`/MLEDocs/versions/${versionId}/`);
+  await expect(page.locator('[data-mle-landing-selected-version]')).toHaveText(versionId);
   await expect(page.locator('[data-mle-landing-section]')).toHaveCount(7);
   await expect(page.locator('[data-mle-not-found]')).toHaveCount(0);
   await expectMleFavicon(page);
