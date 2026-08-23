@@ -1,0 +1,126 @@
+---
+import type { LandingModel } from '../../lib/landing/model';
+
+interface Props {
+	model: LandingModel;
+}
+
+const { model } = Astro.props;
+const languageNames: Readonly<Record<string, string>> = {
+	en: 'English',
+	'pt-br': 'Português (Brasil)',
+};
+const languages = model.version.locales.map((locale) => languageNames[locale] ?? locale).join(' · ');
+---
+
+<aside class="landing-evidence" data-mle-landing-evidence aria-labelledby="landing-evidence-title">
+	<div class="landing-evidence__intro">
+		<p>Snapshot evidence</p>
+		<h2 id="landing-evidence-title">Documentation tied to one source state</h2>
+		<span>This handbook records an in-development snapshot instead of a moving branch.</span>
+	</div>
+
+	<dl>
+		<div>
+			<dt>Selected snapshot</dt>
+			<dd><code>{model.version.id}</code></dd>
+		</div>
+		<div>
+			<dt>Commit date</dt>
+			<dd>{model.version.committedAt}</dd>
+		</div>
+		<div>
+			<dt>Status</dt>
+			<dd>{model.version.label.en}</dd>
+		</div>
+		<div>
+			<dt>Languages</dt>
+			<dd>{languages}</dd>
+		</div>
+	</dl>
+
+	<a class="landing-evidence__source" href={model.sourceDestination}>
+		<span>Inspect the full commit</span>
+		<code>{model.version.commit}</code>
+	</a>
+</aside>
+
+<style>
+	.landing-evidence {
+		display: grid;
+		grid-template-columns: minmax(0, 0.9fr) minmax(18rem, 1fr) minmax(14rem, 0.72fr);
+		gap: clamp(1.5rem, 4vw, 3rem);
+		align-items: center;
+		margin-block: 0 clamp(4rem, 8vw, 7rem);
+		padding: clamp(1.5rem, 4vw, 2.5rem);
+		border: 1px solid var(--mle-border);
+		border-top: 3px solid var(--mle-accent-bright);
+		border-radius: var(--mle-radius-lg);
+		background: var(--mle-surface-1);
+		box-shadow: var(--mle-shadow-md);
+	}
+	.landing-evidence__intro p {
+		margin: 0 0 var(--mle-space-3);
+		color: var(--mle-accent-bright);
+		font-family: var(--mle-font-code);
+		font-size: 0.76rem;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+	}
+	.landing-evidence__intro h2 {
+		margin: 0 0 var(--mle-space-3);
+		color: var(--mle-text);
+		font-size: clamp(1.4rem, 2.5vw, 2rem);
+		line-height: 1.1;
+	}
+	.landing-evidence__intro > span {
+		display: block;
+		font-size: 0.95rem;
+		line-height: 1.5;
+	}
+	dl {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		margin: 0;
+	}
+	dl div {
+		min-width: 0;
+		padding: var(--mle-space-3);
+		border-bottom: 1px solid var(--mle-border);
+	}
+	dt { font-size: 0.8rem; }
+	dd {
+		margin: var(--mle-space-1) 0 0;
+		color: var(--mle-text);
+		font-weight: 650;
+		line-height: 1.4;
+	}
+	dd code { font-size: 0.78rem; }
+	.landing-evidence__source {
+		display: grid;
+		gap: var(--mle-space-2);
+		min-width: 0;
+		padding: var(--mle-space-4);
+		border: 1px solid var(--mle-border);
+		border-radius: var(--mle-radius-md);
+		color: var(--mle-accent-bright);
+		font-weight: 700;
+		text-decoration: none;
+	}
+	.landing-evidence__source code {
+		max-width: 100%;
+		overflow-wrap: anywhere;
+		color: var(--mle-text-muted);
+		font-size: 0.7rem;
+		font-weight: 400;
+	}
+	@media (max-width: 62rem) {
+		.landing-evidence { grid-template-columns: 1fr 1fr; }
+		.landing-evidence__intro { grid-column: 1 / -1; }
+	}
+	@media (max-width: 52rem) {
+		.landing-evidence { grid-template-columns: 1fr; }
+		.landing-evidence__intro { grid-column: auto; }
+		dl { grid-template-columns: 1fr; }
+	}
+</style>

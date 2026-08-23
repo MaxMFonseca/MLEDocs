@@ -1,0 +1,129 @@
+---
+import type { LandingModel } from '../../lib/landing/model';
+
+interface Props {
+	sections: LandingModel['sections'];
+}
+
+const { sections } = Astro.props;
+---
+
+<nav class="landing-directory" aria-labelledby="landing-directory-title">
+	<div class="landing-directory__heading">
+		<div>
+			<p>Documentation directory</p>
+			<h2 id="landing-directory-title">Choose a route through the handbook</h2>
+		</div>
+		<span>{sections.length} sections from the navigation registry</span>
+	</div>
+
+	<ol class="landing-directory__grid">
+		{
+			sections.map(({ section, href }) => (
+				<li data-mle-landing-section={section.pageId} data-accent={section.accent}>
+					<a href={href}>
+						<span class="landing-directory__number">0{section.order}</span>
+						<span class="landing-directory__copy">
+							<strong>{section.labels.en}</strong>
+							<small lang="pt-BR">{section.labels['pt-br']}</small>
+							<span>{section.summaries.en}</span>
+						</span>
+						<span class="landing-directory__arrow" aria-hidden="true">↗</span>
+					</a>
+				</li>
+			))
+		}
+	</ol>
+</nav>
+
+<style>
+	.landing-directory { padding-block: clamp(4rem, 8vw, 7rem); }
+	.landing-directory__heading {
+		display: flex;
+		gap: var(--mle-space-6);
+		align-items: end;
+		justify-content: space-between;
+		margin-bottom: var(--mle-space-7);
+	}
+	.landing-directory__heading p {
+		margin: 0 0 var(--mle-space-3);
+		color: var(--mle-accent-bright);
+		font-family: var(--mle-font-code);
+		font-size: 0.76rem;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+	}
+	.landing-directory__heading h2 {
+		max-width: 20ch;
+		margin: 0;
+		color: var(--mle-text);
+		font-size: clamp(2rem, 4vw, 3.4rem);
+		line-height: 1.08;
+	}
+	.landing-directory__heading > span {
+		max-width: 18rem;
+		font-family: var(--mle-font-code);
+		font-size: 0.78rem;
+		line-height: 1.5;
+		text-align: right;
+	}
+	.landing-directory__grid {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		margin: 0;
+		padding: 0;
+		border-top: 1px solid var(--mle-border);
+		list-style: none;
+	}
+	.landing-directory__grid li {
+		--section-accent: var(--mle-accent-bright);
+		min-width: 0;
+		border-bottom: 1px solid var(--mle-border);
+	}
+	.landing-directory__grid li:nth-child(odd) { border-inline-end: 1px solid var(--mle-border); }
+	.landing-directory__grid li:last-child:nth-child(odd) {
+		grid-column: 1 / -1;
+		border-inline-end: 0;
+	}
+	.landing-directory__grid li[data-accent='core'] { --section-accent: var(--mle-core); }
+	.landing-directory__grid li[data-accent='renderer'] { --section-accent: var(--mle-renderer); }
+	.landing-directory__grid li[data-accent='lua-ui'] { --section-accent: var(--mle-lua-ui); }
+	.landing-directory__grid li[data-accent='audio'] { --section-accent: var(--mle-audio); }
+	.landing-directory__grid li[data-accent='tools'] { --section-accent: var(--mle-tools); }
+	.landing-directory__grid a {
+		display: grid;
+		grid-template-columns: 2rem minmax(0, 1fr) auto;
+		gap: var(--mle-space-4);
+		padding: var(--mle-space-5);
+		color: var(--mle-text-muted);
+		text-decoration: none;
+		transition:
+			background var(--mle-motion-base) var(--mle-motion-ease),
+			transform var(--mle-motion-base) var(--mle-motion-ease);
+	}
+	.landing-directory__grid a:hover { background: var(--mle-surface-1); transform: translateY(-2px); }
+	.landing-directory__number,
+	.landing-directory__arrow { color: var(--section-accent); font-family: var(--mle-font-code); }
+	.landing-directory__copy {
+		display: grid;
+		gap: var(--mle-space-2);
+		min-width: 0;
+	}
+	.landing-directory__copy strong {
+		color: var(--mle-text);
+		font-family: var(--mle-font-heading);
+		font-size: 1.3rem;
+	}
+	.landing-directory__copy small { color: var(--section-accent); font-family: var(--mle-font-code); }
+	.landing-directory__copy > span { line-height: 1.5; }
+	@media (max-width: 52rem) {
+		.landing-directory__heading { align-items: flex-start; flex-direction: column; }
+		.landing-directory__heading > span { text-align: left; }
+		.landing-directory__grid { grid-template-columns: 1fr; }
+		.landing-directory__grid li:nth-child(odd),
+		.landing-directory__grid li:last-child:nth-child(odd) {
+			grid-column: auto;
+			border-inline-end: 0;
+		}
+	}
+</style>

@@ -579,10 +579,14 @@ test('repository root is a stable landing page for both documentation languages'
     'data-mle-landing-version',
     versionId,
   );
-  await expect(page.getByRole('heading', { level: 1, name: 'MLE documentation' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Read in English' })).toHaveAttribute(
+  await expect(page.getByRole('heading', { level: 1, name: /C\+\+23 game engine/i })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Start here', exact: true })).toHaveAttribute(
     'href',
-    `/MLEDocs/versions/${versionId}/`,
+    `/MLEDocs/versions/${versionId}/start-here/`,
+  );
+  await expect(page.getByRole('link', { name: 'Explore systems' })).toHaveAttribute(
+    'href',
+    `/MLEDocs/versions/${versionId}/systems/`,
   );
   await expect(page.getByRole('link', { name: 'Ler em português' })).toHaveAttribute(
     'href',
@@ -592,7 +596,19 @@ test('repository root is a stable landing page for both documentation languages'
   await expect(picker).toHaveAccessibleName('Documentation version');
   await expect(picker.locator('option:checked')).toHaveValue(`/MLEDocs/versions/${versionId}/`);
   await expect(page.locator('[data-mle-landing-selected-version]')).toHaveText(versionId);
+  await expect(page.locator('[data-mle-landing-feature]')).toHaveCount(3);
   await expect(page.locator('[data-mle-landing-section]')).toHaveCount(7);
+  await expect(
+    page.locator('[data-mle-landing-section="start"]').getByRole('link'),
+  ).toHaveAccessibleName(/Start Here/);
+  await expect(page.locator('[data-mle-landing-evidence]')).toContainText(versionId);
+  const gameplay = page.getByRole('img', { name: 'Gameplay scene rendered by MLE' });
+  await expect(gameplay).toHaveAttribute('src', `/MLEDocs/media/${versionId}/gameplay.webp`);
+  await expect
+    .poll(() =>
+      gameplay.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0),
+    )
+    .toBe(true);
   await expect(page.locator('[data-mle-not-found]')).toHaveCount(0);
   await expectMleFavicon(page);
 });

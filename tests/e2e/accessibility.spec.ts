@@ -57,7 +57,19 @@ for (const landingCase of [
 
     await expect(page.locator('html')).toHaveAttribute('data-theme', landingCase.theme);
     await expectLoadedFontsAndNoOverflow(page);
-    await expectTwoPartFocus(page.getByRole('link', { name: 'Read in English' }));
+    await expect(page.locator('[data-mle-landing-feature]')).toHaveCount(3);
+    await expect(page.locator('[data-mle-landing-section]')).toHaveCount(7);
+    await expect(
+      page.locator('[data-mle-landing-section="start"]').getByRole('link'),
+    ).toHaveAccessibleName(/Start Here/);
+    await expect(page.locator('[data-mle-landing-evidence]')).toContainText(versionId);
+    const gameplay = page.getByRole('img', { name: 'Gameplay scene rendered by MLE' });
+    await expect
+      .poll(() =>
+        gameplay.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0),
+      )
+      .toBe(true);
+    await expectTwoPartFocus(page.getByRole('link', { name: 'Start here', exact: true }));
     const results = await new AxeBuilder({ page }).analyze();
     expect(results.violations).toEqual([]);
   });
