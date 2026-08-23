@@ -1,46 +1,44 @@
 ---
+import type { LandingCopy } from '../../lib/landing/copy';
 import type { LandingModel } from '../../lib/landing/model';
 
 interface Props {
+	copy: LandingCopy;
 	model: LandingModel;
 }
 
-const { model } = Astro.props;
-const languageNames: Readonly<Record<string, string>> = {
-	en: 'English',
-	'pt-br': 'Português (Brasil)',
-};
-const languages = model.version.locales.map((locale) => languageNames[locale] ?? locale).join(' · ');
+const { copy, model } = Astro.props;
+const languages = copy.evidence.formatLanguages(model.version.locales);
 ---
 
 <aside class="landing-evidence" data-mle-landing-evidence aria-labelledby="landing-evidence-title">
 	<div class="landing-evidence__intro">
-		<p>Snapshot evidence</p>
-		<h2 id="landing-evidence-title">Documentation tied to one source state</h2>
-		<span>This handbook records an in-development snapshot instead of a moving branch.</span>
+		<p>{copy.evidence.eyebrow}</p>
+		<h2 id="landing-evidence-title">{copy.evidence.title}</h2>
+		<span>{copy.evidence.summary}</span>
 	</div>
 
 	<dl>
 		<div>
-			<dt>Selected snapshot</dt>
+			<dt>{copy.evidence.snapshot}</dt>
 			<dd><code>{model.version.id}</code></dd>
 		</div>
 		<div>
-			<dt>Commit date</dt>
+			<dt>{copy.evidence.commitDate}</dt>
 			<dd>{model.version.committedAt}</dd>
 		</div>
 		<div>
-			<dt>Status</dt>
-			<dd>{model.version.label.en}</dd>
+			<dt>{copy.evidence.status}</dt>
+			<dd>{model.version.label[model.locale]}</dd>
 		</div>
 		<div>
-			<dt>Languages</dt>
+			<dt>{copy.evidence.languages}</dt>
 			<dd>{languages}</dd>
 		</div>
 	</dl>
 
 	<a class="landing-evidence__source" href={model.sourceDestination}>
-		<span>Inspect the full commit</span>
+		<span>{copy.evidence.source}</span>
 		<code>{model.version.commit}</code>
 	</a>
 </aside>

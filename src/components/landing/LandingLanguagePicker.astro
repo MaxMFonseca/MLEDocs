@@ -1,37 +1,35 @@
 ---
+import type { Locale } from '../../data/taxonomy';
 import type { LandingCopy } from '../../lib/landing/copy';
 import type { LandingModel } from '../../lib/landing/model';
 
 interface Props {
 	copy: LandingCopy;
+	locale: Locale;
 	model: LandingModel;
 }
 
-const { copy, model } = Astro.props;
+const { copy, locale, model } = Astro.props;
+const englishLanding = locale === 'en' ? model.landingHome : model.alternateLanding;
+const portugueseLanding = locale === 'pt-br' ? model.landingHome : model.alternateLanding;
 ---
 
-<label class="landing-version-picker">
-	<span>{copy.header.versionLabel}</span>
-	<select data-mle-landing-version-picker autocomplete="off">
-		{
-			model.options.map((option) => (
-				<option value={option.destination} selected={option.versionId === model.version.id}>
-					{option.label}
-				</option>
-			))
-		}
+<label class="landing-language-picker">
+	<span>{copy.header.languageLabel}</span>
+	<select data-mle-landing-language-picker autocomplete="off">
+		<option value={englishLanding} selected={locale === 'en'}>English</option>
+		<option value={portugueseLanding} selected={locale === 'pt-br'}>Português (Brasil)</option>
 	</select>
 </label>
-<span class="landing-selected-version" data-mle-landing-selected-version>{model.version.id}</span>
 
 <script is:inline>
-	document.querySelector('[data-mle-landing-version-picker]')?.addEventListener('change', (event) => {
+	document.querySelector('[data-mle-landing-language-picker]')?.addEventListener('change', (event) => {
 		if (event.currentTarget instanceof HTMLSelectElement) location.assign(event.currentTarget.value);
 	});
 </script>
 
 <style>
-	.landing-version-picker {
+	.landing-language-picker {
 		display: grid;
 		gap: var(--mle-space-2);
 		border-radius: var(--mle-radius-md);
@@ -39,7 +37,7 @@ const { copy, model } = Astro.props;
 		font-size: 0.8rem;
 	}
 
-	.landing-version-picker:has(select:focus) {
+	.landing-language-picker:has(select:focus) {
 		box-shadow:
 			0 0 0 6px var(--mle-focus-outer),
 			0 0 0 7px var(--mle-focus-edge);
@@ -63,17 +61,7 @@ const { copy, model } = Astro.props;
 		box-shadow: none;
 	}
 
-	.landing-selected-version {
-		display: block;
-		margin-top: var(--mle-space-2);
-		font-family: var(--mle-font-code);
-		font-size: 0.75rem;
-		color: var(--mle-text-muted);
-	}
-
 	@media (max-width: 52rem) {
-		.landing-version-picker {
-			width: 100%;
-		}
+		.landing-language-picker { width: 100%; }
 	}
 </style>

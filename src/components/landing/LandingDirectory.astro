@@ -1,32 +1,33 @@
 ---
+import type { LandingCopy } from '../../lib/landing/copy';
 import type { LandingModel } from '../../lib/landing/model';
 
 interface Props {
-	sections: LandingModel['sections'];
+	copy: LandingCopy;
+	model: LandingModel;
 }
 
-const { sections } = Astro.props;
+const { copy, model } = Astro.props;
 ---
 
 <nav class="landing-directory" aria-labelledby="landing-directory-title">
 	<div class="landing-directory__heading">
 		<div>
-			<p>Documentation directory</p>
-			<h2 id="landing-directory-title">Choose a route through the handbook</h2>
+			<p>{copy.directory.eyebrow}</p>
+			<h2 id="landing-directory-title">{copy.directory.title}</h2>
 		</div>
-		<span>{sections.length} sections from the navigation registry</span>
+		<span>{copy.directory.registryCount(model.sections.length)}</span>
 	</div>
 
 	<ol class="landing-directory__grid">
 		{
-			sections.map(({ section, href }) => (
-				<li data-mle-landing-section={section.pageId} data-accent={section.accent}>
+			model.sections.map(({ pageId, order, accent, label, summary, href }) => (
+				<li data-mle-landing-section={pageId} data-accent={accent}>
 					<a href={href}>
-						<span class="landing-directory__number">0{section.order}</span>
+						<span class="landing-directory__number">0{order}</span>
 						<span class="landing-directory__copy">
-							<strong>{section.labels.en}</strong>
-							<small lang="pt-BR">{section.labels['pt-br']}</small>
-							<span>{section.summaries.en}</span>
+							<strong>{label}</strong>
+							<span>{summary}</span>
 						</span>
 						<span class="landing-directory__arrow" aria-hidden="true">↗</span>
 					</a>
@@ -114,7 +115,6 @@ const { sections } = Astro.props;
 		font-family: var(--mle-font-heading);
 		font-size: 1.3rem;
 	}
-	.landing-directory__copy small { color: var(--section-accent); font-family: var(--mle-font-code); }
 	.landing-directory__copy > span { line-height: 1.5; }
 	@media (max-width: 52rem) {
 		.landing-directory__heading { align-items: flex-start; flex-direction: column; }

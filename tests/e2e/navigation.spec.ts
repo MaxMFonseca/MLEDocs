@@ -570,7 +570,7 @@ test('does not classify nested versions segments as canonical version routes', a
   await expect(page.locator('[data-mle-not-found="missing-page"]')).toHaveCount(0);
 });
 
-test('repository root is a stable landing page for both documentation languages', async ({ page }) => {
+test('repository root is a stable landing page', async ({ page }) => {
   const response = await page.goto(pageUrl('/'));
 
   expect(response?.status()).toBe(200);
@@ -587,10 +587,6 @@ test('repository root is a stable landing page for both documentation languages'
   await expect(page.getByRole('link', { name: 'Explore systems' })).toHaveAttribute(
     'href',
     `/MLEDocs/versions/${versionId}/systems/`,
-  );
-  await expect(page.getByRole('link', { name: 'Ler em português' })).toHaveAttribute(
-    'href',
-    `/MLEDocs/pt-br/versions/${versionId}/`,
   );
   const picker = page.locator('[data-mle-landing-version-picker]');
   await expect(picker).toHaveAccessibleName('Documentation version');
@@ -619,15 +615,90 @@ test('immutable documentation route exposes the MLE favicon', async ({ page }) =
   await expectMleFavicon(page);
 });
 
-test('Brazilian Portuguese root alias resolves to the immutable current snapshot', async ({ page }) => {
-  await page.goto(pageUrl('/pt-br/'));
+for (const journey of [
+  {
+    path: '/',
+    locale: 'en',
+    heading: 'A C++23 game engine for building real-time experiences',
+    absent: 'Um motor de jogos C++23',
+    description:
+      'MLE is a C++23 game engine with Vulkan rendering, Lua-driven UI, OpenAL audio, SDL window and input, and development tools.',
+    canonical: 'https://maxmfonseca.github.io/MLEDocs/',
+    evidenceLanguages: 'English and Brazilian Portuguese',
+  },
+  {
+    path: '/pt-br/',
+    locale: 'pt-BR',
+    heading: 'Um motor de jogos C++23 para criar experiências em tempo real',
+    absent: 'A C++23 game engine',
+    description:
+      'MLE é um motor de jogos C++23 com renderização Vulkan, UI controlada por Lua, áudio OpenAL, janela e entrada SDL e ferramentas de desenvolvimento.',
+    canonical: 'https://maxmfonseca.github.io/MLEDocs/pt-br/',
+    evidenceLanguages: 'inglês e português do Brasil',
+  },
+]) {
+  test(`${journey.locale} root is a localized landing document`, async ({ page }) => {
+    const response = await page.goto(pageUrl(journey.path));
 
-  await expect(page).toHaveURL(pageUrl(`/pt-br/versions/${versionId}/`));
-  await expect(page.locator('[data-mle-homepage]')).toHaveAttribute(
-    'data-mle-homepage-version',
-    versionId,
-  );
-});
+    expect(response?.status()).toBe(200);
+    await expect(page).toHaveURL(pageUrl(journey.path));
+    await expect(page.locator('html')).toHaveAttribute('lang', journey.locale);
+    await expect(page.getByRole('heading', { level: 1, name: journey.heading })).toBeVisible();
+    await expect(page.locator('body')).not.toContainText(journey.absent);
+    await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+      'content',
+      journey.description,
+    );
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+      'href',
+      journey.canonical,
+    );
+    await expect(page.locator('link[rel="alternate"][hreflang="en"]')).toHaveAttribute(
+      'href',
+      'https://maxmfonseca.github.io/MLEDocs/',
+    );
+    await expect(page.locator('link[rel="alternate"][hreflang="pt-BR"]')).toHaveAttribute(
+      'href',
+      'https://maxmfonseca.github.io/MLEDocs/pt-br/',
+    );
+    await expect(
+      page
+        .locator('[data-mle-landing-evidence] dl > div')
+        .filter({
+          has: page.getByText(journey.locale === 'en' ? 'Languages' : 'Idiomas', {
+            exact: true,
+          }),
+        })
+        .locator('dd'),
+    ).toHaveText(journey.evidenceLanguages);
+  });
+}
+
+for (const journey of [
+  {
+    from: '/',
+    destination: '/pt-br/',
+    title: 'MLE · Documentação do motor de jogos C++23',
+  },
+  {
+    from: '/pt-br/',
+    destination: '/',
+    title: 'MLE · C++23 game engine documentation',
+  },
+]) {
+  test(`landing language picker navigates from ${journey.from} to ${journey.destination}`, async ({
+    page,
+  }) => {
+    await page.goto(pageUrl(journey.from));
+
+    const picker = page.locator('[data-mle-landing-language-picker]');
+    await expect(picker.locator('option')).toHaveText(['English', 'Português (Brasil)']);
+    await picker.selectOption(`/MLEDocs${journey.destination}`);
+
+    await expect(page).toHaveURL(pageUrl(journey.destination));
+    await expect(page).toHaveTitle(journey.title);
+  });
+}
 
 test('page outline stays compact at normal desktop widths and slim on wide screens', async ({
   page,

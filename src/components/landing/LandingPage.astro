@@ -1,0 +1,100 @@
+---
+import type { Locale } from '../../data/taxonomy';
+import { versions } from '../../data/versions';
+import { landingCopy } from '../../lib/landing/copy';
+import { buildLandingModel } from '../../lib/landing/model';
+import { getCurrentVersion } from '../../lib/versions/manifest';
+import '../../styles/tokens.css';
+import '../../styles/typography.css';
+import '../../styles/global.css';
+import LandingDirectory from './LandingDirectory.astro';
+import LandingEvidence from './LandingEvidence.astro';
+import LandingFeatures from './LandingFeatures.astro';
+import LandingHeader from './LandingHeader.astro';
+import LandingHero from './LandingHero.astro';
+
+interface Props {
+	locale: Locale;
+}
+
+const { locale } = Astro.props;
+const current = getCurrentVersion(versions);
+const model = buildLandingModel(versions, current.id, locale);
+const copy = landingCopy[locale];
+const canonical = new URL(model.landingHome, Astro.site).toString();
+const englishLanding = locale === 'en' ? model.landingHome : model.alternateLanding;
+const portugueseLanding = locale === 'pt-br' ? model.landingHome : model.alternateLanding;
+const englishCanonical = new URL(englishLanding, Astro.site).toString();
+const portugueseCanonical = new URL(portugueseLanding, Astro.site).toString();
+const favicon = `${import.meta.env.BASE_URL}favicon.png`;
+---
+
+<!doctype html>
+<html lang={locale === 'pt-br' ? 'pt-BR' : 'en'}>
+	<head>
+		<script is:inline>
+			(() => {
+				const stored = localStorage.getItem('starlight-theme');
+				const theme =
+					stored === 'light' || stored === 'dark'
+						? stored
+						: matchMedia('(prefers-color-scheme: light)').matches
+							? 'light'
+							: 'dark';
+				document.documentElement.dataset.theme = theme;
+			})();
+		</script>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width" />
+		<meta name="description" content={copy.metadata.description} />
+		<link rel="icon" type="image/png" sizes="512x512" href={favicon} />
+		<link rel="canonical" href={canonical} />
+		<link rel="alternate" hreflang="en" href={englishCanonical} />
+		<link rel="alternate" hreflang="pt-BR" href={portugueseCanonical} />
+		<title>{copy.metadata.title}</title>
+	</head>
+	<body data-pagefind-ignore>
+		<LandingHeader {copy} {locale} {model} />
+		<main data-mle-landing data-mle-landing-version={model.version.id}>
+			<LandingHero {copy} {model} />
+			<LandingFeatures {copy} {model} />
+			<LandingDirectory {copy} {model} />
+			<LandingEvidence {copy} {model} />
+		</main>
+		<footer>
+			<span>{copy.footer.documentation}</span>
+			<span>{copy.footer.snapshot(model.version.id)}</span>
+		</footer>
+	</body>
+</html>
+
+<style>
+	:global(html) { min-width: 20rem; }
+	:global(body) {
+		margin: 0;
+		min-height: 100vh;
+		background:
+			radial-gradient(circle at 78% 8%, color-mix(in srgb, var(--mle-accent) 13%, transparent), transparent 29rem),
+			var(--mle-bg);
+	}
+	main,
+	footer {
+		width: min(76rem, calc(100% - 3rem));
+		margin-inline: auto;
+	}
+	footer {
+		display: flex;
+		justify-content: space-between;
+		gap: var(--mle-space-4);
+		padding-block: var(--mle-space-5);
+		border-top: 1px solid var(--mle-border);
+		font-family: var(--mle-font-code);
+		font-size: 0.8rem;
+		color: var(--mle-text-muted);
+	}
+	@media (max-width: 52rem) {
+		main,
+		footer { width: min(100% - 2rem, 40rem); }
+		footer { flex-direction: column; }
+	}
+</style>

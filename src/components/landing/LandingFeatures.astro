@@ -1,75 +1,26 @@
 ---
-import type { NavigationPageId } from '../../data/navigation';
+import type { LandingCopy } from '../../lib/landing/copy';
 import type { LandingModel } from '../../lib/landing/model';
 
 interface Props {
+	copy: LandingCopy;
 	model: LandingModel;
 }
 
-interface FeatureBand {
-	readonly number: string;
-	readonly label: string;
-	readonly title: string;
-	readonly summary: string;
-	readonly facts: readonly string[];
-	readonly destinationId: NavigationPageId;
-}
-
-const { model } = Astro.props;
-const featureBands: readonly FeatureBand[] = [
-	{
-		number: '01',
-		label: 'Foundation and platform',
-		title: 'A C++23 core connected to the host platform',
-		summary:
-			'MLE organizes runtime ownership, math, utilities, events, and concurrency around a C++23 foundation.',
-		facts: [
-			'SDL supplies window creation, focus, text, and input boundaries.',
-			'The Client layer connects engine systems to an interactive application.',
-			'A server subsystem exists in the snapshot and is documented as experimental.',
-		],
-		destinationId: 'concepts',
-	},
-	{
-		number: '02',
-		label: 'Rendering and content',
-		title: 'Vulkan rendering with models and animation',
-		summary:
-			'The renderer covers frame flow, queues, resources, synchronization, shaders, pipelines, render targets, and text composition.',
-		facts: [
-			'Model workflows load meshes and materials into renderer-owned resources.',
-			'Animation support connects skeletons, cameras, and per-frame control.',
-			'Guides and references trace the same pinned implementation contracts.',
-		],
-		destinationId: 'systems',
-	},
-	{
-		number: '03',
-		label: 'Runtime integrations',
-		title: 'Lua-driven UI, OpenAL audio, and working tools',
-		summary:
-			'MLE exposes a retained interface system to Lua, with layout, input, events, reusable components, scrolling, and visual effects.',
-		facts: [
-			'OpenAL-backed audio covers playback, streaming, buses, voices, and command flow.',
-			'Tool and test applications exercise Core, models, UI, audio, and the Client layer.',
-			'Test fixtures support repeatable development and documentation workflows.',
-		],
-		destinationId: 'tools',
-	},
-];
+const { copy, model } = Astro.props;
 ---
 
 <section class="landing-features" aria-labelledby="landing-features-title">
 	<div class="landing-features__heading">
-		<p>Engine capabilities</p>
-		<h2 id="landing-features-title">Follow the systems from foundation to feedback</h2>
+		<p>{copy.features.eyebrow}</p>
+		<h2 id="landing-features-title">{copy.features.title}</h2>
 	</div>
 
 	<div class="landing-features__bands">
 		{
-			featureBands.map((feature) => {
+			copy.features.bands.map((feature) => {
 				const destination = model.sections.find(
-					({ section }) => section.pageId === feature.destinationId,
+					({ pageId }) => pageId === feature.destinationId,
 				);
 				if (!destination) throw new Error(`Missing landing destination ${feature.destinationId}.`);
 
@@ -79,7 +30,7 @@ const featureBands: readonly FeatureBand[] = [
 							<p class="landing-feature__label">{feature.number} · {feature.label}</p>
 							<h3 id={`landing-feature-${feature.number}`}>{feature.title}</h3>
 							<p>{feature.summary}</p>
-							<a href={destination.href}>Open {destination.section.labels.en}</a>
+							<a href={destination.href}>{copy.features.openSection(destination.label)}</a>
 						</div>
 						<ul>
 							{feature.facts.map((fact) => <li>{fact}</li>)}

@@ -64,12 +64,36 @@ export interface LandingCopy {
 		readonly commitDate: string;
 		readonly status: string;
 		readonly languages: string;
+		readonly formatLanguages: (locales: readonly Locale[]) => string;
 		readonly source: string;
 	};
 	readonly footer: { readonly documentation: string; readonly snapshot: (id: string) => string };
 }
 
 type FeatureBand = LandingCopy['features']['bands'][number];
+
+const evidenceLanguageNames: Readonly<Record<Locale, Readonly<Record<Locale, string>>>> = {
+	en: { en: 'English', 'pt-br': 'Brazilian Portuguese' },
+	'pt-br': { en: 'inglês', 'pt-br': 'português do Brasil' },
+};
+
+const evidenceLanguageConjunction: Readonly<Record<Locale, string>> = {
+	en: 'and',
+	'pt-br': 'e',
+};
+
+const formatEvidenceLanguages =
+	(locale: Locale) =>
+	(availableLocales: readonly Locale[]): string => {
+		const displayNames = availableLocales.map(
+			(availableLocale) => evidenceLanguageNames[locale][availableLocale],
+		);
+		if (displayNames.length < 2) return displayNames[0] ?? '';
+
+		return `${displayNames.slice(0, -1).join(', ')} ${
+			evidenceLanguageConjunction[locale]
+		} ${displayNames.at(-1)}`;
+	};
 
 const englishBands = [
 	{
@@ -159,7 +183,7 @@ export const landingCopy: Readonly<Record<Locale, LandingCopy>> = {
 		hero: { eyebrow: 'Engine overview · pinned source documentation', title: 'A C++23 game engine for building real-time experiences', lede: 'MLE brings Vulkan rendering, model and animation systems, a Lua-driven retained UI, OpenAL audio, and SDL window and input into one documented codebase.', note: 'The repository also includes development tools, test applications, and an experimental server subsystem.', start: 'Start here', systems: 'Explore systems', imageAlt: 'Gameplay scene rendered by MLE', imageCaption: 'Gameplay output from the pinned MLE snapshot.', imageSource: 'View source image' },
 		features: { eyebrow: 'Engine capabilities', title: 'Follow the systems from foundation to feedback', bands: englishBands, openSection: (label) => `Open ${label}` },
 		directory: { eyebrow: 'Documentation directory', title: 'Choose a route through the handbook', registryCount: (count) => `${count} sections from the navigation registry` },
-		evidence: { eyebrow: 'Snapshot evidence', title: 'Documentation tied to one source state', summary: 'This handbook records an in-development snapshot instead of a moving branch.', snapshot: 'Selected snapshot', commitDate: 'Commit date', status: 'Status', languages: 'Languages', source: 'Inspect the full commit' },
+		evidence: { eyebrow: 'Snapshot evidence', title: 'Documentation tied to one source state', summary: 'This handbook records an in-development snapshot instead of a moving branch.', snapshot: 'Selected snapshot', commitDate: 'Commit date', status: 'Status', languages: 'Languages', formatLanguages: formatEvidenceLanguages('en'), source: 'Inspect the full commit' },
 		footer: { documentation: 'MLE documentation', snapshot: (id) => `Snapshot ${id}` },
 	},
 	'pt-br': {
@@ -168,7 +192,7 @@ export const landingCopy: Readonly<Record<Locale, LandingCopy>> = {
 		hero: { eyebrow: 'Visão geral do motor · documentação vinculada ao código-fonte', title: 'Um motor de jogos C++23 para criar experiências em tempo real', lede: 'O MLE reúne renderização Vulkan, sistemas de modelos e animação, uma UI retida controlada por Lua, áudio OpenAL e janela e entrada SDL em uma única base de código documentada.', note: 'O repositório também inclui ferramentas de desenvolvimento, aplicativos de teste e um subsistema de servidor experimental.', start: 'Comece aqui', systems: 'Explore os sistemas', imageAlt: 'Cena de jogo renderizada pelo MLE', imageCaption: 'Resultado de jogo do snapshot fixado do MLE.', imageSource: 'Ver imagem de origem' },
 		features: { eyebrow: 'Recursos do motor', title: 'Acompanhe os sistemas da base ao resultado', bands: portugueseBands, openSection: (label) => `Abrir ${label}` },
 		directory: { eyebrow: 'Diretório da documentação', title: 'Escolha um caminho pelo manual', registryCount: (count) => `${count} seções do registro de navegação` },
-		evidence: { eyebrow: 'Evidência do snapshot', title: 'Documentação vinculada a um estado do código-fonte', summary: 'Este manual registra um snapshot em desenvolvimento, e não um branch em movimento.', snapshot: 'Snapshot selecionado', commitDate: 'Data do commit', status: 'Estado', languages: 'Idiomas', source: 'Inspecionar o commit completo' },
+		evidence: { eyebrow: 'Evidência do snapshot', title: 'Documentação vinculada a um estado do código-fonte', summary: 'Este manual registra um snapshot em desenvolvimento, e não um branch em movimento.', snapshot: 'Snapshot selecionado', commitDate: 'Data do commit', status: 'Estado', languages: 'Idiomas', formatLanguages: formatEvidenceLanguages('pt-br'), source: 'Inspecionar o commit completo' },
 		footer: { documentation: 'Documentação do MLE', snapshot: (id) => `Snapshot ${id}` },
 	},
 };

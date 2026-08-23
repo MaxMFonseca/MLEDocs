@@ -1,13 +1,15 @@
 ---
+import type { LandingCopy } from '../../lib/landing/copy';
 import type { LandingModel } from '../../lib/landing/model';
 
 interface Props {
+	copy: LandingCopy;
 	model: LandingModel;
 }
 
-const { model } = Astro.props;
-const startHere = model.sections.find(({ section }) => section.pageId === 'start');
-const systems = model.sections.find(({ section }) => section.pageId === 'systems');
+const { copy, model } = Astro.props;
+const startHere = model.sections.find(({ pageId }) => pageId === 'start');
+const systems = model.sections.find(({ pageId }) => pageId === 'systems');
 if (!startHere || !systems) throw new Error('Landing hero requires start and systems destinations.');
 
 const mediaSource = `${import.meta.env.BASE_URL}media/${model.version.id}/gameplay.webp`;
@@ -16,34 +18,28 @@ const sourceImage = `${model.version.repositoryUrl}/blob/${model.version.commit}
 
 <section class="landing-hero" aria-labelledby="landing-title">
 	<div class="landing-hero__copy">
-		<p class="landing-eyebrow">Engine overview · pinned source documentation</p>
-		<h1 id="landing-title">A C++23 game engine for building real-time experiences</h1>
-		<p class="landing-hero__lede">
-			MLE brings Vulkan rendering, model and animation systems, a Lua-driven retained UI,
-			OpenAL audio, and SDL window and input into one documented codebase.
-		</p>
-		<p class="landing-hero__note">
-			The repository also includes development tools, test applications, and an experimental
-			server subsystem.
-		</p>
+		<p class="landing-eyebrow">{copy.hero.eyebrow}</p>
+		<h1 id="landing-title">{copy.hero.title}</h1>
+		<p class="landing-hero__lede">{copy.hero.lede}</p>
+		<p class="landing-hero__note">{copy.hero.note}</p>
 		<div class="landing-hero__actions">
-			<a class="landing-primary-action" href={startHere.href}>Start here</a>
-			<a class="landing-secondary-action" href={systems.href}>Explore systems</a>
+			<a class="landing-primary-action" href={startHere.href}>{copy.hero.start}</a>
+			<a class="landing-secondary-action" href={systems.href}>{copy.hero.systems}</a>
 		</div>
 	</div>
 
 	<figure class="landing-hero__figure">
 		<img
 			src={mediaSource}
-			alt="Gameplay scene rendered by MLE"
+			alt={copy.hero.imageAlt}
 			width="1280"
 			height="720"
 			loading="eager"
 			fetchpriority="high"
 		/>
 		<figcaption>
-			<span>Gameplay output from the pinned MLE snapshot.</span>
-			<a href={sourceImage}>View source image</a>
+			<span>{copy.hero.imageCaption}</span>
+			<a href={sourceImage}>{copy.hero.imageSource}</a>
 		</figcaption>
 	</figure>
 </section>
