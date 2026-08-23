@@ -1,6 +1,11 @@
-import { navigationSections, type NavigationSection } from '../../data/navigation';
+import {
+	navigationSections,
+	type NavigationAccent,
+	type NavigationPageId,
+} from '../../data/navigation';
+import type { Locale } from '../../data/taxonomy';
 import type { VersionEntry } from '../../data/versions';
-import { docsPath } from '../links/base';
+import { docsPath, withBase } from '../links/base';
 
 export interface LandingVersionOption {
 	readonly versionId: string;
@@ -9,15 +14,21 @@ export interface LandingVersionOption {
 }
 
 export interface LandingSectionDestination {
-	readonly section: NavigationSection;
+	readonly pageId: NavigationPageId;
+	readonly order: number;
+	readonly accent: NavigationAccent;
+	readonly label: string;
+	readonly summary: string;
 	readonly href: string;
 }
 
 export interface LandingModel {
+	readonly locale: Locale;
 	readonly version: VersionEntry;
 	readonly options: readonly LandingVersionOption[];
-	readonly englishHome: string;
-	readonly portugueseHome: string;
+	readonly landingHome: string;
+	readonly alternateLanding: string;
+	readonly documentationHome: string;
 	readonly sourceDestination: string;
 	readonly sections: readonly LandingSectionDestination[];
 }
@@ -25,31 +36,43 @@ export interface LandingModel {
 const compareByCommittedDate = (left: VersionEntry, right: VersionEntry): number =>
 	right.committedAt.localeCompare(left.committedAt) || left.id.localeCompare(right.id);
 
-const englishStatus = (version: VersionEntry): string =>
-	version.status === 'current' ? 'current' : 'archived';
+const landingPath = (locale: Locale): string => withBase(locale === 'en' ? '' : locale);
 
 export function buildLandingModel(
 	entries: readonly VersionEntry[],
 	selectedId: string,
+	locale: Locale,
 ): LandingModel {
 	const version = entries.find((entry) => entry.id === selectedId);
 	if (!version) throw new Error(`Unknown landing version: ${selectedId}`);
+	if (!version.locales.includes(locale)) {
+		throw new Error(`Landing version ${version.id} does not declare locale ${locale}.`);
+	}
 
 	return {
+		locale,
 		version,
-		options: [...entries].sort(compareByCommittedDate).map((entry) => ({
-			versionId: entry.id,
-			label: `${entry.id} · ${entry.committedAt} · ${englishStatus(entry)}`,
-			destination: docsPath({ locale: 'en', versionId: entry.id }),
-		})),
-		englishHome: docsPath({ locale: 'en', versionId: version.id }),
-		portugueseHome: docsPath({ locale: 'pt-br', versionId: version.id }),
+		options: entries
+			.filter((entry) => entry.locales.includes(locale))
+			.sort(compareByCommittedDate)
+			.map((entry) => ({
+				versionId: entry.id,
+				label: `${entry.id} · ${entry.committedAt} · ${entry.label[locale]}`,
+				destination: docsPath({ locale, versionId: entry.id }),
+			})),
+		landingHome: landingPath(locale),
+		alternateLanding: landingPath(locale === 'en' ? 'pt-br' : 'en'),
+		documentationHome: docsPath({ locale, versionId: version.id }),
 		sourceDestination: `${version.repositoryUrl}/tree/${version.commit}`,
 		sections: [...navigationSections]
 			.sort((left, right) => left.order - right.order)
 			.map((section) => ({
-				section,
-				href: docsPath({ locale: 'en', versionId: version.id, slug: section.segment }),
+				pageId: section.pageId,
+				order: section.order,
+				accent: section.accent,
+				label: section.labels[locale],
+				summary: section.summaries[locale],
+				href: docsPath({ locale, versionId: version.id, slug: section.segment }),
 			})),
 	};
 }

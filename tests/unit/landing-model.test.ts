@@ -6,7 +6,7 @@ const current: VersionEntry = {
 	commit: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
 	id: 'aaaaaaaaaaaa',
 	committedAt: '2026-08-18',
-	label: { en: 'Current', 'pt-br': 'Atual' },
+	label: { en: 'current', 'pt-br': 'atual' },
 	status: 'current',
 	locales: ['en', 'pt-br'],
 	repositoryUrl: 'https://github.com/MaxMFonseca/MLE',
@@ -17,7 +17,7 @@ const archived: VersionEntry = {
 	commit: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
 	id: 'bbbbbbbbbbbb',
 	committedAt: '2025-12-01',
-	label: { en: 'Archived', 'pt-br': 'Arquivada' },
+	label: { en: 'archived', 'pt-br': 'arquivada' },
 	status: 'archived',
 	locales: ['en', 'pt-br'],
 	repositoryUrl: 'https://github.com/MaxMFonseca/MLE',
@@ -25,26 +25,56 @@ const archived: VersionEntry = {
 };
 
 describe('landing model', () => {
-	it('derives every landing destination from the selected ID when entries are reordered', () => {
-		const model = buildLandingModel([archived, current], archived.id);
+	it('resolves Portuguese labels and destinations from the selected version when entries are reordered', () => {
+		const portuguese = buildLandingModel([archived, current], current.id, 'pt-br');
 
-		expect(model.version.commit).toBe(archived.commit);
-		expect(model.options.map((option) => option.versionId)).toEqual([current.id, archived.id]);
-		expect(model.options.map((option) => option.label)).toEqual([
-			'aaaaaaaaaaaa · 2026-08-18 · current',
-			'bbbbbbbbbbbb · 2025-12-01 · archived',
+		expect(portuguese.version.commit).toBe(current.commit);
+		expect(portuguese.options.map(({ label }) => label)).toEqual([
+			'aaaaaaaaaaaa · 2026-08-18 · atual',
+			'bbbbbbbbbbbb · 2025-12-01 · arquivada',
 		]);
-		expect(model.englishHome).toBe(`/MLEDocs/versions/${archived.id}/`);
-		expect(model.portugueseHome).toBe(`/MLEDocs/pt-br/versions/${archived.id}/`);
-		expect(model.sourceDestination).toBe(`${archived.repositoryUrl}/tree/${archived.commit}`);
-		expect(model.sections).toHaveLength(7);
-		expect(model.sections.every((entry) => entry.href.includes(`/versions/${archived.id}/`))).toBe(true);
-		expect(model.sections.map((entry) => entry.section.order)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+		expect(portuguese.options[0]?.destination).toBe(
+			`/MLEDocs/pt-br/versions/${current.id}/`,
+		);
+		expect(portuguese.sections.map(({ label }) => label)).toEqual([
+			'Comece aqui',
+			'Conceitos',
+			'Sistemas do motor',
+			'Guias práticos',
+			'Referência',
+			'Ferramentas e aplicativos de teste',
+			'Como contribuir',
+		]);
+		expect(portuguese.sections.every(({ href }) => href.startsWith('/MLEDocs/pt-br/'))).toBe(true);
+		expect(portuguese.alternateLanding).toBe('/MLEDocs/');
+		expect(portuguese.documentationHome).toBe(`/MLEDocs/pt-br/versions/${current.id}/`);
+		expect(portuguese.sourceDestination).toBe(`${current.repositoryUrl}/tree/${current.commit}`);
+	});
+
+	it('resolves English destinations without a Portuguese path', () => {
+		const english = buildLandingModel([current, archived], current.id, 'en');
+
+		expect(english.options[0]?.label).toContain('current');
+		expect(english.alternateLanding).toBe('/MLEDocs/pt-br/');
+		expect(english.documentationHome).toBe(`/MLEDocs/versions/${current.id}/`);
+		expect(english.sections.every(({ href }) => !href.includes('/pt-br/'))).toBe(true);
 	});
 
 	it('rejects an unknown selected version ID', () => {
-		expect(() => buildLandingModel([archived, current], 'cccccccccccc')).toThrow(
+		expect(() => buildLandingModel([archived, current], 'cccccccccccc', 'en')).toThrow(
 			'Unknown landing version: cccccccccccc',
+		);
+	});
+
+	it('rejects a locale absent from the selected version', () => {
+		const englishOnly: VersionEntry = {
+			...current,
+			id: 'dddddddddddd',
+			locales: ['en'],
+		};
+
+		expect(() => buildLandingModel([archived, englishOnly], englishOnly.id, 'pt-br')).toThrow(
+			'Landing version dddddddddddd does not declare locale pt-br.',
 		);
 	});
 });
