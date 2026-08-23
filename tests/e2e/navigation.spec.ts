@@ -676,6 +676,54 @@ for (const journey of [
 
 for (const journey of [
   {
+    name: 'English',
+    path: '/',
+    lang: 'en',
+    requiredPhrase: 'A C++23 game engine for building real-time experiences',
+    forbiddenPhrases: [
+      'Um motor de jogos C++23 para criar experiências em tempo real',
+      'Comece aqui',
+      'Explore os sistemas',
+    ],
+  },
+  {
+    name: 'Brazilian Portuguese',
+    path: '/pt-br/',
+    lang: 'pt-BR',
+    requiredPhrase: 'Um motor de jogos C++23 para criar experiências em tempo real',
+    forbiddenPhrases: [
+      'A C++23 game engine for building real-time experiences',
+      'Start here',
+      'Explore systems',
+    ],
+  },
+] as const) {
+  test(`${journey.name} landing keeps visible copy isolated to its active locale`, async ({ page }) => {
+    await page.goto(pageUrl(journey.path));
+
+    await expect(page.locator('[data-mle-landing-section]')).toHaveCount(7);
+    await expect(page.locator('[data-mle-landing-feature]')).toHaveCount(3);
+    await expect(page.locator('html')).toHaveAttribute('lang', journey.lang);
+    await expect(page.locator('body')).toContainText(journey.requiredPhrase);
+    for (const forbidden of journey.forbiddenPhrases) {
+      await expect(page.locator('body')).not.toContainText(forbidden);
+    }
+    await expect(page.locator('[data-mle-landing-language-picker] option')).toHaveText([
+      'English',
+      'Português (Brasil)',
+    ]);
+
+    const copyOutsideLanguagePicker = await page.locator('body').evaluate((body) => {
+      const bodyWithoutLanguagePicker = body.cloneNode(true) as HTMLElement;
+      bodyWithoutLanguagePicker.querySelector('[data-mle-landing-language-picker]')?.remove();
+      return bodyWithoutLanguagePicker.textContent;
+    });
+    expect(copyOutsideLanguagePicker).not.toContain('Português (Brasil)');
+  });
+}
+
+for (const journey of [
+  {
     from: '/',
     destination: '/pt-br/',
     title: 'MLE · Documentação do motor de jogos C++23',

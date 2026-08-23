@@ -24,6 +24,34 @@ async function expectLoadedFontsAndNoOverflow(page: Page): Promise<void> {
   );
 }
 
+async function expectLandingDescendantsDoNotClipHorizontally(page: Page): Promise<void> {
+  const clippedDescendants = await page.locator('[data-mle-landing] *').evaluateAll((elements) =>
+    elements
+      .filter((element) => {
+        const style = getComputedStyle(element);
+        const bounds = element.getBoundingClientRect();
+        return (
+          style.display !== 'none' &&
+          style.visibility !== 'hidden' &&
+          bounds.width > 0 &&
+          bounds.height > 0
+        );
+      })
+      .map((element) => {
+        const bounds = element.getBoundingClientRect();
+        return {
+          tagName: element.tagName,
+          left: bounds.left,
+          right: bounds.right,
+          text: element.textContent?.trim().slice(0, 80),
+        };
+      })
+      .filter(({ left, right }) => left < -1 || right > document.documentElement.clientWidth + 1),
+  );
+
+  expect(clippedDescendants).toEqual([]);
+}
+
 async function expectTwoPartFocus(
   control: Locator,
   focusControl = true,
@@ -45,59 +73,103 @@ async function expectTwoPartFocus(
 }
 
 for (const landingCase of [
-  { name: 'desktop dark', width: 1440, height: 900, theme: 'dark' },
-  { name: 'phone light', width: 390, height: 844, theme: 'light' },
+  { name: 'English desktop dark', path: '/', width: 1440, height: 900, theme: 'dark', startLabel: 'Start here', sectionLabel: 'Start Here', imageLabel: 'Gameplay scene rendered by MLE' },
+  { name: 'Brazilian Portuguese desktop dark', path: '/pt-br/', width: 1440, height: 900, theme: 'dark', startLabel: 'Comece aqui', sectionLabel: 'Comece aqui', imageLabel: 'Cena de jogo renderizada pelo MLE' },
+  { name: 'English phone light', path: '/', width: 390, height: 844, theme: 'light', startLabel: 'Start here', sectionLabel: 'Start Here', imageLabel: 'Gameplay scene rendered by MLE' },
+  { name: 'Brazilian Portuguese phone light', path: '/pt-br/', width: 390, height: 844, theme: 'light', startLabel: 'Comece aqui', sectionLabel: 'Comece aqui', imageLabel: 'Cena de jogo renderizada pelo MLE' },
 ] as const) {
-  test(`landing page is accessible with local fonts and no overflow on ${landingCase.name}`, async ({
+  test(`landing page is accessible with local fonts and no horizontal clipping on ${landingCase.name}`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: landingCase.width, height: landingCase.height });
     await page.addInitScript((theme) => localStorage.setItem('starlight-theme', theme), landingCase.theme);
-    await page.goto(pageUrl('/'));
+    await page.goto(pageUrl(landingCase.path));
 
     await expect(page.locator('html')).toHaveAttribute('data-theme', landingCase.theme);
     await expectLoadedFontsAndNoOverflow(page);
+    expect(
+      await page.evaluate(() => ({
+        clientWidth: document.documentElement.clientWidth,
+        innerWidth: window.innerWidth,
+      })),
+    ).toEqual({ clientWidth: landingCase.width, innerWidth: landingCase.width });
+    await expectLandingDescendantsDoNotClipHorizontally(page);
     await expect(page.locator('[data-mle-landing-feature]')).toHaveCount(3);
     await expect(page.locator('[data-mle-landing-section]')).toHaveCount(7);
     await expect(
       page.locator('[data-mle-landing-section="start"]').getByRole('link'),
-    ).toHaveAccessibleName(/Start Here/);
+    ).toHaveAccessibleName(new RegExp(landingCase.sectionLabel));
     await expect(page.locator('[data-mle-landing-evidence]')).toContainText(versionId);
-    const gameplay = page.getByRole('img', { name: 'Gameplay scene rendered by MLE' });
+    const gameplay = page.getByRole('img', { name: landingCase.imageLabel });
     await expect
       .poll(() =>
         gameplay.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0),
       )
       .toBe(true);
-    await expectTwoPartFocus(page.getByRole('link', { name: 'Start here', exact: true }));
+    await expectTwoPartFocus(page.getByRole('link', { name: landingCase.startLabel, exact: true }));
     const results = await new AxeBuilder({ page }).analyze();
     expect(results.violations).toEqual([]);
   });
 }
 
-test('landing version picker is keyboard-focusable with a two-part focus indicator', async ({ page }) => {
-  await page.goto(pageUrl('/'));
-
-  const picker = page.locator('[data-mle-landing-version-picker]');
-  await expect(picker).toHaveAccessibleName('Documentation version');
+async function focusLandingPickerWithKeyboard(page: Page, picker: Locator): Promise<void> {
   await page.locator('body').click({ position: { x: 2, y: 2 } });
   for (let step = 0; step < 8; step += 1) {
     await page.keyboard.press('Tab');
     if (await picker.evaluate((element) => element === document.activeElement)) break;
   }
   await expect(picker).toBeFocused();
-  const focus = await picker.evaluate((element) => {
+}
+
+async function expectLandingPickerFocus(page: Page, picker: Locator, wrapperClass: string): Promise<void> {
+  await focusLandingPickerWithKeyboard(page, picker);
+  const focus = await picker.evaluate((element, selector) => {
     const style = getComputedStyle(element);
+    const wrapperShadow = getComputedStyle(element.closest(selector)!).boxShadow;
     return {
       outlineStyle: style.outlineStyle,
       outlineWidth: Number.parseFloat(style.outlineWidth),
-      wrapperShadow: getComputedStyle(element.closest('.landing-version-picker')!).boxShadow,
+      wrapperRings: wrapperShadow.match(/rgba?\([^)]*\)(?:\s+-?[\d.]+px){4}/g) ?? [],
     };
-  });
+  }, wrapperClass);
   expect(focus.outlineStyle).not.toBe('none');
   expect(focus.outlineWidth).toBeGreaterThanOrEqual(2);
-  expect(focus.wrapperShadow).not.toBe('none');
-});
+  expect(focus.wrapperRings).toHaveLength(2);
+  expect(focus.wrapperRings[0]).not.toBe('none');
+  expect(focus.wrapperRings[1]).not.toBe('none');
+}
+
+for (const localeCase of [
+  {
+    name: 'English',
+    path: '/',
+    versionLabel: 'Documentation version',
+    languageLabel: 'Language',
+    versionDestination: `/MLEDocs/versions/${versionId}/`,
+  },
+  {
+    name: 'Brazilian Portuguese',
+    path: '/pt-br/',
+    versionLabel: 'Versão da documentação',
+    languageLabel: 'Idioma',
+    versionDestination: `/MLEDocs/pt-br/versions/${versionId}/`,
+  },
+] as const) {
+  test(`${localeCase.name} landing pickers are keyboard-focusable with two-part indicators`, async ({
+    page,
+  }) => {
+    await page.goto(pageUrl(localeCase.path));
+
+    const versionPicker = page.locator('[data-mle-landing-version-picker]');
+    await expect(versionPicker).toHaveAccessibleName(localeCase.versionLabel);
+    await expectLandingPickerFocus(page, versionPicker, '.landing-version-picker');
+    await expect(versionPicker.locator('option:checked')).toHaveValue(localeCase.versionDestination);
+
+    const languagePicker = page.locator('[data-mle-landing-language-picker]');
+    await expect(languagePicker).toHaveAccessibleName(localeCase.languageLabel);
+    await expectLandingPickerFocus(page, languagePicker, '.landing-language-picker');
+  });
+}
 
 test('applies the MLE palette instead of the Starlight defaults', async ({ page }) => {
   await page.goto(pageUrl('/versions/c1abea3de165/'));
