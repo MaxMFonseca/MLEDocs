@@ -49,6 +49,7 @@ export default defineConfig({
   integrations: [
     starlight({
       title: 'MLE',
+      favicon: '/favicon.png',
       expressiveCode: { plugins: [keyboardScrollableCode] },
       defaultLocale: 'root',
       locales: {

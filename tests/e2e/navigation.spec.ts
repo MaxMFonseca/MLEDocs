@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { handbookPages } from '../../src/data/handbook';
 import { navigationSections } from '../../src/data/navigation';
@@ -9,6 +10,16 @@ const fullCommit = 'c1abea3de165032fe064300340807b7a6af388f8';
 
 function pageUrl(path: string): string {
   return new URL(`/MLEDocs${path}`, siteOrigin).toString();
+}
+
+async function expectMleFavicon(page: Page) {
+  const icon = page.locator('link[rel~="icon"]');
+  await expect(icon).toHaveCount(1);
+  await expect(icon).toHaveAttribute('type', 'image/png');
+  await expect(icon).toHaveAttribute('href', '/MLEDocs/favicon.png');
+  const response = await page.request.get(new URL((await icon.getAttribute('href'))!, page.url()).toString());
+  expect(response.status()).toBe(200);
+  expect(response.headers()['content-type']).toContain('image/png');
 }
 
 const homepageCases = [
@@ -579,6 +590,13 @@ test('repository root is a stable landing page for both documentation languages'
   );
   await expect(page.locator('[data-mle-landing-section]')).toHaveCount(7);
   await expect(page.locator('[data-mle-not-found]')).toHaveCount(0);
+  await expectMleFavicon(page);
+});
+
+test('immutable documentation route exposes the MLE favicon', async ({ page }) => {
+  await page.goto(pageUrl(`/versions/${versionId}/systems/renderer/`));
+
+  await expectMleFavicon(page);
 });
 
 test('Brazilian Portuguese root alias resolves to the immutable current snapshot', async ({ page }) => {
