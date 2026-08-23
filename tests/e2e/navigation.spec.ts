@@ -680,6 +680,15 @@ for (const journey of [
     path: '/',
     lang: 'en',
     requiredPhrase: 'A C++23 game engine for building real-time experiences',
+    directoryLabels: [
+      'Start Here',
+      'Concepts',
+      'Engine Systems',
+      'Practical Guides',
+      'Reference',
+      'Tools and Test Applications',
+      'Contributing',
+    ],
     forbiddenPhrases: [
       'Idioma',
       'Um motor de jogos C++23 para criar experiências em tempo real',
@@ -700,6 +709,15 @@ for (const journey of [
     path: '/pt-br/',
     lang: 'pt-BR',
     requiredPhrase: 'Um motor de jogos C++23 para criar experiências em tempo real',
+    directoryLabels: [
+      'Comece aqui',
+      'Conceitos',
+      'Sistemas do motor',
+      'Guias práticos',
+      'Referência',
+      'Ferramentas e aplicativos de teste',
+      'Como contribuir',
+    ],
     forbiddenPhrases: [
       'Language',
       'A C++23 game engine for building real-time experiences',
@@ -721,6 +739,9 @@ for (const journey of [
 
     await expect(page.locator('[data-mle-landing-section]')).toHaveCount(7);
     await expect(page.locator('[data-mle-landing-feature]')).toHaveCount(3);
+    await expect(
+      page.locator('[data-mle-landing-section] .landing-directory__copy strong'),
+    ).toHaveText(journey.directoryLabels);
     await expect(page.locator('html')).toHaveAttribute('lang', journey.lang);
     await expect(page.locator('body')).toContainText(journey.requiredPhrase);
     for (const forbidden of journey.forbiddenPhrases) {
