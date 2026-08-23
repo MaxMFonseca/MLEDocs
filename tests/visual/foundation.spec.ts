@@ -65,7 +65,21 @@ test('documentation landing desktop dark', async ({ page }) => {
 	});
 });
 
-test('documentation landing phone light', async ({ page }) => {
+test('Portuguese documentation landing phone light', async ({ page }) => {
+	await page.setViewportSize({ width: 390, height: 844 });
+	await setTheme(page, 'light');
+	await page.goto('pt-br/');
+	await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+	await settlePage(page);
+
+	await expect(page).toHaveScreenshot('landing-pt-br-phone-light.png', {
+		animations: 'disabled',
+		caret: 'hide',
+		fullPage: true,
+	});
+});
+
+test('English documentation landing phone light', async ({ page }) => {
 	await page.setViewportSize({ width: 390, height: 844 });
 	await setTheme(page, 'light');
 	await page.goto('');
