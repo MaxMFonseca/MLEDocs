@@ -3,6 +3,7 @@ import DefaultSidebar from '@astrojs/starlight/components/Sidebar.astro';
 import {
 	buildSidebarPagination,
 	filterVersionedSidebarByLocale,
+	flattenSingletonSidebarGroups,
 	orderVersionedSidebarByRegistry,
 } from '../../data/navigation';
 import type { Locale } from '../../data/taxonomy';
@@ -15,7 +16,8 @@ const locale: Locale = route.locale === 'pt-br' ? 'pt-br' : 'en';
 // cloned, locale-resolved route model. Its default Sidebar and later Footer read this same local,
 // so align the released registry sections and their pagination before delegating rendering.
 const visibleSidebar = filterVersionedSidebarByLocale(route.sidebar, versions, locale);
-route.sidebar = [...orderVersionedSidebarByRegistry(visibleSidebar, versions, locale)];
+const orderedSidebar = orderVersionedSidebarByRegistry(visibleSidebar, versions, locale);
+route.sidebar = [...flattenSingletonSidebarGroups(orderedSidebar)];
 route.pagination = buildSidebarPagination(route.sidebar);
 ---
 

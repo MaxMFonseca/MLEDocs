@@ -497,6 +497,26 @@ test('shows pinned commit, maturity, and a base-aware same-page version destinat
   await expect(page).toHaveURL(pageUrl(`/versions/${versionId}/systems/renderer/`));
 });
 
+for (const localeCase of [
+  { name: 'English', prefix: '' },
+  { name: 'Brazilian Portuguese', prefix: '/pt-br' },
+]) {
+  test(`removes one-page folder dropdowns from the ${localeCase.name} snapshot sidebar`, async ({ page }) => {
+    await page.goto(pageUrl(`${localeCase.prefix}/versions/${versionId}/systems/renderer/`));
+
+    const sidebar = page.locator('#starlight__sidebar');
+    const singletonGroups = await sidebar.locator('details').evaluateAll((groups) =>
+      groups
+        .filter((group) => group.querySelectorAll('a').length === 1)
+        .map((group) => group.querySelector(':scope > summary')?.textContent?.trim()),
+    );
+
+    expect(singletonGroups).toEqual([]);
+    await expect(sidebar.getByRole('link', { name: 'Renderer', exact: true })).toBeVisible();
+    await expect(sidebar.getByRole('link', { name: 'Frame, Vulkan, and queues', exact: true })).toBeVisible();
+  });
+}
+
 test('discloses an exact current Portuguese translation', async ({ page }) => {
   await page.goto(pageUrl(`/pt-br/versions/${versionId}/`));
 

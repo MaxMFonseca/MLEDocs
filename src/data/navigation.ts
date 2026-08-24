@@ -602,6 +602,18 @@ export function orderVersionedSidebarByRegistry(
 	});
 }
 
+export function flattenSingletonSidebarGroups(
+	sidebar: readonly ResolvedSidebarEntry[],
+): ResolvedSidebarEntry[] {
+	return sidebar.map((entry) => {
+		if (entry.type !== 'group') return entry;
+		const entries = flattenSingletonSidebarGroups(entry.entries);
+		return entries.length === 1 && entries[0]?.type === 'link'
+			? entries[0]
+			: { ...entry, entries };
+	});
+}
+
 function flattenResolvedSidebar(sidebar: readonly ResolvedSidebarEntry[]): ResolvedSidebarLink[] {
 	return sidebar.flatMap((entry) =>
 		entry.type === 'group' ? flattenResolvedSidebar(entry.entries) : [entry],
