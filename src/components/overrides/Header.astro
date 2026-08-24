@@ -1,5 +1,6 @@
 ---
 import { getCollection } from 'astro:content';
+import { Icon } from '@astrojs/starlight/components';
 import DefaultHeader from '@astrojs/starlight/components/Header.astro';
 import type { Locale } from '../../data/taxonomy';
 import { getVersion } from '../../lib/versions/manifest';
@@ -20,6 +21,7 @@ const pageId =
 		? data.pageId
 		: undefined;
 const hasVersionPicker = Boolean(pageId && version);
+const commitLinkLabel = locale === 'pt-br' ? 'Ver commit no GitHub' : 'View commit on GitHub';
 
 const docs = await getCollection('docs');
 const entries: AliasContentEntry[] = [];
@@ -46,7 +48,22 @@ const pageIndex = buildPageIndex(pageRecordsFromContentEntries(entries));
 	data-mle-version-picker-layout={hasVersionPicker ? 'expanded' : 'compact'}
 >
 	<DefaultHeader />
-	{pageId && version && <VersionPicker {pageId} {locale} {version} {pageIndex} />}
+	{
+		pageId && version && (
+			<div class="version-actions">
+				<VersionPicker {pageId} {locale} {version} {pageIndex} />
+				<a
+					class="commit-link"
+					data-mle-commit-link
+					href={`${version.repositoryUrl}/tree/${version.commit}`}
+					aria-label={commitLinkLabel}
+					title={commitLinkLabel}
+				>
+					<Icon name="github" />
+				</a>
+			</div>
+		)
+	}
 </div>
 
 <style>
@@ -63,6 +80,38 @@ const pageIndex = buildPageIndex(pageRecordsFromContentEntries(entries));
 		min-width: 0;
 	}
 
+	.mle-header :global(.social-icons:empty) {
+		display: none;
+	}
+
+	.version-actions {
+		display: flex;
+		align-items: center;
+		justify-content: flex-end;
+		gap: var(--mle-space-3);
+		min-width: 0;
+	}
+
+	.commit-link {
+		display: inline-grid;
+		place-items: center;
+		flex: 0 0 auto;
+		width: 2.25rem;
+		height: 2.25rem;
+		border-radius: var(--mle-radius-md);
+		color: var(--sl-color-text-accent);
+		text-decoration: none;
+	}
+
+	.commit-link:hover {
+		color: var(--sl-color-white);
+	}
+
+	.commit-link :global(svg) {
+		width: 1.25rem;
+		height: 1.25rem;
+	}
+
 	@media (max-width: 49.999rem) {
 		:global(:root):has(.mle-header[data-mle-version-picker-layout='expanded']) {
 			--sl-nav-height: 6.5rem;
@@ -74,6 +123,12 @@ const pageIndex = buildPageIndex(pageRecordsFromContentEntries(entries));
 			align-content: center;
 			gap: var(--mle-space-1);
 			padding-inline-end: 3rem;
+		}
+
+		.version-actions {
+			display: grid;
+			grid-template-columns: minmax(0, 1fr) auto;
+			width: 100%;
 		}
 	}
 </style>

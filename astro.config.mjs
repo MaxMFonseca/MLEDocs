@@ -73,13 +73,6 @@ export default defineConfig({
         Hero: './src/components/overrides/NotFound.astro',
         FallbackContentNotice: './src/components/status/TranslationNotice.astro',
       },
-      social: [
-        {
-          icon: 'github',
-          label: 'GitHub',
-          href: 'https://github.com/MaxMFonseca/MLE',
-        },
-      ],
       sidebar: buildVersionedSidebar(versions),
     }),
   ],

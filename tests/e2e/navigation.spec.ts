@@ -22,6 +22,24 @@ async function expectMleFavicon(page: Page) {
   expect(response.headers()['content-type']).toContain('image/png');
 }
 
+test('docs header places the commit GitHub link after the version picker', async ({ page }) => {
+  await page.goto(pageUrl(`/versions/${versionId}/systems/renderer/`));
+
+  const picker = page.locator('[data-mle-version-picker]');
+  const commitLink = page.getByRole('link', { name: 'View commit on GitHub' });
+
+  await expect(commitLink).toHaveAttribute(
+    'href',
+    `https://github.com/MaxMFonseca/MLE/tree/${fullCommit}`,
+  );
+  await expect(commitLink.locator('svg')).toHaveCount(1);
+  expect(
+    await picker.evaluate((element, link) =>
+      Boolean(element.compareDocumentPosition(link as Node) & Node.DOCUMENT_POSITION_FOLLOWING),
+    await commitLink.elementHandle()),
+  ).toBe(true);
+});
+
 const homepageCases = [
   {
     locale: 'English',

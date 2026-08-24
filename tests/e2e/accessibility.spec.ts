@@ -520,10 +520,10 @@ test('skip link is first in the visible focus order and targets the page heading
     skipLink,
     page.locator('header .site-title'),
     page.locator('header site-search button[data-open-modal]'),
-    page.locator('header .social-icons a'),
     page.locator('header starlight-theme-select select'),
     page.locator('header starlight-lang-select select'),
     page.locator('[data-mle-version-picker]'),
+    page.locator('[data-mle-commit-link]'),
   ];
 
   if (testInfo.project.name === 'webkit') {
