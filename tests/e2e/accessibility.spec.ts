@@ -145,7 +145,7 @@ for (const localeCase of [
     path: '/',
     versionLabel: 'Documentation version',
     languageLabel: 'Language',
-    themeLabel: 'Theme',
+    themeLabel: 'Switch to light theme',
     versionDestination: `/MLEDocs/versions/${versionId}/`,
   },
   {
@@ -153,7 +153,7 @@ for (const localeCase of [
     path: '/pt-br/',
     versionLabel: 'Versão da documentação',
     languageLabel: 'Idioma',
-    themeLabel: 'Tema',
+    themeLabel: 'Mudar para tema claro',
     versionDestination: `/MLEDocs/pt-br/versions/${versionId}/`,
   },
 ] as const) {
@@ -167,13 +167,13 @@ for (const localeCase of [
     await expectLandingPickerFocus(page, versionPicker, '.landing-version-picker');
     await expect(versionPicker.locator('option:checked')).toHaveValue(localeCase.versionDestination);
 
-    const languagePicker = page.locator('[data-mle-landing-language-picker]');
-    await expect(languagePicker).toHaveAccessibleName(localeCase.languageLabel);
-    await expectLandingPickerFocus(page, languagePicker, '.landing-language-picker');
+    const languageOptions = page.locator('[data-mle-landing-language-options]');
+    await expect(languageOptions).toHaveAccessibleName(localeCase.languageLabel);
+    await expectTwoPartFocus(languageOptions.getByRole('link').first());
 
-    const themePicker = page.locator('[data-mle-landing-theme-picker]');
-    await expect(themePicker).toHaveAccessibleName(localeCase.themeLabel);
-    await expectLandingPickerFocus(page, themePicker, '.landing-theme-picker');
+    const themeToggle = page.locator('[data-mle-landing-theme-toggle]');
+    await expect(themeToggle).toHaveAccessibleName(localeCase.themeLabel);
+    await expectTwoPartFocus(themeToggle);
   });
 }
 

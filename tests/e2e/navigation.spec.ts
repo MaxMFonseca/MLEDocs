@@ -592,9 +592,22 @@ test('repository root is a stable landing page', async ({ page }) => {
   await expect(picker).toHaveAccessibleName('Documentation version');
   await expect(picker.locator('option:checked')).toHaveValue(`/MLEDocs/versions/${versionId}/`);
   await expect(page.locator('[data-mle-landing-selected-version]')).toHaveCount(0);
-  const themePicker = page.locator('[data-mle-landing-theme-picker]');
-  await expect(themePicker).toHaveAccessibleName('Theme');
-  await expect(themePicker.locator('option')).toHaveText(['Auto', 'Light', 'Dark']);
+  const themeToggle = page.locator('[data-mle-landing-theme-toggle]');
+  await expect(themeToggle).toHaveAccessibleName('Switch to light theme');
+  await expect(themeToggle.locator('[data-mle-theme-icon="sun"]')).toBeVisible();
+  const languageOptions = page.locator('[data-mle-landing-language-options]');
+  await expect(languageOptions).toHaveAccessibleName('Language');
+  await expect(languageOptions.getByRole('link')).toHaveCount(2);
+  await expect(languageOptions.locator('[data-mle-language-flag="en"]')).toBeVisible();
+  await expect(languageOptions.locator('[data-mle-language-flag="pt-br"]')).toBeVisible();
+  await expect(languageOptions.getByRole('link', { name: 'English' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
+  await expect(languageOptions.getByRole('link', { name: 'Português (Brasil)' })).toHaveAttribute(
+    'href',
+    '/MLEDocs/pt-br/',
+  );
   const githubLink = page.getByRole('link', { name: 'GitHub', exact: true }).first();
   await expect(githubLink).toHaveAttribute(
     'href',
@@ -685,26 +698,22 @@ for (const journey of [
   });
 }
 
-test('landing theme picker applies and persists explicit and automatic themes', async ({ page }) => {
+test('landing sun and moon control toggles and persists the resolved theme', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'light' });
   await page.goto(pageUrl('/'));
 
-  const picker = page.locator('[data-mle-landing-theme-picker]');
-  await picker.selectOption('dark');
+  const toggle = page.locator('[data-mle-landing-theme-toggle]');
+  await expect(toggle).toHaveAccessibleName('Switch to dark theme');
+  await expect(toggle.locator('[data-mle-theme-icon="moon"]')).toBeVisible();
+  await toggle.click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   expect(await page.evaluate(() => localStorage.getItem('starlight-theme'))).toBe('dark');
+  await expect(toggle).toHaveAccessibleName('Switch to light theme');
+  await expect(toggle.locator('[data-mle-theme-icon="sun"]')).toBeVisible();
 
-  await picker.selectOption('auto');
+  await toggle.click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-  expect(await page.evaluate(() => localStorage.getItem('starlight-theme'))).toBe('');
-
-  await page.emulateMedia({ colorScheme: 'dark' });
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-
-  await picker.selectOption('light');
-  await page.emulateMedia({ colorScheme: 'no-preference' });
-  await picker.selectOption('auto');
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  expect(await page.evaluate(() => localStorage.getItem('starlight-theme'))).toBe('light');
 });
 
 for (const journey of [
@@ -780,14 +789,15 @@ for (const journey of [
     for (const forbidden of journey.forbiddenPhrases) {
       await expect(page.locator('body')).not.toContainText(forbidden);
     }
-    await expect(page.locator('[data-mle-landing-language-picker] option')).toHaveText([
-      'English',
-      'Português (Brasil)',
-    ]);
+    const languageOptions = page.locator('[data-mle-landing-language-options]');
+    await expect(languageOptions.getByRole('link', { name: 'English' })).toHaveCount(1);
+    await expect(
+      languageOptions.getByRole('link', { name: 'Português (Brasil)' }),
+    ).toHaveCount(1);
 
     const copyOutsideLanguagePicker = await page.locator('body').evaluate((body) => {
       const bodyWithoutLanguagePicker = body.cloneNode(true) as HTMLElement;
-      bodyWithoutLanguagePicker.querySelector('[data-mle-landing-language-picker]')?.remove();
+      bodyWithoutLanguagePicker.querySelector('[data-mle-landing-language-options]')?.remove();
       return bodyWithoutLanguagePicker.textContent;
     });
     expect(copyOutsideLanguagePicker).not.toContain('Português (Brasil)');
@@ -811,9 +821,10 @@ for (const journey of [
   }) => {
     await page.goto(pageUrl(journey.from));
 
-    const picker = page.locator('[data-mle-landing-language-picker]');
-    await expect(picker.locator('option')).toHaveText(['English', 'Português (Brasil)']);
-    await picker.selectOption(`/MLEDocs${journey.destination}`);
+    const languageOptions = page.locator('[data-mle-landing-language-options]');
+    await languageOptions.getByRole('link', {
+      name: journey.destination === '/' ? 'English' : 'Português (Brasil)',
+    }).click();
 
     await expect(page).toHaveURL(pageUrl(journey.destination));
     await expect(page).toHaveTitle(journey.title);

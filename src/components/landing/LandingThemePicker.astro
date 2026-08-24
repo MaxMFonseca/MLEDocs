@@ -1,79 +1,75 @@
 ---
 import type { LandingCopy } from '../../lib/landing/copy';
 
-interface Props {
-	copy: LandingCopy;
-}
-
+interface Props { copy: LandingCopy; }
 const { copy } = Astro.props;
 ---
 
-<label class="landing-theme-picker">
-	<span>{copy.header.themeLabel}</span>
-	<select data-mle-landing-theme-picker autocomplete="off">
-		<option value="auto">{copy.header.themeAuto}</option>
-		<option value="light">{copy.header.themeLight}</option>
-		<option value="dark">{copy.header.themeDark}</option>
-	</select>
-</label>
+<button
+	class="landing-theme-toggle"
+	type="button"
+	data-mle-landing-theme-toggle
+	data-theme-to-light={copy.header.themeToLight}
+	data-theme-to-dark={copy.header.themeToDark}
+	aria-label={copy.header.themeToLight}
+>
+	<svg class="landing-theme-toggle__icon landing-theme-toggle__icon--sun" data-mle-theme-icon="sun" viewBox="0 0 24 24" aria-hidden="true">
+		<circle cx="12" cy="12" r="4" fill="currentColor"></circle>
+		<path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+	</svg>
+	<svg class="landing-theme-toggle__icon landing-theme-toggle__icon--moon" data-mle-theme-icon="moon" viewBox="0 0 24 24" aria-hidden="true">
+		<path d="M20.5 15.3A8.5 8.5 0 0 1 8.7 3.5 8.5 8.5 0 1 0 20.5 15.3Z" fill="currentColor"></path>
+	</svg>
+</button>
 
 <script is:inline>
 	(() => {
-		const picker = document.querySelector('[data-mle-landing-theme-picker]');
-		const preference = window.matchMedia('(prefers-color-scheme: light)');
-		if (!(picker instanceof HTMLSelectElement)) return;
-
-		const savedTheme = localStorage.getItem('starlight-theme');
-		picker.value = savedTheme === 'light' || savedTheme === 'dark' ? savedTheme : 'auto';
-
-		const applyTheme = () => {
-			const selected = picker.value;
-			const theme = selected === 'auto' ? (preference.matches ? 'light' : 'dark') : selected;
-			document.documentElement.dataset.theme = theme;
-			localStorage.setItem('starlight-theme', selected === 'auto' ? '' : selected);
+		const toggle = document.querySelector('[data-mle-landing-theme-toggle]');
+		if (!(toggle instanceof HTMLButtonElement)) return;
+		const syncLabel = () => {
+			const label = document.documentElement.dataset.theme === 'dark'
+				? toggle.dataset.themeToLight
+				: toggle.dataset.themeToDark;
+			if (label) toggle.setAttribute('aria-label', label);
 		};
-
-		picker.addEventListener('change', applyTheme);
-		preference.addEventListener('change', () => {
-			if (picker.value === 'auto') applyTheme();
+		toggle.addEventListener('click', () => {
+			const nextTheme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+			document.documentElement.dataset.theme = nextTheme;
+			localStorage.setItem('starlight-theme', nextTheme);
+			syncLabel();
 		});
+		const preference = window.matchMedia('(prefers-color-scheme: light)');
+		preference.addEventListener('change', () => {
+			if (!localStorage.getItem('starlight-theme')) {
+				document.documentElement.dataset.theme = preference.matches ? 'light' : 'dark';
+				syncLabel();
+			}
+		});
+		syncLabel();
 	})();
 </script>
 
 <style>
-	.landing-theme-picker {
-		display: grid;
-		gap: var(--mle-space-2);
-		border-radius: var(--mle-radius-md);
-		color: var(--mle-text-muted);
-		font-size: 0.8rem;
-	}
-
-	.landing-theme-picker:has(select:focus) {
-		box-shadow:
-			0 0 0 6px var(--mle-focus-outer),
-			0 0 0 7px var(--mle-focus-edge);
-	}
-
-	select {
-		width: 100%;
-		min-height: 2.5rem;
-		padding: var(--mle-space-1) var(--mle-space-2);
+	.landing-theme-toggle {
+		display: inline-grid;
+		place-items: center;
+		width: 2.5rem;
+		height: 2.5rem;
+		padding: 0;
 		border: 1px solid var(--mle-border);
 		border-radius: var(--mle-radius-md);
 		background: var(--mle-surface-2);
 		color: var(--mle-text);
-		font-family: var(--mle-font-code);
-		font-size: 0.78rem;
+		cursor: pointer;
 	}
-
-	select:focus {
+	.landing-theme-toggle:hover { border-color: var(--mle-accent-bright); color: var(--mle-accent-bright); }
+	.landing-theme-toggle:focus {
 		outline: 3px solid var(--mle-accent-bright);
 		outline-offset: 2px;
-		box-shadow: none;
+		box-shadow: 0 0 0 6px var(--mle-focus-outer);
 	}
-
-	@media (max-width: 52rem) {
-		.landing-theme-picker { width: 100%; }
-	}
+	.landing-theme-toggle__icon { width: 1.18rem; height: 1.18rem; }
+	.landing-theme-toggle__icon--sun { display: none; }
+	:global(html[data-theme='dark']) .landing-theme-toggle__icon--sun { display: block; }
+	:global(html[data-theme='dark']) .landing-theme-toggle__icon--moon { display: none; }
 </style>
