@@ -145,7 +145,7 @@ for (const localeCase of [
     path: '/',
     versionLabel: 'Documentation version',
     languageLabel: 'Language',
-    themeLabel: 'Switch to light theme',
+    themeLabel: 'Select theme',
     versionDestination: `/MLEDocs/versions/${versionId}/`,
   },
   {
@@ -153,7 +153,7 @@ for (const localeCase of [
     path: '/pt-br/',
     versionLabel: 'Versão da documentação',
     languageLabel: 'Idioma',
-    themeLabel: 'Mudar para tema claro',
+    themeLabel: 'Selecionar tema',
     versionDestination: `/MLEDocs/pt-br/versions/${versionId}/`,
   },
 ] as const) {
@@ -167,13 +167,13 @@ for (const localeCase of [
     await expectLandingPickerFocus(page, versionPicker, '.landing-version-picker');
     await expect(versionPicker.locator('option:checked')).toHaveValue(localeCase.versionDestination);
 
-    const languageOptions = page.locator('[data-mle-landing-language-options]');
-    await expect(languageOptions).toHaveAccessibleName(localeCase.languageLabel);
-    await expectTwoPartFocus(languageOptions.getByRole('link').first());
+    const languagePicker = page.locator('starlight-lang-select select');
+    await expect(languagePicker).toHaveAccessibleName(localeCase.languageLabel);
+    await expectTwoPartFocus(languagePicker);
 
-    const themeToggle = page.locator('[data-mle-landing-theme-toggle]');
-    await expect(themeToggle).toHaveAccessibleName(localeCase.themeLabel);
-    await expectTwoPartFocus(themeToggle);
+    const themePicker = page.locator('starlight-theme-select select');
+    await expect(themePicker).toHaveAccessibleName(localeCase.themeLabel);
+    await expectTwoPartFocus(themePicker);
   });
 }
 
@@ -444,7 +444,7 @@ test('version context remains readable in Light, Dark, and Auto themes', async (
   for (const theme of ['light', 'dark', 'auto']) {
     await themePicker.selectOption(theme);
     await expect(versionPicker).toBeVisible();
-    await expect(page.locator('[data-mle-permanent-link]')).toHaveText('c1abea3de165');
+    await expect(page.locator('[data-mle-permanent-link]')).toHaveCount(0);
     await versionPicker.focus();
     const focus = await versionPicker.evaluate((element) => ({
       focusVisible: element.matches(':focus-visible'),
@@ -457,26 +457,24 @@ test('version context remains readable in Light, Dark, and Auto themes', async (
   }
 });
 
-test('phone version context visibly exposes the complete selected version metadata', async ({
+test('phone version context visibly exposes the selected short commit', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(pageUrl('/pt-br/versions/c1abea3de165/systems/renderer/'));
 
-  const summary = page.locator('[data-mle-selected-version-summary]');
-  await expect(summary).toBeVisible();
-  await expect(summary).toHaveText('c1abea3de165 · 2026-08-18 · atual');
+  const picker = page.locator('[data-mle-version-picker]');
+  await expect(picker).toBeVisible();
+  await expect(picker.locator('option:checked')).toHaveText('c1abea3de165');
 
-  const geometry = await summary.evaluate((element) => ({
+  const geometry = await picker.evaluate((element) => ({
     clientWidth: element.clientWidth,
     scrollWidth: element.scrollWidth,
     right: element.getBoundingClientRect().right,
     viewportWidth: document.documentElement.clientWidth,
-    whiteSpace: getComputedStyle(element).whiteSpace,
   }));
   expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.clientWidth);
   expect(geometry.right).toBeLessThanOrEqual(geometry.viewportWidth);
-  expect(geometry.whiteSpace).not.toBe('nowrap');
 });
 
 test('mobile 404 keeps the compact header when no version picker is rendered', async ({ page }) => {
@@ -495,21 +493,20 @@ test('mobile version page reserves its expanded header for the readable picker',
   await page.goto(pageUrl('/pt-br/versions/c1abea3de165/systems/renderer/'));
 
   const picker = page.locator('[data-mle-version-picker]');
-  const summary = page.locator('[data-mle-selected-version-summary]');
   await expect(picker).toBeVisible();
-  await expect(summary).toBeVisible();
+  await expect(page.locator('[data-mle-selected-version-summary]')).toHaveCount(0);
 
   const layout = await page.locator('header.header').evaluate((header) => {
-    const summary = document.querySelector('[data-mle-selected-version-summary]');
-    if (!(summary instanceof HTMLElement)) throw new Error('Selected-version summary is missing.');
+    const picker = document.querySelector('[data-mle-version-picker]');
+    if (!(picker instanceof HTMLElement)) throw new Error('Version picker is missing.');
     return {
       headerHeight: header.getBoundingClientRect().height,
       headerBottom: header.getBoundingClientRect().bottom,
-      summaryBottom: summary.getBoundingClientRect().bottom,
+      pickerBottom: picker.getBoundingClientRect().bottom,
     };
   });
-  expect(layout.headerHeight).toBeGreaterThanOrEqual(120);
-  expect(layout.summaryBottom).toBeLessThanOrEqual(layout.headerBottom);
+  expect(layout.headerHeight).toBeLessThanOrEqual(120);
+  expect(layout.pickerBottom).toBeLessThanOrEqual(layout.headerBottom);
 });
 
 test('skip link is first in the visible focus order and targets the page heading', async (
@@ -527,7 +524,6 @@ test('skip link is first in the visible focus order and targets the page heading
     page.locator('header starlight-theme-select select'),
     page.locator('header starlight-lang-select select'),
     page.locator('[data-mle-version-picker]'),
-    page.locator('[data-mle-permanent-link]'),
   ];
 
   if (testInfo.project.name === 'webkit') {

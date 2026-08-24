@@ -320,6 +320,36 @@ test('language switching preserves all seven section page IDs within the selecte
   }
 });
 
+test('documentation language selector uses the active landing-style flag', async ({ page }) => {
+  await page.goto(pageUrl(`/versions/${versionId}/systems/renderer/`));
+
+  const languageControl = page.locator('header starlight-lang-select');
+  await expect(languageControl.locator('[data-mle-language-flag="en"]')).toBeVisible();
+  await expect(languageControl.locator('[data-mle-language-flag="pt-br"]')).toHaveCount(0);
+
+  await languageControl
+    .locator('select')
+    .selectOption(`/MLEDocs/pt-br/versions/${versionId}/systems/renderer/`);
+  await expect(page).toHaveURL(pageUrl(`/pt-br/versions/${versionId}/systems/renderer/`));
+  await expect(
+    page.locator('header starlight-lang-select [data-mle-language-flag="pt-br"]'),
+  ).toBeVisible();
+});
+
+test('mobile documentation flag selector preserves the current page when changing language', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(pageUrl(`/versions/${versionId}/systems/renderer/`));
+  await page.getByRole('button', { name: 'Menu' }).click();
+
+  const mobileLanguageControl = page.locator('#starlight__sidebar starlight-lang-select');
+  await expect(mobileLanguageControl.locator('[data-mle-language-flag="en"]')).toBeVisible();
+  await mobileLanguageControl
+    .locator('select')
+    .selectOption(`/MLEDocs/pt-br/versions/${versionId}/systems/renderer/`);
+
+  await expect(page).toHaveURL(pageUrl(`/pt-br/versions/${versionId}/systems/renderer/`));
+});
+
 for (const localeCase of [
   { name: 'English', prefix: '' },
   { name: 'Brazilian Portuguese', prefix: '/pt-br' },
@@ -448,21 +478,16 @@ test('shows pinned commit, maturity, and a base-aware same-page version destinat
 }) => {
   await page.goto(pageUrl(`/versions/${versionId}/systems/renderer/`));
 
-  const permanentLink = page.locator('[data-mle-permanent-link]');
-  await expect(permanentLink).toHaveText(versionId);
-  await expect(permanentLink).toHaveAccessibleName(new RegExp(fullCommit));
-  await expect(permanentLink).toHaveAttribute(
-    'href',
-    `/MLEDocs/versions/${versionId}/systems/renderer/`,
-  );
+  await expect(page.locator('[data-mle-permanent-link]')).toHaveCount(0);
 
   const maturity = page.locator('[data-mle-maturity="in-development"]');
   await expect(maturity).toContainText('In development');
   await expect(maturity.locator('[data-mle-maturity-cue]')).toBeVisible();
 
   const picker = page.getByLabel('Documentation version');
-  await expect(picker.locator('option:checked')).toContainText(
-    `${versionId} · 2026-08-18 · current`,
+  await expect(picker.locator('option:checked')).toHaveText(versionId);
+  await expect(picker).toHaveAccessibleDescription(
+    `Selected full commit ${fullCommit}. Choose a short commit identifier to open the equivalent page in that version.`,
   );
   await expect(picker.locator('option:checked')).toHaveAttribute(
     'value',
@@ -477,13 +502,8 @@ test('discloses an exact current Portuguese translation', async ({ page }) => {
 
   const notice = page.locator('[data-mle-translation-status="current"]');
   await expect(notice).toContainText('A tradução em português está atualizada para este commit do MLE.');
-  await expect(page.locator('[data-mle-permanent-link]')).toHaveAttribute(
-    'href',
-    `/MLEDocs/pt-br/versions/${versionId}/`,
-  );
-  await expect(page.getByLabel('Versão da documentação').locator('option:checked')).toContainText(
-    `${versionId} · 2026-08-18 · atual`,
-  );
+  await expect(page.locator('[data-mle-permanent-link]')).toHaveCount(0);
+  await expect(page.getByLabel('Versão da documentação').locator('option:checked')).toHaveText(versionId);
 });
 
 test('discloses same-commit English fallback without changing locale or commit', async ({ page }) => {
@@ -494,10 +514,7 @@ test('discloses same-commit English fallback without changing locale or commit',
     `Esta página está disponível em inglês para a mesma versão do MLE. Commit fixado: ${versionId}.`,
   );
   await expect(page.locator('main')).toHaveAttribute('lang', 'en');
-  await expect(page.locator('[data-mle-permanent-link]')).toHaveAttribute(
-    'href',
-    `/MLEDocs/pt-br/versions/${versionId}/systems/renderer/`,
-  );
+  await expect(page.locator('[data-mle-permanent-link]')).toHaveCount(0);
   await expect(page.locator('[data-mle-page-permanent-link]')).toHaveAttribute(
     'href',
     `/MLEDocs/pt-br/versions/${versionId}/systems/renderer/`,
@@ -590,24 +607,26 @@ test('repository root is a stable landing page', async ({ page }) => {
   );
   const picker = page.locator('[data-mle-landing-version-picker]');
   await expect(picker).toHaveAccessibleName('Documentation version');
+  await expect(picker.locator('option:checked')).toHaveText(versionId);
   await expect(picker.locator('option:checked')).toHaveValue(`/MLEDocs/versions/${versionId}/`);
+  await expect(page.locator('.landing-version-picker')).toContainText('Version:');
+  expect(
+    await picker.evaluate((element) => Number.parseInt(getComputedStyle(element).fontWeight, 10)),
+  ).toBeGreaterThanOrEqual(700);
+  await expect(picker).toHaveCSS('color', 'rgb(237, 101, 173)');
   await expect(page.locator('[data-mle-landing-selected-version]')).toHaveCount(0);
-  const themeToggle = page.locator('[data-mle-landing-theme-toggle]');
-  await expect(themeToggle).toHaveAccessibleName('Switch to light theme');
-  await expect(themeToggle.locator('[data-mle-theme-icon="sun"]')).toBeVisible();
-  const languageOptions = page.locator('[data-mle-landing-language-options]');
-  await expect(languageOptions).toHaveAccessibleName('Language');
-  await expect(languageOptions.getByRole('link')).toHaveCount(2);
-  await expect(languageOptions.locator('[data-mle-language-flag="en"]')).toBeVisible();
-  await expect(languageOptions.locator('[data-mle-language-flag="pt-br"]')).toBeVisible();
-  await expect(languageOptions.getByRole('link', { name: 'English' })).toHaveAttribute(
-    'aria-current',
-    'page',
+  const themePicker = page.locator('starlight-theme-select select');
+  await expect(themePicker).toHaveAccessibleName('Select theme');
+  await expect(themePicker.locator('option')).toHaveText(['Dark', 'Light', 'Auto']);
+  await expect(page.locator('starlight-theme-select .label-icon path')).toHaveAttribute(
+    'd',
+    'M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z',
   );
-  await expect(languageOptions.getByRole('link', { name: 'Português (Brasil)' })).toHaveAttribute(
-    'href',
-    '/MLEDocs/pt-br/',
-  );
+  const languagePicker = page.locator('starlight-lang-select select');
+  await expect(languagePicker).toHaveAccessibleName('Language');
+  await expect(languagePicker.locator('option')).toHaveText(['English', 'Português (Brasil)']);
+  await expect(languagePicker.locator('option:checked')).toHaveValue('/MLEDocs/');
+  await expect(page.locator('starlight-lang-select [data-mle-language-flag="en"]')).toBeVisible();
   const githubLink = page.getByRole('link', { name: 'GitHub', exact: true }).first();
   await expect(githubLink).toHaveAttribute(
     'href',
@@ -698,22 +717,48 @@ for (const journey of [
   });
 }
 
-test('landing sun and moon control toggles and persists the resolved theme', async ({ page }) => {
+test('landing Starlight theme control supports Dark, Light, and Auto', async ({ page }) => {
+	const themeIcon = page.locator('[data-mle-theme-icon] path');
+	const themeIconPaths = {
+		auto: 'M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z',
+		dark: 'M21.64 13a1 1 0 0 0-1.05-.14 8.049 8.049 0 0 1-3.37.73 8.15 8.15 0 0 1-8.14-8.1 8.59 8.59 0 0 1 .25-2A1 1 0 0 0 8 2.36a10.14 10.14 0 1 0 14 11.69 1 1 0 0 0-.36-1.05Zm-9.5 6.69A8.14 8.14 0 0 1 7.08 5.22v.27a10.15 10.15 0 0 0 10.14 10.14 9.784 9.784 0 0 0 2.1-.22 8.11 8.11 0 0 1-7.18 4.32v-.04Z',
+		light: 'M5 12a1 1 0 0 0-1-1H3a1 1 0 0 0 0 2h1a1 1 0 0 0 1-1Zm.64 5-.71.71a1 1 0 0 0 0 1.41 1 1 0 0 0 1.41 0l.71-.71A1 1 0 0 0 5.64 17ZM12 5a1 1 0 0 0 1-1V3a1 1 0 0 0-2 0v1a1 1 0 0 0 1 1Zm5.66 2.34a1 1 0 0 0 .7-.29l.71-.71a1 1 0 1 0-1.41-1.41l-.66.71a1 1 0 0 0 0 1.41 1 1 0 0 0 .66.29Zm-12-.29a1 1 0 0 0 1.41 0 1 1 0 0 0 0-1.41l-.71-.71a1.004 1.004 0 1 0-1.43 1.41l.73.71ZM21 11h-1a1 1 0 0 0 0 2h1a1 1 0 0 0 0-2Zm-2.64 6A1 1 0 0 0 17 18.36l.71.71a1 1 0 0 0 1.41 0 1 1 0 0 0 0-1.41l-.76-.66ZM12 6.5a5.5 5.5 0 1 0 5.5 5.5A5.51 5.51 0 0 0 12 6.5Zm0 9a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Zm0 3.5a1 1 0 0 0-1 1v1a1 1 0 0 0 2 0v-1a1 1 0 0 0-1-1Z',
+	};
   await page.emulateMedia({ colorScheme: 'light' });
   await page.goto(pageUrl('/'));
 
-  const toggle = page.locator('[data-mle-landing-theme-toggle]');
-  await expect(toggle).toHaveAccessibleName('Switch to dark theme');
-  await expect(toggle.locator('[data-mle-theme-icon="moon"]')).toBeVisible();
-  await toggle.click();
+  const picker = page.locator('starlight-theme-select select');
+  await expect(picker).toHaveValue('auto');
+	await expect(themeIcon).toHaveAttribute('d', themeIconPaths.auto);
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+
+  await picker.selectOption('dark');
+	await expect(themeIcon).toHaveAttribute('d', themeIconPaths.dark);
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   expect(await page.evaluate(() => localStorage.getItem('starlight-theme'))).toBe('dark');
-  await expect(toggle).toHaveAccessibleName('Switch to light theme');
-  await expect(toggle.locator('[data-mle-theme-icon="sun"]')).toBeVisible();
 
-  await toggle.click();
+  await picker.selectOption('light');
+	await expect(themeIcon).toHaveAttribute('d', themeIconPaths.light);
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   expect(await page.evaluate(() => localStorage.getItem('starlight-theme'))).toBe('light');
+
+  await picker.selectOption('auto');
+	await expect(themeIcon).toHaveAttribute('d', themeIconPaths.auto);
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  expect(await page.evaluate(() => localStorage.getItem('starlight-theme'))).toBe('');
+});
+
+test('landing language picker resyncs after a persisted page restore', async ({ page }) => {
+  await page.goto(pageUrl('/'));
+
+  const picker = page.locator('starlight-lang-select select');
+  await picker.evaluate((select: HTMLSelectElement) => {
+    select.value = '/MLEDocs/pt-br/';
+    window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
+  });
+
+  await expect(picker).toHaveValue('/MLEDocs/');
+  await expect(page.locator('starlight-lang-select [data-mle-language-flag="en"]')).toBeVisible();
 });
 
 for (const journey of [
@@ -789,15 +834,12 @@ for (const journey of [
     for (const forbidden of journey.forbiddenPhrases) {
       await expect(page.locator('body')).not.toContainText(forbidden);
     }
-    const languageOptions = page.locator('[data-mle-landing-language-options]');
-    await expect(languageOptions.getByRole('link', { name: 'English' })).toHaveCount(1);
-    await expect(
-      languageOptions.getByRole('link', { name: 'Português (Brasil)' }),
-    ).toHaveCount(1);
+    const languagePicker = page.locator('starlight-lang-select select');
+    await expect(languagePicker.locator('option')).toHaveText(['English', 'Português (Brasil)']);
 
     const copyOutsideLanguagePicker = await page.locator('body').evaluate((body) => {
       const bodyWithoutLanguagePicker = body.cloneNode(true) as HTMLElement;
-      bodyWithoutLanguagePicker.querySelector('[data-mle-landing-language-options]')?.remove();
+      bodyWithoutLanguagePicker.querySelector('starlight-lang-select')?.remove();
       return bodyWithoutLanguagePicker.textContent;
     });
     expect(copyOutsideLanguagePicker).not.toContain('Português (Brasil)');
@@ -821,10 +863,9 @@ for (const journey of [
   }) => {
     await page.goto(pageUrl(journey.from));
 
-    const languageOptions = page.locator('[data-mle-landing-language-options]');
-    await languageOptions.getByRole('link', {
-      name: journey.destination === '/' ? 'English' : 'Português (Brasil)',
-    }).click();
+    await page.locator('starlight-lang-select select').selectOption(
+      journey.destination === '/' ? '/MLEDocs/' : '/MLEDocs/pt-br/',
+    );
 
     await expect(page).toHaveURL(pageUrl(journey.destination));
     await expect(page).toHaveTitle(journey.title);
@@ -874,7 +915,7 @@ test('homepage primary path opens project status without changing the selected c
 
   await expect(page).toHaveURL(pageUrl(`/versions/${versionId}/start-here/project-status/`));
   await expect(page.getByRole('heading', { level: 1, name: 'Project status' })).toBeVisible();
-  await expect(page.locator('[data-mle-permanent-link]')).toHaveText(versionId);
+  await expect(page.locator('[data-mle-permanent-link]')).toHaveCount(0);
 });
 
 test('latest renderer alias declares and resolves to the permanent canonical route', async ({
@@ -908,7 +949,7 @@ for (const { name, slug } of [
     await page.goto(pageUrl(`/pt-br/latest/${slug}/`));
     await expect(page).toHaveURL(pageUrl(`/pt-br/versions/${versionId}/${slug}/`));
     await expect(page.locator('[data-mle-translation-status="fallback"]')).toContainText(versionId);
-    await expect(page.locator('[data-mle-permanent-link]')).toHaveAttribute('href', permanentPath);
+    await expect(page.locator('[data-mle-permanent-link]')).toHaveCount(0);
   });
 }
 
@@ -933,7 +974,7 @@ test('direct renderer deep link survives reload without changing commit or route
 
   await expect(page).toHaveURL(deepLink);
   await expect(page.getByRole('heading', { level: 1, name: 'Renderer' })).toBeVisible();
-  await expect(page.locator('[data-mle-permanent-link]')).toHaveText(versionId);
+  await expect(page.locator('[data-mle-permanent-link]')).toHaveCount(0);
 });
 
 for (const breadcrumbCase of [

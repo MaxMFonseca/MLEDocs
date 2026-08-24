@@ -7,8 +7,11 @@ export interface LandingCopy {
 		readonly navigationLabel: string;
 		readonly languageLabel: string;
 		readonly versionLabel: string;
-		readonly themeToLight: string;
-		readonly themeToDark: string;
+		readonly versionPrefix: string;
+		readonly themeLabel: string;
+		readonly themeDark: string;
+		readonly themeLight: string;
+		readonly themeAuto: string;
 		readonly sourceLabel: string;
 		readonly xPlaceholderLabel: string;
 	};
@@ -157,7 +160,7 @@ const portugueseBands = [
 export const landingCopy: Readonly<Record<Locale, LandingCopy>> = {
 	en: {
 		metadata: { title: 'MLE · C++23 game engine documentation', description: 'MLE is a C++23 game engine with Vulkan rendering, Lua-driven UI, OpenAL audio, SDL window and input, and development tools.' },
-		header: { homeLabel: 'MLE documentation home', navigationLabel: 'Documentation and source links', languageLabel: 'Language', versionLabel: 'Documentation version', themeToLight: 'Switch to light theme', themeToDark: 'Switch to dark theme', sourceLabel: 'GitHub', xPlaceholderLabel: 'X (coming soon)' },
+		header: { homeLabel: 'MLE documentation home', navigationLabel: 'Documentation and source links', languageLabel: 'Language', versionLabel: 'Documentation version', versionPrefix: 'Version', themeLabel: 'Theme', themeDark: 'Dark', themeLight: 'Light', themeAuto: 'Auto', sourceLabel: 'GitHub', xPlaceholderLabel: 'X (coming soon)' },
 		hero: { eyebrow: 'Engine overview · pinned source documentation', title: 'A C++23 game engine for building real-time experiences', lede: 'MLE brings Vulkan rendering, model and animation systems, a Lua-driven retained UI, OpenAL audio, and SDL window and input into one documented codebase.', note: 'The repository also includes development tools, test applications, and an experimental server subsystem.', start: 'Start here', systems: 'Explore systems', imageAlt: 'Gameplay scene rendered by MLE', imageCaption: 'Gameplay output from the pinned MLE snapshot.', imageSource: 'View source image' },
 		features: { eyebrow: 'Engine capabilities', title: 'Follow the systems from foundation to feedback', bands: englishBands, openSection: (label) => `Open ${label}` },
 		directory: { eyebrow: 'Documentation directory', title: 'Choose a route through the handbook', registryCount: (count) => `${count} sections from the navigation registry` },
@@ -166,7 +169,7 @@ export const landingCopy: Readonly<Record<Locale, LandingCopy>> = {
 	},
 	'pt-br': {
 		metadata: { title: 'MLE · Documentação do motor de jogos C++23', description: 'MLE é um motor de jogos C++23 com renderização Vulkan, UI controlada por Lua, áudio OpenAL, janela e entrada SDL e ferramentas de desenvolvimento.' },
-		header: { homeLabel: 'Página inicial da documentação do MLE', navigationLabel: 'Links da documentação e do código-fonte', languageLabel: 'Idioma', versionLabel: 'Versão da documentação', themeToLight: 'Mudar para tema claro', themeToDark: 'Mudar para tema escuro', sourceLabel: 'GitHub', xPlaceholderLabel: 'X (em breve)' },
+		header: { homeLabel: 'Página inicial da documentação do MLE', navigationLabel: 'Links da documentação e do código-fonte', languageLabel: 'Idioma', versionLabel: 'Versão da documentação', versionPrefix: 'Versão', themeLabel: 'Tema', themeDark: 'Escuro', themeLight: 'Claro', themeAuto: 'Automático', sourceLabel: 'GitHub', xPlaceholderLabel: 'X (em breve)' },
 		hero: { eyebrow: 'Visão geral do motor · documentação vinculada ao código-fonte', title: 'Um motor de jogos C++23 para criar experiências em tempo real', lede: 'O MLE reúne renderização Vulkan, sistemas de modelos e animação, uma UI retida controlada por Lua, áudio OpenAL e janela e entrada SDL em uma única base de código documentada.', note: 'O repositório também inclui ferramentas de desenvolvimento, aplicativos de teste e um subsistema de servidor experimental.', start: 'Comece aqui', systems: 'Explore os sistemas', imageAlt: 'Cena de jogo renderizada pelo MLE', imageCaption: 'Resultado de jogo do snapshot fixado do MLE.', imageSource: 'Ver imagem de origem' },
 		features: { eyebrow: 'Recursos do motor', title: 'Acompanhe os sistemas da base ao resultado', bands: portugueseBands, openSection: (label) => `Abrir ${label}` },
 		directory: { eyebrow: 'Diretório da documentação', title: 'Escolha um caminho pelo manual', registryCount: (count) => `${count} seções do registro de navegação` },

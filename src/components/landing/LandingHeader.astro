@@ -93,11 +93,14 @@ const { copy, locale, model } = Astro.props;
 	.landing-action--disabled { cursor: not-allowed; opacity: 0.42; }
 	@media (max-width: 52rem) {
 		.landing-header__inner {
-			grid-template-columns: 1fr;
+			grid-template-columns: minmax(0, 1fr);
 			gap: var(--mle-space-4);
 			width: min(100% - 2rem, 40rem);
 			padding-block: var(--mle-space-5);
 		}
-		.landing-tools { justify-content: flex-start; }
+		.landing-tools {
+			flex-wrap: wrap;
+			justify-content: flex-start;
+		}
 	}
 </style>

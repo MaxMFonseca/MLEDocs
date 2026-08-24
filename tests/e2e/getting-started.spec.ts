@@ -117,11 +117,7 @@ for (const [pageId, slug] of pages) {
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(pageTitles[pageId]);
     await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
     await expect(page.locator('[data-mle-translation-status]')).toHaveCount(0);
-    await expect(page.locator('[data-mle-permanent-link]')).toHaveText(versionId);
-    await expect(page.locator('[data-mle-permanent-link]')).toHaveAccessibleName(
-      new RegExp(fullCommit),
-    );
-    await expect(page.locator('[data-mle-permanent-link]')).toHaveAttribute('href', href);
+    await expect(page.locator('[data-mle-permanent-link]')).toHaveCount(0);
     await expect(page.locator('[data-mle-page-permanent-link]')).toHaveAttribute('href', href);
     await expect(page.locator('[data-mle-source-evidence]')).toHaveCount(1);
     const evidenceLinks = page.locator('[data-mle-source-evidence] a');
@@ -160,10 +156,7 @@ for (const [pageId, slug] of pages) {
       'href',
       `https://maxmfonseca.github.io${permanentHref}`,
     );
-    await expect(page.locator('[data-mle-permanent-link]')).toHaveAttribute(
-      'href',
-      permanentHref,
-    );
+    await expect(page.locator('[data-mle-permanent-link]')).toHaveCount(0);
   });
 }
 
@@ -305,13 +298,7 @@ for (const [pageId, slug] of pages.filter(([candidate]) =>
     await expect(page.locator('html')).toHaveAttribute('lang', 'pt-BR');
     await expect(page.locator('main')).toHaveAttribute('lang', 'en');
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(pageTitles[pageId]);
-    await expect(page.locator('[data-mle-permanent-link]')).toHaveAttribute(
-      'href',
-      `/MLEDocs${route}`,
-    );
-    await expect(page.locator('[data-mle-permanent-link]')).toHaveAccessibleName(
-      new RegExp(fullCommit),
-    );
+    await expect(page.locator('[data-mle-permanent-link]')).toHaveCount(0);
     const fallback = page.locator('[data-mle-translation-status="fallback"]');
     await expect(fallback).toHaveCount(1);
     await expect(fallback).toHaveText(

@@ -11,12 +11,12 @@ const { copy, model } = Astro.props;
 ---
 
 <label class="landing-version-picker">
-	<span>{copy.header.versionLabel}</span>
-	<select data-mle-landing-version-picker autocomplete="off">
+	<span aria-hidden="true">{copy.header.versionPrefix}:</span>
+	<select data-mle-landing-version-picker autocomplete="off" aria-label={copy.header.versionLabel}>
 		{
 			model.options.map((option) => (
 				<option value={option.destination} selected={option.versionId === model.version.id}>
-					{option.label}
+					{option.versionId}
 				</option>
 			))
 		}
@@ -31,11 +31,13 @@ const { copy, model } = Astro.props;
 
 <style>
 	.landing-version-picker {
-		display: grid;
-		gap: var(--mle-space-2);
+		display: flex;
+		align-items: center;
+		gap: var(--mle-space-1);
 		border-radius: var(--mle-radius-md);
 		color: var(--mle-text-muted);
-		font-size: 0.8rem;
+		font-size: 0.875rem;
+		white-space: nowrap;
 	}
 
 	.landing-version-picker:has(select:focus) {
@@ -45,16 +47,18 @@ const { copy, model } = Astro.props;
 	}
 
 	select {
-		width: 100%;
+		width: 9.75rem;
 		min-height: 2.5rem;
-		padding: var(--mle-space-1) var(--mle-space-2);
-		border: 1px solid var(--mle-border);
-		border-radius: var(--mle-radius-md);
-		background: var(--mle-surface-2);
-		color: var(--mle-text);
+		padding: var(--mle-space-1) 1.7rem var(--mle-space-1) var(--mle-space-2);
+		border: 0;
+		background: transparent;
+		color: var(--mle-accent-bright);
 		font-family: var(--mle-font-code);
-		font-size: 0.78rem;
+		font-size: 0.8rem;
+		font-weight: 750;
+		cursor: pointer;
 	}
+	select:hover { color: var(--mle-text); }
 
 	select:focus {
 		outline: 3px solid var(--mle-accent-bright);
@@ -64,7 +68,8 @@ const { copy, model } = Astro.props;
 
 	@media (max-width: 52rem) {
 		.landing-version-picker {
-			width: 100%;
+			width: max-content;
+			max-width: 100%;
 		}
 	}
 </style>

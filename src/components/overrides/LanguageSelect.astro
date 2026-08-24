@@ -1,0 +1,29 @@
+---
+import config from 'virtual:starlight/user-config';
+import type { Locale } from '../../data/taxonomy';
+import FlagLanguageSelect from '../controls/FlagLanguageSelect.astro';
+
+const activeLocale: Locale = Astro.locals.starlightRoute.locale === 'pt-br' ? 'pt-br' : 'en';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const relativePath = Astro.url.pathname.startsWith(base)
+	? Astro.url.pathname.slice(base.length)
+	: Astro.url.pathname;
+const unlocalizedPath = relativePath.replace(/^\/pt-br(?=\/|$)/, '') || '/';
+const options = Object.entries(config.locales ?? {}).map(([locale, configuration]) => {
+	const optionLocale: Locale = locale === 'pt-br' ? 'pt-br' : 'en';
+	return {
+		label: configuration!.label,
+		locale: optionLocale,
+		value: `${base}${optionLocale === 'pt-br' ? '/pt-br' : ''}${unlocalizedPath}`,
+	};
+});
+---
+
+{config.isMultilingual && (
+	<FlagLanguageSelect
+		{activeLocale}
+		label={Astro.locals.t('languageSelect.accessibleLabel')}
+		{options}
+		placement="docs"
+	/>
+)}

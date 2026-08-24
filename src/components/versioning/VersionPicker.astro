@@ -25,7 +25,6 @@ const model = buildVersionPickerModel({
 	locale,
 	activeVersionId: version.id,
 });
-const permanentPath = model.active.destination;
 ---
 
 <div class="version-context" data-mle-version-context>
@@ -35,28 +34,16 @@ const permanentPath = model.active.destination;
 			{
 				model.options.map((option) => (
 					<option value={option.selectionValue} selected={option.version.id === version.id}>
-						{option.label}
+						{option.version.id}
 					</option>
 				))
 			}
 		</select>
 	</label>
-	<a
-		class="permanent-link"
-		data-mle-permanent-link
-		href={permanentPath}
-		aria-label={`${isPortuguese ? 'Link permanente para o commit' : 'Permanent link for commit'} ${version.commit}`}
-		title={version.commit}
-	>
-		<code aria-hidden="true">{version.id}</code>
-	</a>
-	<span class="selected-version-summary" data-mle-selected-version-summary>
-		{model.active.label}
-	</span>
 	<span id="mle-version-detail" class="sr-only">
 		{isPortuguese
-			? `Commit completo ${version.commit}. Cada opção informa a data e o estado da versão.`
-			: `Full commit ${version.commit}. Each option includes the version date and status.`}
+			? `Commit completo selecionado ${version.commit}. Escolha um identificador curto de commit para abrir a página equivalente nessa versão.`
+			: `Selected full commit ${version.commit}. Choose a short commit identifier to open the equivalent page in that version.`}
 	</span>
 </div>
 
@@ -137,7 +124,7 @@ const permanentPath = model.active.destination;
 	}
 
 	select {
-		width: min(17rem, 30vw);
+		width: 10rem;
 		min-height: 2.25rem;
 		padding: var(--mle-space-1) var(--mle-space-2);
 		border: 1px solid var(--mle-border);
@@ -150,21 +137,6 @@ const permanentPath = model.active.destination;
 
 	select:focus-visible {
 		box-shadow: none;
-	}
-
-	.permanent-link {
-		flex: none;
-		padding: var(--mle-space-1) var(--mle-space-2);
-		border: 1px solid var(--mle-border);
-		border-radius: var(--mle-radius-md);
-		color: var(--mle-accent-bright);
-		font-size: 0.75rem;
-		line-height: 1.5;
-		text-decoration: none;
-	}
-
-	.selected-version-summary {
-		display: none;
 	}
 
 	.missing-equivalent,
@@ -195,21 +167,8 @@ const permanentPath = model.active.destination;
 		}
 
 		select {
-			width: 100%;
+			width: min(10rem, 100%);
 		}
 
-		.permanent-link {
-			display: none;
-		}
-
-		.selected-version-summary {
-			display: block;
-			min-width: 0;
-			color: var(--mle-text-muted);
-			font-family: var(--mle-font-code);
-			font-size: 0.6875rem;
-			line-height: 1.35;
-			white-space: normal;
-		}
 	}
 </style>

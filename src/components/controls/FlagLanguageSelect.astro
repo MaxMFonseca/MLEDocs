@@ -1,0 +1,108 @@
+---
+import type { Locale } from '../../data/taxonomy';
+
+interface LanguageOption {
+	label: string;
+	locale: Locale;
+	value: string;
+}
+
+interface Props {
+	activeLocale: Locale;
+	label: string;
+	options: readonly LanguageOption[];
+	placement: 'docs' | 'landing';
+}
+
+const { activeLocale, label, options, placement } = Astro.props;
+const marker = placement === 'landing'
+	? { 'data-mle-landing-language-picker': '' }
+	: { 'data-mle-docs-language-picker': '' };
+---
+
+<starlight-lang-select>
+	<label>
+		<span class="sr-only">{label}</span>
+		{
+			activeLocale === 'en' ? (
+				<svg class="flag" data-mle-language-flag="en" viewBox="0 0 28 20" aria-hidden="true">
+					<rect width="28" height="20" fill="#b22234"></rect>
+					<path d="M0 2h28v2H0zm0 4h28v2H0zm0 4h28v2H0zm0 4h28v2H0zm0 4h28v2H0z" fill="#fff"></path>
+					<rect width="12" height="10" fill="#3c3b6e"></rect>
+				</svg>
+			) : (
+				<svg class="flag" data-mle-language-flag="pt-br" viewBox="0 0 28 20" aria-hidden="true">
+					<rect width="28" height="20" fill="#009b3a"></rect>
+					<path d="m14 2.5 11 7.5-11 7.5L3 10Z" fill="#ffdf00"></path>
+					<circle cx="14" cy="10" r="4.4" fill="#002776"></circle>
+				</svg>
+			)
+		}
+		<select {...marker} data-mle-language-picker autocomplete="off" aria-label={label}>
+			{options.map((option) => (
+				<option value={option.value} selected={option.locale === activeLocale}>{option.label}</option>
+			))}
+		</select>
+		<svg class="caret" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 9 5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+	</label>
+</starlight-lang-select>
+
+<script is:inline>
+	(() => {
+		document.querySelectorAll('[data-mle-language-picker]').forEach((picker) => {
+			if (!(picker instanceof HTMLSelectElement) || picker.dataset.mleLanguagePickerReady) return;
+			picker.dataset.mleLanguagePickerReady = 'true';
+			picker.addEventListener('change', () => location.assign(picker.value));
+			window.addEventListener('pageshow', (event) => {
+				if (!event.persisted) return;
+				const markupSelectedIndex = picker.querySelector('option[selected]')?.index;
+				picker.selectedIndex = markupSelectedIndex ?? 0;
+			});
+		});
+	})();
+</script>
+
+<style>
+	starlight-lang-select { display: block; }
+	label {
+		position: relative;
+		display: flex;
+		align-items: center;
+		color: var(--mle-text-muted);
+	}
+	label:hover { color: var(--mle-text); }
+	.flag,
+	.caret {
+		position: absolute;
+		top: 50%;
+		transform: translateY(-50%);
+		pointer-events: none;
+	}
+	.flag { inset-inline-start: 0; width: 1.35rem; border-radius: 0.12rem; }
+	.caret { inset-inline-end: 0; width: 1.1rem; }
+	select {
+		width: 10.5rem;
+		min-height: 2.5rem;
+		margin-inline: -0.5rem;
+		padding: 0.625rem 1.85rem 0.625rem 2.1rem;
+		border: 0;
+		background: transparent;
+		color: inherit;
+		font-size: 0.875rem;
+		text-overflow: ellipsis;
+		cursor: pointer;
+		appearance: none;
+	}
+	option { background: var(--mle-surface-2); color: var(--mle-text); }
+	.sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
+	}
+</style>
